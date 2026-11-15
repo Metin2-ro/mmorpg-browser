@@ -2,53 +2,88 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>Wartune Style Browser MMORPG</title>
+    <title>AdventureQuest / MMORPG Browser Style</title>
     <style>
-        body { margin: 0; background: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        h1 { margin: 5px 0; font-size: 22px; color: #f1c40f; text-shadow: 1px 1px 2px #000; }
+        body { margin: 0; background: #07090e; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        #game-container { display: flex; gap: 10px; background: #16202b; padding: 10px; border: 3px solid #34495e; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); }
-        
-        canvas { background: #27ae60; display: block; border: 2px solid #2c3e50; box-shadow: inset 0 0 20px rgba(0,0,0,0.4); }
+        /* Containerul principal stil MMORPG */
+        #game-wrapper { position: relative; width: 800px; height: 600px; border: 4px solid #2c3e50; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden; background: #1b2838; }
 
-        .sidebar { width: 240px; display: flex; flex-direction: column; gap: 10px; }
+        canvas { display: block; background: #22422b; }
+
+        /* HUD Sus-Stânga (Profil Jucător, HP, MP) */
+        #player-hud { position: absolute; top: 15px; left: 15px; background: rgba(15, 22, 36, 0.85); border: 2px solid #4a6fa5; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; width: 220px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+        .avatar-box { width: 40px; height: 40px; background: #2c3e50; border: 2px solid #f1c40f; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .stats-box { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .player-name { font-size: 12px; font-weight: bold; color: #f1c40f; }
         
-        .panel { background: #1e2b38; border: 2px solid #4a6fa5; border-radius: 6px; padding: 10px; box-sizing: border-box; }
-        .panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #f39c12; border-bottom: 1px solid #4a6fa5; padding-bottom: 4px; text-transform: uppercase; }
-        
-        #inventory-box { height: 160px; font-size: 13px; color: #ecf0f1; line-height: 1.6; }
-        
-        #chat-box { height: 210px; display: flex; flex-direction: column; }
-        #chat-messages { flex: 1; font-size: 11px; overflow-y: auto; background: #111822; padding: 5px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #2c3e50; }
-        #chat-input { width: 100%; padding: 5px; background: #2c3e50; border: 1px solid #4a6fa5; color: white; border-radius: 3px; box-sizing: border-box; font-size: 12px; }
+        .bar-container { width: 100%; height: 10px; background: #333; border-radius: 3px; overflow: hidden; position: relative; border: 1px solid #111; }
+        .hp-fill { width: 100%; height: 100%; background: #e74c3c; transition: width 0.3s; }
+        .mp-fill { width: 100%; height: 100%; background: #3498db; transition: width 0.3s; }
+        .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 10px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
+
+        /* HUD Sus-Dreapta (Meniuri / Iconițe) */
+        #top-right-menu { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; }
+        .menu-btn { width: 36px; height: 36px; background: rgba(15, 22, 36, 0.9); border: 2px solid #4a6fa5; border-radius: 6px; color: white; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .menu-btn:hover { background: #34495e; border-color: #f1c40f; }
+
+        /* Fereastra de Chat Stânga-Jos */
+        #chat-container { position: absolute; bottom: 15px; left: 15px; width: 320px; background: rgba(11, 15, 22, 0.85); border: 2px solid #34495e; border-radius: 6px; display: flex; flex-direction: column; padding: 6px; }
+        #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 5px; padding-right: 4px; }
+        #chat-input { background: #16202b; border: 1px solid #4a6fa5; color: white; padding: 5px; border-radius: 4px; font-size: 11px; outline: none; }
+
+        /* Bară de Abilități Jos-Centru */
+        #action-bar { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(15, 22, 36, 0.9); padding: 6px 10px; border: 2px solid #4a6fa5; border-radius: 8px; }
+        .skill-slot { width: 42px; height: 42px; background: #1b2838; border: 2px solid #2c3e50; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
+        .skill-slot:hover { border-color: #f1c40f; transform: scale(1.05); }
+        .skill-key { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #f1c40f; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>⚔️ Wartune Browser Edition ⚔️</h1>
+    <div id="game-wrapper">
+        <!-- Canvas Harta Jocului -->
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    <div id="game-container">
-        <!-- Harta Canvas -->
-        <canvas id="gameCanvas" width="640" height="480"></canvas>
-
-        <!-- Panouri laterale (Inventory & Chat) -->
-        <div class="sidebar">
-            <div class="panel">
-                <h3>📦 Inventory</h3>
-                <div id="inventory-box">
-                    <div id="inv-potions">🧪 1x Health Potion</div>
-                    <div id="inv-sword">⚔️ Iron Sword</div>
-                    <div id="inv-gold">💰 5 Gold Coins</div>
+        <!-- HUD Profil Jucător (Stânga Sus) -->
+        <div id="player-hud">
+            <div class="avatar-box">🛡️</div>
+            <div class="stats-box">
+                <span class="player-name" id="ui-name">Player 1</span>
+                <div class="bar-container">
+                    <div class="hp-fill" id="hp-bar" style="width: 100%;"></div>
+                    <div class="bar-text">HP: 100/100</div>
+                </div>
+                <div class="bar-container">
+                    <div class="mp-fill" id="mp-bar" style="width: 100%;"></div>
+                    <div class="bar-text">MP: 50/50</div>
                 </div>
             </div>
+        </div>
 
-            <div class="panel" id="chat-box">
-                <h3>💬 Chat</h3>
-                <div id="chat-messages">
-                    <div><b>[System]:</b> Bun venit în lumea Wartune!</div>
-                </div>
-                <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
+        <!-- Meniuri Dreapta Sus -->
+        <div id="top-right-menu">
+            <div class="menu-btn" title="Inventory">📦</div>
+            <div class="menu-btn" title="Character Stats">📊</div>
+            <div class="menu-btn" title="Shop">🪙</div>
+            <div class="menu-btn" title="Settings">⚙️</div>
+        </div>
+
+        <!-- Chat Stânga Jos -->
+        <div id="chat-container">
+            <div id="chat-messages">
+                <div style="color: #2ecc71;"><b>[System]:</b> Bun venit în lumea ta MMORPG! Folosește W, A, S, D pentru mișcare.</div>
             </div>
+            <input type="text" id="chat-input" placeholder="Apasă Enter pentru a scrie..." autocomplete="off">
+        </div>
+
+        <!-- Bară de Abilități Jos -->
+        <div id="action-bar">
+            <div class="skill-slot" title="Basic Attack">⚔️<span class="skill-key">1</span></div>
+            <div class="skill-slot" title="Fireball">🔥<span class="skill-key">2</span></div>
+            <div class="skill-slot" title="Heal Potion">🧪<span class="skill-key">3</span></div>
+            <div class="skill-slot" title="Ultimate Strike">⚡<span class="skill-key">4</span></div>
+            <div class="skill-slot" title="Shield Defense">🛡️<span class="skill-key">5</span></div>
         </div>
     </div>
 
@@ -62,15 +97,18 @@
         let monsters = {};
         let collectibles = {};
         let myId = null;
-        let myPos = { x: 320, y: 240, speed: 3.5 };
+        let myPos = { x: 400, y: 300, speed: 4 };
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             myId = socket.id;
-            updateInventory();
+            if (players[myId]) {
+                document.getElementById('ui-name').innerText = players[myId].name || "Hero";
+            }
         });
 
         socket.on('currentMonsters', (serverMonsters) => { monsters = serverMonsters; });
+        socket.on('monstersMoved', (serverMonsters) => { monsters = serverMonsters; });
         socket.on('currentCollectibles', (serverCollectibles) => { collectibles = serverCollectibles; });
 
         socket.on('newPlayer', (data) => { players[data.id] = data.player; });
@@ -84,10 +122,6 @@
 
         socket.on('collectibleTaken', (data) => {
             delete collectibles[data.collectibleId];
-            if (data.playerId === socket.id) {
-                players[socket.id] = data.player;
-                updateInventory();
-            }
         });
 
         socket.on('newCollectible', (item) => { collectibles[item.id] = item; });
@@ -100,15 +134,7 @@
 
         socket.on('disconnect', (id) => { delete players[id]; });
 
-        function updateInventory() {
-            if (!myId || !players[myId]) return;
-            const p = players[myId];
-            document.getElementById('inv-potions').innerText = `🧪 ${p.potions}x Health Potion`;
-            document.getElementById('inv-sword').innerText = `⚔️ ${p.sword}`;
-            document.getElementById('inv-gold').innerText = `💰 ${p.gold} Gold Coins`;
-        }
-
-        // Tastatură Chat
+        // Chat Input Management
         const chatInput = document.getElementById('chat-input');
         chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && chatInput.value.trim() !== '') {
@@ -119,17 +145,17 @@
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
-            if (document.activeElement === chatInput) return; // Blochează mișcarea când scrii în chat
+            if (document.activeElement === chatInput) return;
             keys[e.key] = true;
         });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
         function update() {
             let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(20, myPos.y - myPos.speed); moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 20, myPos.y + myPos.speed); moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(20, myPos.x - myPos.speed); moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 20, myPos.x + myPos.speed); moved = true; }
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(30, myPos.y - myPos.speed); moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 30, myPos.y + myPos.speed); moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(30, myPos.x - myPos.speed); moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 30, myPos.x + myPos.speed); moved = true; }
 
             if (moved && socket.connected) {
                 socket.emit('playerMovement', { x: myPos.x, y: myPos.y });
@@ -140,8 +166,13 @@
             }
         }
 
-        function drawGrid() {
-            ctx.strokeStyle = 'rgba(39, 174, 96, 0.4)';
+        // Desenăm un fundal frumos stil hartă RPG cu iarbă texturată și poteci
+        function drawBackground() {
+            ctx.fillStyle = "#1e3d2f";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Detecție dale / iarbă stilizată
+            ctx.strokeStyle = "rgba(46, 204, 113, 0.15)";
             ctx.lineWidth = 1;
             for (let x = 0; x < canvas.width; x += 40) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
@@ -153,34 +184,42 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
+            drawBackground();
 
             ctx.font = "24px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Desenează obiectele de colectat (Poțiuni / Monede)
+            // Desenează obiectele de colectat (poțiuni / aur)
             for (const id in collectibles) {
                 const c = collectibles[id];
                 ctx.fillText(c.type === 'potion' ? '🧪' : '💰', c.x, c.y);
             }
 
-            // Desenează monștrii (Demoni 😈)
+            // Desenează monștrii cu cerc roșu distinct
             for (const id in monsters) {
                 const m = monsters[id];
+                ctx.fillStyle = '#c0392b';
+                ctx.beginPath();
+                ctx.arc(m.x, m.y, 18, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#f1c40f';
+                ctx.stroke();
+
                 ctx.fillText('👺', m.x, m.y);
             }
 
-            // Desenează jucătorii (Cavaler 🛡️ / Vrăjitor 🧙)
+            // Desenează jucătorii
             for (const id in players) {
                 const p = players[id];
                 const icon = (id === myId) ? '🛡️' : '🧙‍♂️';
                 ctx.fillText(icon, p.x, p.y);
 
-                // Numele jucătorului deasupra
-                ctx.fillStyle = '#fff';
-                ctx.font = "11px sans-serif";
-                ctx.fillText(p.name, p.x, p.y - 18);
+                // Numele deasupra personajului
+                ctx.fillStyle = '#f1c40f';
+                ctx.font = "bold 11px sans-serif";
+                ctx.fillText(p.name || "Hero", p.x, p.y - 20);
             }
         }
 
