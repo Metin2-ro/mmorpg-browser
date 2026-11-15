@@ -179,7 +179,8 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        const GROUND_Y = 0.0; // Solul la nivelul 0
+        // Înălțimea fixă a solului pe care va păși cavalerul
+        const GROUND_Y = 0.0;
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -203,7 +204,7 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scară fixă 0.01
+        // 1. Încărcare Knight.glb cu scară fixă sigură 0.01
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             
@@ -263,7 +264,7 @@
             });
         }
 
-        // 2. Încărcare map.glb COBORÂTĂ MAI JOS
+        // 2. Încărcare map.glb la nivelul corect
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -273,10 +274,7 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            
-            // COBORÂT HARTA: Am coborât-o cu 15 unități în jos față de calculul automat (-box.min.y)
-            // Poți modifica valoarea 15 (de exemplu 12 sau 18) dacă vrei să o mai reglezi fin
-            mapModel.position.y = -box.min.y - 15;
+            mapModel.position.y = -box.min.y; // Harta așezată natural pe sol
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -288,7 +286,7 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost coborâtă cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost încărcată corect!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -344,6 +342,9 @@
         });
 
         socket.on('playerMoved', (data) => {
+            // REPARAT: Ignorăm update-ul de server pentru propriul ID ca să nu blocăm mișcarea locală (W, A, S, D)
+            if (data.id === myId) return;
+
             if (players[data.id] && players[data.id].mesh) {
                 const targetX = data.x / 20;
                 const targetZ = data.y / 20;
