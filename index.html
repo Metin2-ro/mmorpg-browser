@@ -20,13 +20,16 @@
         .mp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #003366, #1e90ff); }
         .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
 
-        /* Daily Quests Dreapta */
-        #quest-panel { position: absolute; top: 20px; right: 20px; width: 220px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; }
+        /* Panou Niveluri și Quests (Dreapta) */
+        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; }
         #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; }
-        .quest-item { margin-bottom: 6px; font-size: 11px; }
+        .quest-item { margin-bottom: 8px; font-size: 11px; }
         .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
         .quest-bar { width: 100%; height: 6px; background: #222; border-radius: 2px; overflow: hidden; }
         .quest-progress { height: 100%; background: #27ae60; width: 20%; transition: width 0.3s; }
+
+        /* Indicator Nivel Hartă */
+        .map-level-badge { background: #2b1d16; border: 1px solid #d4af37; color: #ffd700; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-radius: 4px; margin-bottom: 8px; text-shadow: 1px 1px #000; }
 
         /* Chat 3D UI */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; }
@@ -63,8 +66,9 @@
             </div>
         </div>
 
-        <!-- Daily Quests -->
+        <!-- Panou Nivel Hartă & Quests -->
         <div id="quest-panel">
+            <div class="map-level-badge" id="map-level-display">🏰 Etaj / Nivel: 1 / 10</div>
             <h4>📜 Daily Quests 3D</h4>
             <div class="quest-item">
                 <div class="quest-title"><span>Slay Demon Bull</span><span id="q1-count">0/5</span></div>
@@ -118,7 +122,9 @@
         let monstersMeshes = {};
         let attackRings = [];
         let myId = null;
-        let myPos = { x: 0, z: 0, speed: 0.22, rotY: 0 };
+        
+        // Viteza redusă la 0.12 pentru ca deplasarea să dureze mai mult timp
+        let myPos = { x: 0, z: 0, speed: 0.12, rotY: 0 };
         
         let sharedKnightModel = null;
         let animationMixers = [];
@@ -184,10 +190,12 @@
             chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
-        // 2. Încărcare map.glb (Harta 3D centrată automat)
+        // 2. Încărcare map.glb mărită la scară 3x pentru a extinde distanța și explorarea
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
-            mapModel.scale.set(1, 1, 1);
+            
+            // Scalăm harta de 3 ori pe lățime (X) și lungime (Z) pentru a crea un spațiu mult mai mare de parcurs
+            mapModel.scale.set(3, 1, 3);
 
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -206,7 +214,7 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta (map.glb) a fost centrată și încărcată!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta extinsă (Niveluri 1-10) a fost încărcată!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -273,7 +281,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.9; // Înălțime fixată la 2.9
+                players[data.id].mesh.position.y = 2.9;
             }
         });
 
@@ -345,12 +353,17 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 2.9; // Înălțimea fixată la 2.9 pe axa Y
+                players[myId].mesh.position.y = 2.9;
 
                 camera.position.x = myPos.x;
                 camera.position.y = 18;
                 camera.position.z = myPos.z + 25;
                 camera.lookAt(myPos.x, 2.0, myPos.z);
+
+                // CALCULARE NIVEL HARTĂ (Etaje 1 - 10 în funcție de distanța parcursă pe axa Z)
+                let distanceTraveled = Math.abs(myPos.z);
+                let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 6) + 1);
+                document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
             for (let i = attackRings.length - 1; i >= 0; i--) {
@@ -383,7 +396,7 @@
 
         animate();
 
-        window.addEventListener('resize', () => {
+        window.addEventListener('resize',        window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
