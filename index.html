@@ -114,18 +114,6 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // Solul provizoriu (va fi înlocuit automat de map.glb când se va încărca)
-        const floorGeo = new THREE.PlaneGeometry(120, 120);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x221b18, roughness: 0.85 });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        const gridHelper = new THREE.GridHelper(120, 30, 0x6e4f2c, 0x2c221e);
-        gridHelper.position.y = 0.02;
-        scene.add(gridHelper);
-
         let players = {};
         let monstersMeshes = {};
         let attackRings = [];
@@ -201,7 +189,6 @@
             const mapModel = gltf.scene;
             mapModel.scale.set(1, 1, 1);
 
-            // Centragem automat harta pe mijloc și la nivelul solului
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
             
@@ -217,10 +204,6 @@
             });
 
             scene.add(mapModel);
-
-            // Eliminăm podeaua provizorie
-            scene.remove(floor);
-            scene.remove(gridHelper);
 
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta (map.glb) a fost centrată și încărcată!</div>`;
@@ -290,6 +273,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
+                players[data.id].mesh.position.y = 0.5; // Ridicat deasupra solului
             }
         });
 
@@ -328,7 +312,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 0.2, myPos.z);
+            ring.position.set(myPos.x, 0.5, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -361,7 +345,7 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 0;
+                players[myId].mesh.position.y = 0.5; // Ridicat deasupra solului pe axa Y
 
                 camera.position.x = myPos.x;
                 camera.position.y = 18;
