@@ -75,7 +75,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;"><b>[System]:</b> Knight.glb încărcat cu succes! Folosește <b>W, A, S, D</b>.</div>
+                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Se încearcă încărcarea fișierului Knight.glb...</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -125,45 +125,15 @@
         gridHelper.position.y = 0.02;
         scene.add(gridHelper);
 
-        // Încărcare GLTF cu litere exacte (Knight.glb)
-        const loader = new THREE.GLTFLoader();
+        let players = {};
+        let monstersMeshes = {};
+        let attackRings = [];
+        let myId = null;
+        let myPos = { x: 0, z: 0, speed: 0.22, rotY: 0 };
+        
         let sharedKnightModel = null;
         let animationMixers = [];
         let clock = new THREE.Clock();
-
-        loader.load('./Knight.glb', (gltf) => {
-            sharedKnightModel = gltf.scene;
-            sharedKnightModel.scale.set(4.5, 4.5, 4.5);
-            
-            sharedKnightModel.traverse((node) => {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-                }
-            });
-
-            if (gltf.animations && gltf.animations.length > 0) {
-                const mixer = new THREE.AnimationMixer(sharedKnightModel);
-                const action = mixer.clipAction(gltf.animations[0]);
-                action.play();
-                animationMixers.push({ mixer: mixer, model: sharedKnightModel, action: action });
-            }
-
-            if (myId && players[myId] && !players[myId].realMeshLoaded) {
-                scene.remove(players[myId].mesh);
-                const clone = sharedKnightModel.clone();
-                const newMixer = new THREE.AnimationMixer(clone);
-                const newAction = newMixer.clipAction(gltf.animations[0]);
-                newAction.play();
-                animationMixers.push({ mixer: newMixer, model: clone, action: newAction });
-
-                scene.add(clone);
-                players[myId].mesh = clone;
-                players[myId].realMeshLoaded = true;
-            }
-        }, undefined, (error) => {
-            console.error("Eroare la încărcarea modelului 3D:", error);
-        });
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -185,11 +155,49 @@
             return demon;
         }
 
-        let players = {};
-        let monstersMeshes = {};
-        let attackRings = [];
-        let myId = null;
-        let myPos = { x: 0, z: 0, speed: 0.22, rotY: 0 };
+        // Încărcare GLTF cu raportare directă în chat
+        const loader = new THREE.GLTFLoader();
+        loader.load('./Knight.glb', (gltf) => {
+            sharedKnightModel = gltf.scene;
+            sharedKnightModel.scale.set(4.5, 4.5, 4.5);
+            
+            sharedKnightModel.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                }
+            });
+
+            // Afișăm succesul în chat
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            // Actualizăm jucătorii existenți dacă au apărut cu cubul roșu
+            for (const id in players) {
+                if (players[id].mesh) {
+                    scene.remove(players[id].mesh);
+                }
+                const clone = sharedKnightModel.clone();
+                const mixer = new THREE.AnimationMixer(clone);
+                if (gltf.animations && gltf.animations.length > 0) {
+                    const action = mixer.clipAction(gltf.animations[0]);
+                    action.play();
+                    animationMixers.push({ mixer: mixer, model: clone, action: action });
+                }
+                scene.add(clone);
+                players[id].mesh = clone;
+                players[id].realMeshLoaded = true;
+            }
+        }, (xhr) => {
+            // Progres opțional
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        }, (error) => {
+            console.error("Eroare la încărcarea modelului 3D:", error);
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca Knight.glb (Verifică fișierul de pe GitHub)!</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        });
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
@@ -201,7 +209,7 @@
                         mesh = sharedKnightModel.clone();
                         players[id].realMeshLoaded = true;
                     } else {
-                        mesh = createFallbackMesh();
+                        mesh = createFallbackMesh(); // Dacă modelul nu s-a încărcat încă, pune cubul temporar
                     }
                     scene.add(mesh);
                     players[id].mesh = mesh;
@@ -341,6 +349,7 @@
             }
 
             const delta = clock.getDelta();
+            animationMixers.prevUpdate = animationMixers.prevUpdate || 0;
             animationMixers.forEach(item => {
                 if (item.model === (players[myId] ? players[myId].mesh : null)) {
                     item.action.paused = !isMoving;
@@ -357,7 +366,7 @@
 
         animate();
 
-        window.addEventListener('resize', () => {
+        window.assertResize = window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
