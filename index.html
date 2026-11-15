@@ -84,7 +84,7 @@
             </div>
         </div>
 
-        <!-- Panou Nivel Hartă & Quests -->
+        <!-- Panou Niveluri și Quests -->
         <div id="quest-panel">
             <div class="map-level-badge" id="map-level-display">🏰 Etaj / Nivel: 1 / 10</div>
             <h4>📜 Daily Quests 3D</h4>
@@ -138,12 +138,16 @@
         let attackRings = [];
         let myId = null;
         
-        let myPos = { x: 0, z: 0, walkSpeed: 0.10, runSpeed: 0.24, rotY: 0 };
+        let myPos = { 
+            x: 0, z: 0, 
+            velocityX: 0, velocityZ: 0, 
+            walkSpeed: 0.14, runSpeed: 0.30, 
+            rotY: 0 
+        };
         
-        // Control cameră prin Pointer Lock
         let cameraAngle = 0;
-        let cameraPitch = 0.6;
-        let cameraDistance = 25;
+        let cameraPitch = 0.5;
+        let cameraDistance = 15; // Distanță optimizată pentru un model corect proporționat
         let isPointerLocked = false;
 
         const gameContainer = document.getElementById('game-container');
@@ -167,13 +171,13 @@
 
         window.addEventListener('wheel', (e) => {
             cameraDistance += e.deltaY * 0.05;
-            cameraDistance = Math.max(8, Math.min(45, cameraDistance));
+            cameraDistance = Math.max(5, Math.min(30, cameraDistance));
         });
 
         let sharedKnightModel = null;
         let animationMixers = [];
         let clock = new THREE.Clock();
-        let activeBubbles = []; // Colectia pentru bulele de dialog flotante
+        let activeBubbles = [];
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -197,10 +201,12 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb
+        // 1. Încărcare Knight.glb cu SCARA MICȘORATĂ (adaptat pentru model 2K mare)
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
-            sharedKnightModel.scale.set(4.5, 4.5, 4.5);
+            
+            // MICȘORAT AICI: Am setat scara la 0.4 (modifică între 0.2 și 0.8 dacă mai vrei să-l ajustezi)
+            sharedKnightModel.scale.set(0.4, 0.4, 0.4);
             
             sharedKnightModel.traverse((node) => {
                 if (node.isMesh) {
@@ -210,30 +216,52 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes! (Animații: ${gltf.animations.length})</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
                 if (players[id].mesh) {
                     scene.remove(players[id].mesh);
                 }
-                const clone = sharedKnightModel.clone();
-                const mixer = new THREE.AnimationMixer(clone);
-                if (gltf.animations && gltf.animations.length > 0) {
-                    const action = mixer.clipAction(gltf.animations[0]);
-                    action.play();
-                    animationMixers.push({ mixer: mixer, model: clone, action: action });
-                }
-                scene.add(clone);
-                players[id].mesh = clone;
-                players[id].realMeshLoaded = true;
+                setupPlayerAnimations(id, gltf);
             }
         }, undefined, (error) => {
             console.error("Eroare la încărcarea modelului 3D:", error);
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca Knight.glb!</div>`;
-            chatDiv.scrollTop = chatDiv.scrollHeight;
         });
+
+        function setupPlayerAnimations(id, gltf) {
+            const clone = sharedKnightModel.clone();
+            const mixer = new THREE.AnimationMixer(clone);
+            
+            let walkAction = null;
+            let runAction = null;
+
+            if (gltf.animations && gltf.animations.length > 0) {
+                walkAction = mixer.clipAction(gltf.animations[0]);
+                walkAction.play();
+                
+                if (gltf.animations.length > 1) {
+                    runAction = mixer.clipAction(gltf.animations[1]);
+                    runAction.play();
+                } else {
+                    runAction = walkAction;
+                }
+            }
+
+            scene.add(clone);
+            players[id].mesh = clone;
+            players[id].realMeshLoaded = true;
+
+            animationMixers.push({
+                id: id,
+                mixer: mixer,
+                model: clone,
+                walkAction: walkAction,
+                runAction: runAction
+            });
+        }
 
         // 2. Încărcare map.glb extinsă
         loader.load('./map.glb', (gltf) => {
@@ -257,13 +285,10 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta extinsă (Niveluri 1-10) a fost încărcată!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta extinsă a fost încărcată!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
-            const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca map.glb!</div>`;
-            chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
         socket.on('currentPlayers', (serverPlayers) => {
@@ -271,15 +296,13 @@
             myId = socket.id;
             for (const id in players) {
                 if (!players[id].mesh) {
-                    let mesh;
-                    if (sharedKnightModel && id === myId) {
-                        mesh = sharedKnightModel.clone();
-                        players[id].realMeshLoaded = true;
+                    if (sharedKnightModel) {
+                        setupPlayerAnimations(id, { animations: [] });
                     } else {
-                        mesh = createFallbackMesh();
+                        let mesh = createFallbackMesh();
+                        scene.add(mesh);
+                        players[id].mesh = mesh;
                     }
-                    scene.add(mesh);
-                    players[id].mesh = mesh;
                 }
             }
         });
@@ -308,9 +331,13 @@
 
         socket.on('newPlayer', (data) => {
             players[data.id] = data.player;
-            const mesh = sharedKnightModel ? sharedKnightModel.clone() : createFallbackMesh();
-            scene.add(mesh);
-            players[data.id].mesh = mesh;
+            if (sharedKnightModel) {
+                setupPlayerAnimations(data.id, { animations: [] });
+            } else {
+                const mesh = createFallbackMesh();
+                scene.add(mesh);
+                players[data.id].mesh = mesh;
+            }
         });
 
         socket.on('playerMoved', (data) => {
@@ -324,7 +351,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.9;
+                players[data.id].mesh.position.y = 0; // Setat la 0 pe sol
             }
         });
 
@@ -333,6 +360,7 @@
                 scene.remove(players[id].mesh);
                 delete players[id];
             }
+            animationMixers = animationMixers.filter(item => item.id !== id);
         });
 
         const chatInput = document.getElementById('chat-input');
@@ -343,18 +371,15 @@
             }
         });
 
-        // Recepționare mesaj chat și generare bule de dialog deasupra capului
         socket.on('chatMessage', (data) => {
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            // Determinăm cine a trimis mesajul
             let senderMesh = null;
             if (data.id && players[data.id] && players[data.id].mesh) {
                 senderMesh = players[data.id].mesh;
             } else {
-                // Dacă serverul nu trimite ID-ul, încercăm să îl asociem după nume sau fallback la propriul mesh
                 for (let id in players) {
                     if (players[id].name === data.name || id === myId) {
                         senderMesh = players[id].mesh;
@@ -367,12 +392,11 @@
             }
 
             if (senderMesh) {
-                createSpeechBubble(senderMesh, data.message, data.name);
+                createSpeechBubble(senderMesh, data.message);
             }
         });
 
-        function createSpeechBubble(mesh, text, name) {
-            // Ștergem bula anterioară a aceluiași jucător dacă mai există
+        function createSpeechBubble(mesh, text) {
             activeBubbles = activeBubbles.filter(b => {
                 if (b.mesh === mesh) {
                     b.element.remove();
@@ -386,13 +410,9 @@
             el.innerText = `${text}`;
             document.getElementById('game-container').appendChild(el);
 
-            const bubbleObj = {
-                element: el,
-                mesh: mesh
-            };
+            const bubbleObj = { element: el, mesh: mesh };
             activeBubbles.push(bubbleObj);
 
-            // Auto-ștergere după 4.5 secunde
             setTimeout(() => {
                 el.style.opacity = '0';
                 setTimeout(() => {
@@ -410,27 +430,21 @@
         });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
-        // Click Stânga / Click Dreapta pentru Atac și Apărare
         window.addEventListener('mousedown', (e) => {
             if (document.activeElement === chatInput) return;
-            
-            if (e.button === 0) { // Click Stânga -> Atac
-                triggerAttack3D();
-            } else if (e.button === 2) { // Click Dreapta -> Apărare
-                e.preventDefault();
-                triggerDefense3D();
-            }
+            if (e.button === 0) triggerAttack3D();
+            else if (e.button === 2) { e.preventDefault(); triggerDefense3D(); }
         });
 
         window.addEventListener('contextmenu', e => e.preventDefault());
 
         function triggerAttack3D() {
             if (!myId || !players[myId] || !players[myId].mesh) return;
-            const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
+            const ringGeo = new THREE.RingGeometry(0.2, 0.6, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 2.9, myPos.z);
+            ring.position.set(myPos.x, 0.1, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -438,19 +452,17 @@
         function triggerDefense3D() {
             if (!myId || !players[myId] || !players[myId].mesh) return;
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă! (Apărare activată)</div>`;
+            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            const shieldGeo = new THREE.RingGeometry(1.0, 1.4, 32);
+            const shieldGeo = new THREE.RingGeometry(0.4, 0.6, 32);
             const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
             const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
             shieldMesh.rotation.x = -Math.PI / 2;
-            shieldMesh.position.set(myPos.x, 2.91, myPos.z);
+            shieldMesh.position.set(myPos.x, 0.11, myPos.z);
             scene.add(shieldMesh);
             
-            setTimeout(() => {
-                scene.remove(shieldMesh);
-            }, 1000);
+            setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
         function update() {
@@ -459,34 +471,45 @@
             let moveLeft = (keys['a'] || keys['A'] || keys['ArrowLeft']) ? 1 : 0;
             let moveRight = (keys['d'] || keys['D'] || keys['ArrowRight']) ? 1 : 0;
 
-            let isMoving = (moveForward || moveBackward || moveLeft || moveRight);
+            let isRunning = keys['Shift'] || keys['SHIFT'];
+            let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
+
+            let inputX = 0;
+            let inputZ = 0;
+
+            const forwardX = -Math.sin(cameraAngle);
+            const forwardZ = -Math.cos(cameraAngle);
+            const rightX = Math.cos(cameraAngle);
+            const rightZ = -Math.sin(cameraAngle);
+
+            if (moveForward) { inputX += forwardX; inputZ += forwardZ; }
+            if (moveBackward) { inputX -= forwardX; inputZ -= forwardZ; }
+            if (moveLeft) { inputX -= rightX; inputZ -= rightZ; }
+            if (moveRight) { inputX += rightX; inputZ += rightZ; }
+
+            let targetVx = 0;
+            let targetVz = 0;
+            const len = Math.hypot(inputX, inputZ);
+            if (len > 0) {
+                targetVx = (inputX / len) * targetSpeed;
+                targetVz = (inputZ / len) * targetSpeed;
+            }
+
+            myPos.velocityX += (targetVx - myPos.velocityX) * 0.5;
+            myPos.velocityZ += (targetVz - myPos.velocityZ) * 0.5;
+
+            myPos.x += myPos.velocityX;
+            myPos.z += myPos.velocityZ;
+
+            let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
+            let isMoving = currentSpeed > 0.005;
 
             if (isMoving) {
-                let moveX = 0;
-                let moveZ = 0;
-
-                let isRunning = keys['Shift'] || keys['SHIFT'];
-                let currentSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
-
-                const forwardX = -Math.sin(cameraAngle);
-                const forwardZ = -Math.cos(cameraAngle);
-                const rightX = Math.cos(cameraAngle);
-                const rightZ = -Math.sin(cameraAngle);
-
-                if (moveForward) { moveX += forwardX; moveZ += forwardZ; }
-                if (moveBackward) { moveX -= forwardX; moveZ -= forwardZ; }
-                if (moveLeft) { moveX -= rightX; moveZ -= rightZ; }
-                if (moveRight) { moveX += rightX; moveZ += rightZ; }
-
-                const len = Math.hypot(moveX, moveZ);
-                if (len > 0) {
-                    moveX = (moveX / len) * currentSpeed;
-                    moveZ = (moveZ / len) * currentSpeed;
-
-                    myPos.x += moveX;
-                    myPos.z += moveZ;
-                    myPos.rotY = Math.atan2(moveX, moveZ);
-                }
+                let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
+                let diff = targetRotY - myPos.rotY;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                myPos.rotY += diff * 0.3;
 
                 if (socket.connected) {
                     socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
@@ -497,9 +520,10 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 2.9;
+                players[myId].mesh.position.y = 0; // Fixat pe sol
 
-                const targetY = 2.9;
+                // Cameră adaptată pentru cavalerul micșorat (înălțime targetY = 1.2)
+                const targetY = 1.2;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -513,12 +537,11 @@
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
-            // Actualizare poziție bule de dialog pe ecran în funcție de poziția 3D a jucătorului
             updateSpeechBubbles();
 
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
-                r.scale += 0.35;
+                r.scale += 0.15;
                 r.opacity -= 0.04;
                 r.mesh.scale.set(r.scale, r.scale, 1);
                 r.mesh.material.opacity = r.opacity;
@@ -529,10 +552,25 @@
             }
 
             const delta = clock.getDelta();
-            animationMixers.prevUpdate = animationMixers.prevUpdate || 0;
             animationMixers.forEach(item => {
-                if (item.model === (players[myId] ? players[myId].mesh : null)) {
-                    item.action.paused = !isMoving;
+                const isLocalPlayer = (item.id === myId);
+                let activeMoving = isLocalPlayer ? isMoving : true;
+
+                if (item.walkAction && item.runAction) {
+                    if (!activeMoving) {
+                        item.walkAction.paused = true;
+                        item.runAction.paused = true;
+                    } else {
+                        if (isRunning && isLocalPlayer) {
+                            item.runAction.paused = false;
+                            item.runAction.timeScale = 1.2;
+                            if (item.walkAction !== item.runAction) item.walkAction.paused = true;
+                        } else {
+                            item.walkAction.paused = false;
+                            item.walkAction.timeScale = isRunning ? 1.8 : 1.0;
+                            if (item.runAction !== item.walkAction) item.runAction.paused = true;
+                        }
+                    }
                 }
                 item.mixer.update(delta);
             });
@@ -543,14 +581,12 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 4.8; // Poziționare fix deasupra capului cavalerului
-
+                tempVector.y += 2.2; // Înălțime bule de dialog pentru noul model
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
                 const y = (-(tempVector.y * 0.5) + 0.5) * window.innerHeight;
 
-                // Ascunde bula dacă e în spatele camerei
                 if (tempVector.z > 1) {
                     b.element.style.display = 'none';
                 } else {
