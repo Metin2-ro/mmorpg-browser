@@ -120,10 +120,9 @@
         let attackRings = [];
         let myId = null;
         
-        // Viteze de deplasare: mers normal și alergare (Sprint)
         let myPos = { x: 0, z: 0, walkSpeed: 0.10, runSpeed: 0.24, rotY: 0 };
         
-        // Control cameră complet (Mouse look stânga-dreapta + sus-jos și zoom rotiță)
+        // Control cameră corectat
         let cameraAngle = 0;
         let cameraPitch = 0.6;
         let cameraDistance = 25;
@@ -140,7 +139,7 @@
 
         window.addEventListener('mousemove', (e) => {
             if (isMouseDown) {
-                cameraAngle -= e.movementX * 0.005;
+                cameraAngle += e.movementX * 0.005; // Coordonată corectată pentru sensul mouse-ului
                 cameraPitch += e.movementY * 0.005;
                 cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
             }
@@ -360,15 +359,20 @@
                 let moveX = 0;
                 let moveZ = 0;
 
-                // Verificăm dacă tasta Shift este apăsată pentru a rula mai repede (sprint)
+                // Verificăm tasta Shift pentru sprint/alergare
                 let isRunning = keys['Shift'] || keys['SHIFT'];
                 let currentSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
-                // Mișcare relativă la unghiul camerei 3D
-                if (moveForward) { moveX -= Math.sin(cameraAngle); moveZ -= Math.cos(cameraAngle); }
-                if (moveBackward) { moveX += Math.sin(cameraAngle); moveZ += Math.cos(cameraAngle); }
-                if (moveLeft) { moveX -= Math.cos(cameraAngle); moveZ += Math.sin(cameraAngle); }
-                if (moveRight) { moveX += Math.cos(cameraAngle); moveZ -= Math.sin(cameraAngle); }
+                // Calcul corect al direcțiilor bazate pe unghiul camerei (Forward / Right vectors)
+                const forwardX = -Math.sin(cameraAngle);
+                const forwardZ = -Math.cos(cameraAngle);
+                const rightX = Math.cos(cameraAngle);
+                const rightZ = -Math.sin(cameraAngle);
+
+                if (moveForward) { moveX += forwardX; moveZ += forwardZ; }
+                if (moveBackward) { moveX -= forwardX; moveZ -= forwardZ; }
+                if (moveLeft) { moveX -= rightX; moveZ -= rightZ; }
+                if (moveRight) { moveX += rightX; moveZ += rightZ; }
 
                 const len = Math.hypot(moveX, moveZ);
                 if (len > 0) {
@@ -391,7 +395,7 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 2.9;
 
-                // Poziționare cameră cu suport complet pentru rotire și zoom
+                // Poziționare cameră corectă (Orbit & Zoom)
                 const targetY = 2.9;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
