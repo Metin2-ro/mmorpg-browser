@@ -179,7 +179,7 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // SOLUL FIX LA NIVELUL 0 PENTRU A FI ALINIAT CU HARTA
+        // SOLUL FIX ALINIAT DIRECT PE SUPRAFAȚA PLATFORMELOR HĂRȚII
         const GROUND_Y = 0.0;
 
         function createFallbackMesh() {
@@ -264,7 +264,7 @@
             });
         }
 
-        // 2. Încărcare map.glb fixată la Y = 0 (fără offset greșit)
+        // 2. Încărcare map.glb poziționată corect peste nivelul cavalerului
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -274,7 +274,9 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            mapModel.position.y = 0; // Harta fixată la nivelul solului de bază
+            
+            // COBORÂT HARTA: Am coborât-o exact cu valoarea minima a bounding box-ului + un offset de reglaj fin (- 12)
+            mapModel.position.y = -box.min.y - 12;
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -286,7 +288,7 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost aliniată la sol!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost coborâtă peste cavaler!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -429,7 +431,7 @@
         window.addEventListener('keydown', (e) => {
             if (document.activeElement === chatInput) return;
             keys[e.code] = true;
-            keys[e.key.toLowerCase()] = true; // Suport dublu pentru taste (e.code și e.key)
+            keys[e.key.toLowerCase()] = true;
             if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
         });
         window.addEventListener('keyup', (e) => {
