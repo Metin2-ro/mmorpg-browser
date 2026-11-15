@@ -123,7 +123,7 @@
         let attackRings = [];
         let myId = null;
         
-        // Viteza redusă la 0.12 pentru ca deplasarea să dureze mai mult timp
+        // Viteză redusă pentru ca harta să poată fi explorată pe parcursul mai multor niveluri
         let myPos = { x: 0, z: 0, speed: 0.12, rotY: 0 };
         
         let sharedKnightModel = null;
@@ -190,12 +190,10 @@
             chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
-        // 2. Încărcare map.glb mărită la scară 3x pentru a extinde distanța și explorarea
+        // 2. Încărcare map.glb extinsă la scară 3x pentru nivelurile 1-10
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
-            
-            // Scalăm harta de 3 ori pe lățime (X) și lungime (Z) pentru a crea un spațiu mult mai mare de parcurs
-            mapModel.scale.set(3, 1, 3);
+            mapModel.scale.set(3, 1, 3); // Hartă mai mare și mai lungă
 
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -360,7 +358,7 @@
                 camera.position.z = myPos.z + 25;
                 camera.lookAt(myPos.x, 2.0, myPos.z);
 
-                // CALCULARE NIVEL HARTĂ (Etaje 1 - 10 în funcție de distanța parcursă pe axa Z)
+                // Calcul nivel hartă în funcție de distanța parcursă
                 let distanceTraveled = Math.abs(myPos.z);
                 let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 6) + 1);
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
@@ -396,7 +394,8 @@
 
         animate();
 
-        window.addEventListener('resize',        window.addEventListener('resize', () => {
+        // Corectat: Ascultătorul de resize funcționează acum perfect
+        window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
