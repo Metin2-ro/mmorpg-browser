@@ -32,7 +32,7 @@
         .skill-key { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #ffd700; font-weight: bold; }
     </style>
 
-    <!-- Import Three.js pentru grafica 3D -->
+    <!-- Import Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
@@ -57,7 +57,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #00ffcc;"><b>[System]:</b> Lumea 3D s-a încărcat! Folosește W, A, S, D pentru a te deplasa.</div>
+                <div style="color: #00ffcc;"><b>[System]:</b> Lumea 3D s-a încărcat! Folosește W, A, S, D pentru mișcare.</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie în chat..." autocomplete="off">
         </div>
@@ -75,98 +75,85 @@
     <script>
         const socket = io();
 
-        // 1. Configurare Scenă 3D Three.js
+        // Scenă 3D
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0c10);
-        scene.fog = new THREE.FogExp2(0x0a0c10, 0.015);
+        scene.background = new THREE.Color(0x0e121a);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Lumini în lumea 3D
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Lumini puternice ca să fie totul vizibil
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffe5b4, 0.8);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(10, 30, 20);
         scene.add(dirLight);
 
-        // Solul 3D (Arenă)
-        const floorGeo = new THREE.PlaneGeometry(150, 150);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1b2d1d, roughness: 0.8 });
+        // Sol 3D verde închis / teren de luptă
+        const floorGeo = new THREE.PlaneGeometry(200, 200);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e3f20, roughness: 0.9 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
         scene.add(floor);
-
-        // Grid linii pe sol
-        const gridHelper = new THREE.GridHelper(150, 30, 0x44aa44, 0x224422);
-        gridHelper.position.y = 0.01;
-        scene.add(gridHelper);
 
         let players = {};
         let monstersMeshes = {};
         let myId = null;
-        let myPos = { x: 0, z: 0, speed: 0.35 };
+        let myPos = { x: 0, z: 0, speed: 0.4 };
 
-        // Creare Mesh 3D pentru Cavaler (Eroul tău 3D)
+        // Creare Cavaler 3D Clar și Vizibil
         function createKnightMesh(isMe) {
             const group = new THREE.Group();
 
-            // Corp / Armură 3D
-            const bodyGeo = new THREE.BoxGeometry(1.2, 1.8, 0.8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: isMe ? 0xbdc3c7 : 0x2980b9, metalness: 0.6, roughness: 0.3 });
+            // Corp
+            const bodyGeo = new THREE.BoxGeometry(1.5, 2.2, 1);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: isMe ? 0xbdc3c7 : 0x2980b9, roughness: 0.3 });
             const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1.4;
-            body.castShadow = true;
+            body.position.y = 1.5;
             group.add(body);
 
-            // Cap 3D
-            const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            // Cap
+            const headGeo = new THREE.BoxGeometry(1, 1, 1);
             const headMat = new THREE.MeshStandardMaterial({ color: 0xf5cba7 });
             const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.6;
-            head.castShadow = true;
+            head.position.y = 3;
             group.add(head);
 
-            // Sabie 3D în mână
-            const swordGeo = new THREE.BoxGeometry(0.2, 1.6, 0.1);
-            const swordMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9 });
+            // Sabie
+            const swordGeo = new THREE.BoxGeometry(0.3, 2, 0.1);
+            const swordMat = new THREE.MeshStandardMaterial({ color: 0xf1c40f, metalness: 0.8 });
             const sword = new THREE.Mesh(swordGeo, swordMat);
-            sword.position.set(0.9, 1.5, 0);
+            sword.position.set(1.2, 1.6, 0);
             group.add(sword);
 
             return group;
         }
 
-        // Creare Mesh 3D pentru Monștri (Demon 3D)
+        // Creare Monstru 3D (Demon Roșu)
         function createMonsterMesh() {
             const group = new THREE.Group();
 
-            const monsterGeo = new THREE.SphereGeometry(1, 16, 16);
-            const monsterMat = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.4 });
-            const mesh = new THREE.Mesh(monsterGeo, monsterMat);
-            mesh.position.y = 1.2;
-            mesh.castShadow = true;
+            const mGeo = new THREE.SphereGeometry(1.4, 16, 16);
+            const mMat = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.4 });
+            const mesh = new THREE.Mesh(mGeo, mMat);
+            mesh.position.y = 1.5;
             group.add(mesh);
 
             // Coarne
-            const hornGeo = new THREE.ConeGeometry(0.3, 0.8, 8);
+            const hornGeo = new THREE.ConeGeometry(0.4, 1, 8);
             const hornMat = new THREE.MeshStandardMaterial({ color: 0xf39c12 });
-            
-            const horn1 = new THREE.Mesh(hornGeo, hornMat);
-            horn1.position.set(-0.5, 2.1, 0);
-            horn1.rotation.z = -0.3;
-            group.add(horn1);
+            const h1 = new THREE.Mesh(hornGeo, hornMat);
+            h1.position.set(-0.6, 2.6, 0);
+            h1.rotation.z = -0.3;
+            group.add(h1);
 
-            const horn2 = new THREE.Mesh(hornGeo, hornMat);
-            horn2.position.set(0.5, 2.1, 0);
-            horn2.rotation.z = 0.3;
-            group.add(horn2);
+            const h2 = new THREE.Mesh(hornGeo, hornMat);
+            h2.position.set(0.6, 2.6, 0);
+            h2.rotation.z = 0.3;
+            group.add(h2);
 
             return group;
         }
@@ -188,7 +175,7 @@
                 const m = serverMonsters[id];
                 if (!monstersMeshes[id]) {
                     const mM = createMonsterMesh();
-                    mM.position.set(m.x / 10 - 35, 0, m.y / 10 - 25);
+                    mM.position.set((m.x - 300) / 15, 0, (m.y - 200) / 15);
                     scene.add(mM);
                     monstersMeshes[id] = mM;
                 }
@@ -199,8 +186,8 @@
             for (const id in serverMonsters) {
                 const m = serverMonsters[id];
                 if (monstersMeshes[id]) {
-                    monstersMeshes[id].position.x = m.x / 10 - 35;
-                    monstersMeshes[id].position.z = m.y / 10 - 25;
+                    monstersMeshes[id].position.x = (m.x - 300) / 15;
+                    monstersMeshes[id].position.z = (m.y - 200) / 15;
                 }
             }
         });
@@ -216,8 +203,8 @@
                 players[data.id].x = data.x;
                 players[data.id].y = data.y;
                 if (players[data.id].mesh) {
-                    players[data.id].mesh.position.x = data.x / 10 - 40;
-                    players[data.id].mesh.position.z = data.y / 10 - 30;
+                    players[data.id].mesh.position.x = data.x;
+                    players[data.id].mesh.position.z = data.y;
                 }
             }
         });
@@ -229,7 +216,6 @@
             }
         });
 
-        // Chat Input
         const chatInput = document.getElementById('chat-input');
         chatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && chatInput.value.trim() !== '') {
@@ -262,14 +248,14 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
 
-                // Cameră 3D din spatele eroului (Third-Person View)
+                // Cameră 3D fixată în spatele eroului, orientată clar spre el
                 camera.position.x = myPos.x;
-                camera.position.y = myPos.y + 12;
-                camera.position.z = myPos.z + 14;
+                camera.position.y = myPos.y + 8;
+                camera.position.z = myPos.z + 12;
                 camera.lookAt(myPos.x, myPos.y + 1, myPos.z);
 
                 if (moved && socket.connected) {
-                    socket.emit('playerMovement', { x: (myPos.x + 40) * 10, y: (myPos.z + 30) * 10 });
+                    socket.emit('playerMovement', { x: myPos.x, y: myPos.z });
                 }
             }
         }
