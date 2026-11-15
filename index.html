@@ -2,84 +2,109 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>Wartune / RPG Browser MMORPG</title>
+    <title>MU Dark Fantasy MMORPG</title>
     <style>
-        body { margin: 0; background: #07090e; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #050507; color: #e0d6c3; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        #game-wrapper { position: relative; width: 800px; height: 600px; border: 4px solid #2c3e50; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden; background: #1b2838; }
+        #game-wrapper { position: relative; width: 900px; height: 620px; border: 3px solid #5c4326; border-radius: 6px; box-shadow: 0 0 40px rgba(255, 80, 0, 0.25), 0 10px 30px rgba(0,0,0,0.9); overflow: hidden; background: #120e0c; }
         canvas { display: block; }
 
-        /* HUD Sus-Stânga (Profil Jucător, HP, MP) */
-        #player-hud { position: absolute; top: 15px; left: 15px; background: rgba(15, 22, 36, 0.88); border: 2px solid #4a6fa5; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; width: 220px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        .avatar-box { width: 40px; height: 40px; background: #2c3e50; border: 2px solid #f1c40f; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        /* HUD Sus-Stânga (Profil Dark Knight) */
+        #player-hud { position: absolute; top: 15px; left: 15px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; width: 235px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
+        .avatar-box { width: 44px; height: 44px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
         .stats-box { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-        .player-name { font-size: 12px; font-weight: bold; color: #f1c40f; }
+        .player-name { font-size: 13px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px 2px #000; }
         
-        .bar-container { width: 100%; height: 10px; background: #333; border-radius: 3px; overflow: hidden; position: relative; border: 1px solid #111; }
-        .hp-fill { width: 100%; height: 100%; background: #e74c3c; transition: width 0.3s; }
-        .mp-fill { width: 100%; height: 100%; background: #3498db; transition: width 0.3s; }
-        .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 10px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
+        .bar-container { width: 100%; height: 11px; background: #1a1512; border-radius: 2px; overflow: hidden; position: relative; border: 1px solid #4a3520; }
+        .hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #8b0000, #ff2a2a); transition: width 0.2s; }
+        .mp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #003366, #1e90ff); transition: width 0.2s; }
+        .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
 
-        /* HUD Sus-Dreapta (Meniuri) */
-        #top-right-menu { position: absolute; top: 15px; right: 15px; display: flex; gap: 8px; }
-        .menu-btn { width: 36px; height: 36px; background: rgba(15, 22, 36, 0.9); border: 2px solid #4a6fa5; border-radius: 6px; color: white; font-size: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .menu-btn:hover { background: #34495e; border-color: #f1c40f; }
+        /* Panou Daily Quests (Dreapta, stil MU) */
+        #quest-panel { position: absolute; top: 70px; right: 15px; width: 210px; background: rgba(16, 13, 11, 0.88); border: 1px solid #6e4f2c; border-radius: 4px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); }
+        #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .quest-item { margin-bottom: 6px; font-size: 11px; }
+        .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
+        .quest-bar { width: 100%; height: 6px; background: #222; border-radius: 2px; overflow: hidden; }
+        .quest-progress { height: 100%; background: #27ae60; width: 40%; transition: width 0.3s; }
 
-        /* Fereastra de Chat Stânga-Jos */
-        #chat-container { position: absolute; bottom: 15px; left: 15px; width: 300px; background: rgba(11, 15, 22, 0.85); border: 2px solid #34495e; border-radius: 6px; display: flex; flex-direction: column; padding: 6px; }
-        #chat-messages { height: 95px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 5px; padding-right: 4px; }
-        #chat-input { background: #16202b; border: 1px solid #4a6fa5; color: white; padding: 5px; border-radius: 4px; font-size: 11px; outline: none; }
+        /* Meniuri Dreapta Sus */
+        #top-right-menu { position: absolute; top: 15px; right: 15px; display: flex; gap: 6px; }
+        .menu-btn { width: 34px; height: 34px; background: rgba(24, 18, 14, 0.92); border: 1px solid #8c6239; border-radius: 4px; color: #ffd700; font-size: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .menu-btn:hover { background: #3d2b1f; border-color: #ffd700; }
 
-        /* Bară de Abilități Dreapta Jos */
-        #action-bar { position: absolute; bottom: 15px; right: 15px; display: flex; gap: 8px; background: rgba(15, 22, 36, 0.9); padding: 6px 10px; border: 2px solid #4a6fa5; border-radius: 8px; }
-        .skill-slot { width: 42px; height: 42px; background: #1b2838; border: 2px solid #2c3e50; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
-        .skill-slot:hover { border-color: #f1c40f; transform: scale(1.05); }
-        .skill-key { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #f1c40f; font-weight: bold; }
+        /* Chat Stânga Jos */
+        #chat-container { position: absolute; bottom: 15px; left: 15px; width: 310px; background: rgba(12, 10, 9, 0.85); border: 1px solid #5c4326; border-radius: 4px; display: flex; flex-direction: column; padding: 6px; }
+        #chat-messages { height: 90px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 5px; color: #ccc; }
+        #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 5px; border-radius: 3px; font-size: 11px; outline: none; }
+
+        /* Bară Abilități MU Style (Jos-Centru) */
+        #action-bar { position: absolute; bottom: 15px; right: 15px; display: flex; gap: 8px; background: rgba(20, 15, 12, 0.92); padding: 6px 10px; border: 2px solid #8c6239; border-radius: 6px; box-shadow: 0 0 15px rgba(0,0,0,0.9); }
+        .skill-slot { width: 44px; height: 44px; background: radial-gradient(circle, #2b1d16 0%, #120c09 100%); border: 2px solid #5c4326; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.15s; }
+        .skill-slot:hover, .skill-slot.active { border-color: #ff6600; box-shadow: 0 0 12px #ff4500; transform: scale(1.08); }
+        .skill-key { position: absolute; bottom: -2px; right: 0px; background: #000; border: 1px solid #8c6239; border-radius: 3px; padding: 0 3px; font-size: 9px; color: #ffd700; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="game-wrapper">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="900" height="620"></canvas>
 
-        <!-- HUD Profil Jucător -->
+        <!-- HUD Profil -->
         <div id="player-hud">
-            <div class="avatar-box">⚔️</div>
+            <div class="avatar-box">🔥</div>
             <div class="stats-box">
-                <span class="player-name" id="ui-name">Hero</span>
+                <span class="player-name" id="ui-name">Dark Knight</span>
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
-                    <div class="bar-text">HP: 100/100</div>
+                    <div class="bar-text">HP: 1250 / 1250</div>
                 </div>
                 <div class="bar-container">
                     <div class="mp-fill" style="width: 100%;"></div>
-                    <div class="bar-text">MP: 50/50</div>
+                    <div class="bar-text">MP: 600 / 600</div>
                 </div>
             </div>
         </div>
 
-        <!-- Meniuri Dreapta Sus -->
+        <!-- Meniuri Sus -->
         <div id="top-right-menu">
-            <div class="menu-btn" title="Inventory">📦</div>
-            <div class="menu-btn" title="Character Stats">📊</div>
-            <div class="menu-btn" title="Shop">🪙</div>
+            <div class="menu-btn" title="Inventory">🎒</div>
+            <div class="menu-btn" title="Character">⚔️</div>
+            <div class="menu-btn" title="Guild">🛡️</div>
             <div class="menu-btn" title="Settings">⚙️</div>
         </div>
 
-        <!-- Chat Stânga Jos -->
-        <div id="chat-container">
-            <div id="chat-messages">
-                <div style="color: #2ecc71;"><b>[System]:</b> Bun venit! Folosește W, A, S, D pentru mișcare.</div>
+        <!-- Daily Quests (Exact ca în poză) -->
+        <div id="quest-panel">
+            <h4>📜 Daily Quests</h4>
+            <div class="quest-item">
+                <div class="quest-title"><span>Demon Bull</span><span id="q1-count">0/5</span></div>
+                <div class="quest-bar"><div class="quest-progress" id="q1-bar" style="width: 10%;"></div></div>
             </div>
-            <input type="text" id="chat-input" placeholder="Apasă Enter pentru a scrie..." autocomplete="off">
+            <div class="quest-item">
+                <div class="quest-title"><span>Lava Beast</span><span id="q2-count">1/3</span></div>
+                <div class="quest-bar"><div class="quest-progress" id="q2-bar" style="width: 33%;"></div></div>
+            </div>
+            <div class="quest-item">
+                <div class="quest-title"><span>Collect Souls</span><span id="q3-count">2/5</span></div>
+                <div class="quest-bar"><div class="quest-progress" id="q3-bar" style="width: 40%;"></div></div>
+            </div>
         </div>
 
-        <!-- Bară de Abilități Dreapta Jos -->
+        <!-- Chat -->
+        <div id="chat-container">
+            <div id="chat-messages">
+                <div style="color: #ff9900;"><b>[System]:</b> Apasă <b>1, 2, 3</b> sau <b>SPACE</b> pentru a ataca cu foc!</div>
+            </div>
+            <input type="text" id="chat-input" placeholder="Scrie un mesaj în chat..." autocomplete="off">
+        </div>
+
+        <!-- Abilități -->
         <div id="action-bar">
-            <div class="skill-slot" title="Basic Attack">⚔️<span class="skill-key">1</span></div>
-            <div class="skill-slot" title="Fireball">🔥<span class="skill-key">2</span></div>
-            <div class="skill-slot" title="Heal Potion">🧪<span class="skill-key">3</span></div>
-            <div class="skill-slot" title="Ultimate Strike">⚡<span class="skill-key">4</span></div>
+            <div class="skill-slot" onclick="triggerAttack('slash')" title="Twisting Slash">⚔️<span class="skill-key">1</span></div>
+            <div class="skill-slot" onclick="triggerAttack('fire')" title="Hellfire Explosion">🔥<span class="skill-key">2</span></div>
+            <div class="skill-slot" onclick="triggerAttack('lightning')" title="Chain Lightning">⚡<span class="skill-key">3</span></div>
+            <div class="skill-slot" onclick="triggerAttack('heal')" title="Potion">🧪<span class="skill-key">4</span></div>
         </div>
     </div>
 
@@ -92,14 +117,17 @@
         let players = {};
         let monsters = {};
         let collectibles = {};
+        let effects = []; // Efecte vizuale de atac/foc
+        let kills = 0;
+
         let myId = null;
-        let myPos = { x: 400, y: 300, speed: 4, facing: 'right' };
+        let myPos = { x: 420, y: 320, speed: 4.2, facing: 'right' };
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             myId = socket.id;
             if (players[myId]) {
-                document.getElementById('ui-name').innerText = players[myId].name || "Hero";
+                document.getElementById('ui-name').innerText = players[myId].name || "Dark Knight";
             }
         });
 
@@ -121,7 +149,7 @@
 
         socket.on('chatMessage', (data) => {
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div><b>[${data.name}]:</b> ${data.message}</div>`;
+            chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
@@ -139,15 +167,50 @@
         window.addEventListener('keydown', (e) => {
             if (document.activeElement === chatInput) return;
             keys[e.key] = true;
+            if (e.key === ' ' || e.key === '1') triggerAttack('slash');
+            if (e.key === '2') triggerAttack('fire');
+            if (e.key === '3') triggerAttack('lightning');
         });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
+        // Efect spectaculos de atac și damage asupra monștrilor apropiați
+        function triggerAttack(type) {
+            effects.push({
+                x: myPos.x,
+                y: myPos.y,
+                type: type,
+                radius: 20,
+                maxRadius: type === 'fire' ? 110 : 85,
+                alpha: 1.0
+            });
+
+            // Verifică dacă lovim un monstru apropiat
+            for (const id in monsters) {
+                const m = monsters[id];
+                const dist = Math.hypot(myPos.x - m.x, myPos.y - m.y);
+                if (dist < 100) {
+                    kills = Math.min(5, kills + 1);
+                    document.getElementById('q1-count').innerText = `${kills}/5`;
+                    document.getElementById('q1-bar').style.width = `${(kills/5)*100}%`;
+                    
+                    // Adăugăm text de damage critic deasupra monstrului
+                    effects.push({
+                        x: m.x,
+                        y: m.y - 40,
+                        type: 'damage',
+                        text: `-${Math.floor(Math.random()*350)+450} CRIT!`,
+                        alpha: 1.0
+                    });
+                }
+            }
+        }
+
         function update() {
             let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(50, myPos.y - myPos.speed); moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 50, myPos.y + myPos.speed); moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(50, myPos.x - myPos.speed); myPos.facing = 'left'; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 50, myPos.x + myPos.speed); myPos.facing = 'right'; moved = true; }
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(60, myPos.y - myPos.speed); moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 60, myPos.y + myPos.speed); moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(60, myPos.x - myPos.speed); myPos.facing = 'left'; moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 60, myPos.x + myPos.speed); myPos.facing = 'right'; moved = true; }
 
             if (moved && socket.connected) {
                 socket.emit('playerMovement', { x: myPos.x, y: myPos.y });
@@ -159,128 +222,146 @@
             }
         }
 
-        // Desenare Cavaler 2D Mărit și Detaliat
-        function drawRealisticKnight(x, y, isMe, facing, name) {
+        // Desenare Dark Knight (stil MU Online cu aripi strălucitoare, armură grea și sabie de foc)
+        function drawDarkKnight(x, y, isMe, facing, name) {
             ctx.save();
             ctx.translate(x, y);
-            ctx.scale(1.7, 1.7); // Mărim scara personajului cu 70%
+            ctx.scale(1.85, 1.85); // Dimensiune mare și clară
 
-            // Umbră
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            // Aură sub picioare (cerc magic stil MU)
+            ctx.strokeStyle = isMe ? 'rgba(255, 140, 0, 0.7)' : 'rgba(0, 191, 255, 0.6)';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.ellipse(0, 24, 16, 6, 0, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.ellipse(0, 24, 22, 8, 0, 0, Math.PI * 2);
+            ctx.stroke();
 
             if (facing === 'left') ctx.scale(-1, 1);
 
-            // Cizme
-            ctx.fillStyle = '#1a252f';
-            ctx.fillRect(-7, 12, 5, 12);
-            ctx.fillRect(2, 12, 5, 12);
+            // ARIPI (Wings of Dragon / Angel) în spate
+            ctx.fillStyle = isMe ? 'rgba(220, 40, 20, 0.85)' : 'rgba(52, 152, 219, 0.85)';
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(-6, -6);
+            ctx.quadraticCurveTo(-34, -32, -28, 6);
+            ctx.quadraticCurveTo(-18, 2, -6, 4);
+            ctx.fill();
+            ctx.stroke();
 
-            // Torso / Armură metalică
-            let armorGrad = ctx.createLinearGradient(-12, -10, 12, 14);
-            armorGrad.addColorStop(0, '#ecf0f1');
-            armorGrad.addColorStop(0.5, '#95a5a6');
-            armorGrad.addColorStop(1, '#7f8c8d');
+            // Mantie neagră/roșie
+            ctx.fillStyle = '#4a0404';
+            ctx.beginPath();
+            ctx.moveTo(-10, -8);
+            ctx.lineTo(-16, 22);
+            ctx.lineTo(10, 22);
+            ctx.lineTo(8, -8);
+            ctx.fill();
+
+            // Picioare armură grea
+            ctx.fillStyle = '#1c1c1c';
+            ctx.fillRect(-8, 10, 6, 13);
+            ctx.fillRect(2, 10, 6, 13);
+
+            // Armură piept (Dragon Armor neagră cu margini aurii)
+            let armorGrad = ctx.createLinearGradient(-12, -10, 12, 12);
+            armorGrad.addColorStop(0, '#3a3a3a');
+            armorGrad.addColorStop(0.5, '#1a1a1a');
+            armorGrad.addColorStop(1, '#0d0d0d');
             ctx.fillStyle = armorGrad;
             ctx.beginPath();
-            ctx.roundRect(-12, -10, 24, 24, 4);
+            ctx.roundRect(-12, -10, 24, 22, 3);
             ctx.fill();
-            ctx.strokeStyle = '#2c3e50';
+            ctx.strokeStyle = '#d4af37';
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Centură aurie
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(-12, 10, 24, 4);
-            ctx.strokeStyle = '#b7950b';
-            ctx.strokeRect(-12, 10, 24, 4);
-
-            // Umeri
-            ctx.fillStyle = '#bdc3c7';
+            // Umeri masivi cu țepi (Pauldrons)
+            ctx.fillStyle = '#2c2c2c';
             ctx.beginPath();
-            ctx.arc(-13, -8, 6, 0, Math.PI * 2);
-            ctx.arc(13, -8, 6, 0, Math.PI * 2);
+            ctx.arc(-13, -8, 7, 0, Math.PI * 2);
+            ctx.arc(13, -8, 7, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
 
-            // Cască
-            let helmGrad = ctx.createLinearGradient(-10, -28, 10, -10);
-            helmGrad.addColorStop(0, '#bdc3c7');
-            helmGrad.addColorStop(1, '#7f8c8d');
-            ctx.fillStyle = helmGrad;
+            // Cască Dark Knight cu coarne aurii
+            ctx.fillStyle = '#222';
             ctx.beginPath();
-            ctx.roundRect(-10, -26, 20, 18, 5);
+            ctx.roundRect(-10, -26, 20, 17, 4);
             ctx.fill();
+            ctx.strokeStyle = '#d4af37';
             ctx.stroke();
 
-            // Vizor
-            ctx.fillStyle = '#111';
-            ctx.fillRect(1, -20, 7, 3);
+            // Ochi strălucitori prin vizor
+            ctx.fillStyle = '#ff3300';
+            ctx.fillRect(2, -19, 6, 2.5);
 
-            // Sabie
-            ctx.fillStyle = '#bdc3c7';
-            ctx.fillRect(14, -18, 4, 28);
-            ctx.strokeStyle = '#111';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(14, -18, 4, 28);
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(10, 6, 12, 4);
-
-            // Scut
-            ctx.fillStyle = '#c0392b';
+            // Sabie mare Dragon Sword cu aură de foc
+            ctx.shadowColor = '#ff4500';
+            ctx.shadowBlur = 10;
+            ctx.fillStyle = '#ff6600';
             ctx.beginPath();
-            ctx.roundRect(-22, -6, 14, 22, 3);
+            ctx.moveTo(14, 6);
+            ctx.lineTo(16, -26);
+            ctx.lineTo(20, 6);
+            ctx.closePath();
             ctx.fill();
-            ctx.strokeStyle = '#f1c40f';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(-17, 0, 4, 10);
-            ctx.fillRect(-21, 3, 12, 4);
+            ctx.shadowBlur = 0;
+
+            // Mâner sabie
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(11, 6, 12, 3);
 
             ctx.restore();
 
-            // Nume
-            ctx.fillStyle = isMe ? '#f1c40f' : '#ffffff';
-            ctx.font = "bold 13px sans-serif";
+            // Nume + Titlu Guild deasupra
+            ctx.fillStyle = '#00ff66';
+            ctx.font = "bold 10px sans-serif";
             ctx.textAlign = "center";
+            ctx.fillText("<MU Legend>", x, y - 68);
+
+            ctx.fillStyle = isMe ? '#ffd700' : '#ffffff';
+            ctx.font = "bold 13px sans-serif";
             ctx.shadowColor = "black";
             ctx.shadowBlur = 4;
-            ctx.fillText(name || "Hero", x, y - 52);
+            ctx.fillText(name || "Dark Knight", x, y - 54);
             ctx.shadowBlur = 0;
         }
 
-        // Desenare Monstru 2D Mărit
-        function drawMonster2D(x, y) {
+        // Desenare Boss / Demon masiv cu bară de HP deasupra
+        function drawDarkBoss(x, y, id) {
             ctx.save();
             ctx.translate(x, y);
-            ctx.scale(1.7, 1.7); // Mărim scara monstrului cu 70%
+            ctx.scale(1.9, 1.9); // Monstru mare, impunător
 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            // Umbră întunecată
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             ctx.beginPath();
-            ctx.ellipse(0, 20, 15, 5, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 22, 20, 7, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = '#c0392b';
+            // Corp masiv de Lava Beast / Demon Bull
+            let bodyGrad = ctx.createRadialGradient(0, -4, 4, 0, 0, 20);
+            bodyGrad.addColorStop(0, '#ff4500');
+            bodyGrad.addColorStop(0.6, '#8b0000');
+            bodyGrad.addColorStop(1, '#2b0000');
+            ctx.fillStyle = bodyGrad;
             ctx.beginPath();
-            ctx.arc(0, 0, 17, 0, Math.PI * 2);
+            ctx.arc(0, 0, 18, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = '#78281f';
+            ctx.strokeStyle = '#111';
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Coarne
-            ctx.fillStyle = '#f39c12';
+            // Coarne mari de taur demonic
+            ctx.fillStyle = '#e0d6c3';
             ctx.beginPath();
-            ctx.moveTo(-11, -10); ctx.quadraticCurveTo(-20, -25, -6, -18);
-            ctx.moveTo(11, -10); ctx.quadraticCurveTo(20, -25, 6, -18);
+            ctx.moveTo(-12, -8); ctx.quadraticCurveTo(-26, -26, -8, -18);
+            ctx.moveTo(12, -8); ctx.quadraticCurveTo(26, -26, 8, -18);
             ctx.fill();
             ctx.stroke();
 
-            // Ochi
-            ctx.fillStyle = '#f1c40f';
+            // Ochi aprinși
+            ctx.fillStyle = '#ffff00';
             ctx.beginPath();
             ctx.arc(-6, -3, 3.5, 0, Math.PI * 2);
             ctx.arc(6, -3, 3.5, 0, Math.PI * 2);
@@ -288,76 +369,129 @@
 
             // Colți
             ctx.fillStyle = '#fff';
-            ctx.fillRect(-5, 5, 3, 5);
-            ctx.fillRect(2, 5, 3, 5);
+            ctx.fillRect(-6, 6, 3, 5);
+            ctx.fillRect(3, 6, 3, 5);
 
             ctx.restore();
 
-            ctx.fillStyle = '#ff6b6b';
+            // Nume + Bară HP Roșie deasupra monstrului (exact ca în MU)
+            const bossNames = ["Lava Beast", "Demon Bull", "Hell Knight", "Inferno Golem"];
+            const bName = bossNames[(id - 1) % bossNames.length];
+
+            ctx.fillStyle = '#ff4d4d';
             ctx.font = "bold 11px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("Lv.5 Demon", x, y - 40);
+            ctx.fillText(bName, x, y - 52);
+
+            // Bară HP
+            ctx.fillStyle = '#111';
+            ctx.fillRect(x - 30, y - 47, 60, 6);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(x - 29, y - 46, 58, 4);
         }
 
-        function drawCollectible2D(x, y, type) {
+        // Obiecte strălucitoare pe jos (Jewel of Bless / Soul)
+        function drawJewel(x, y, type) {
             ctx.save();
             ctx.translate(x, y);
-            ctx.scale(1.4, 1.4); // Mărim puțin și itemele
-            if (type === 'potion') {
-                ctx.fillStyle = '#e74c3c';
-                ctx.beginPath(); ctx.arc(0, 4, 9, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = '#bdc3c7'; ctx.fillRect(-3, -8, 6, 5);
-                ctx.fillStyle = '#d35400'; ctx.fillRect(-2, -11, 4, 3);
-            } else {
-                ctx.fillStyle = '#f39c12';
-                ctx.beginPath(); ctx.arc(0, 3, 10, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5; ctx.stroke();
-                ctx.fillStyle = '#f1c40f'; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText("$", 0, 7);
-            }
+            ctx.scale(1.4, 1.4);
+
+            ctx.shadowColor = type === 'potion' ? '#ff0066' : '#00ccff';
+            ctx.shadowBlur = 12;
+
+            ctx.fillStyle = type === 'potion' ? '#ff3385' : '#00bfff';
+            ctx.beginPath();
+            ctx.moveTo(0, -10);
+            ctx.lineTo(8, 0);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(-8, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
             ctx.restore();
         }
 
-        function drawBackground() {
-            ctx.fillStyle = "#27ae60";
+        // Hartă Dark Fantasy (Arena de piatră vulcanică și lavă)
+        function drawDarkArena() {
+            // Fundal pământ întunecat
+            let bgGrad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 80, canvas.width/2, canvas.height/2, 550);
+            bgGrad.addColorStop(0, '#2c221e');
+            bgGrad.addColorStop(1, '#120d0b');
+            ctx.fillStyle = bgGrad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Potecă RPG
-            ctx.fillStyle = "#839192";
-            ctx.fillRect(0, 270, canvas.width, 60);
-            ctx.strokeStyle = "#5d6d7e";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(0, 270, canvas.width, 60);
-
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.08)";
+            // Dale de piatră antichizată
+            ctx.strokeStyle = "rgba(255, 165, 0, 0.06)";
             ctx.lineWidth = 1;
-            for (let x = 0; x < canvas.width; x += 40) {
+            for (let x = 0; x < canvas.width; x += 50) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
             }
-            for (let y = 0; y < canvas.height; y += 40) {
+            for (let y = 0; y < canvas.height; y += 50) {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // Cerc runic central în arenă
+            ctx.strokeStyle = "rgba(212, 175, 55, 0.15)";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(canvas.width/2, canvas.height/2, 130, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        // Efecte vizuale de luptă (Explozii de foc, lovituri)
+        function drawEffects() {
+            for (let i = effects.length - 1; i >= 0; i--) {
+                const ef = effects[i];
+                ctx.save();
+                if (ef.type === 'damage') {
+                    ctx.fillStyle = `rgba(255, 215, 0, ${ef.alpha})`;
+                    ctx.font = "bold 16px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(ef.text, ef.x, ef.y);
+                    ef.y -= 1.2;
+                    ef.alpha -= 0.025;
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(ef.x, ef.y, ef.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = ef.type === 'fire' ? `rgba(255, 69, 0, ${ef.alpha})` : `rgba(0, 191, 255, ${ef.alpha})`;
+                    ctx.lineWidth = 6;
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = ef.type === 'fire' ? `rgba(255, 140, 0, ${ef.alpha * 0.3})` : `rgba(0, 191, 255, ${ef.alpha * 0.25})`;
+                    ctx.fill();
+
+                    ef.radius += 5;
+                    ef.alpha -= 0.05;
+                }
+                ctx.restore();
+
+                if (ef.alpha <= 0) effects.splice(i, 1);
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBackground();
+            drawDarkArena();
 
             for (const id in collectibles) {
                 const c = collectibles[id];
-                drawCollectible2D(c.x, c.y, c.type);
+                drawJewel(c.x, c.y, c.type);
             }
 
             for (const id in monsters) {
                 const m = monsters[id];
-                drawMonster2D(m.x, m.y);
+                drawDarkBoss(m.x, m.y, parseInt(id));
             }
 
             for (const id in players) {
                 const p = players[id];
-                drawRealisticKnight(p.x, p.y, id === myId, p.facing || 'right', p.name);
+                drawDarkKnight(p.x, p.y, id === myId, p.facing || 'right', p.name);
             }
+
+            drawEffects();
         }
 
         function loop() {
