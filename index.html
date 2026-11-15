@@ -79,7 +79,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;"><b>[System]:</b> Modelul Knight.glb încărcat cu succes! Folosește <b>W, A, S, D</b>.</div>
+                <div style="color: #ff9900;"><b>[System]:</b> Modelul knight.glb încărcat cu succes! Folosește <b>W, A, S, D</b>.</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -130,13 +130,13 @@
         gridHelper.position.y = 0.02;
         scene.add(gridHelper);
 
-        // Încărcător GLTF cu denumirea corectă (Knight.glb)
+        // Încărcător GLTF cu denumirea curată (knight.glb)
         const loader = new THREE.GLTFLoader();
         let sharedKnightModel = null;
         let animationMixers = [];
         let clock = new THREE.Clock();
 
-        loader.load('./Knight.glb', (gltf) => {
+        loader.load('./knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightModel.scale.set(4.5, 4.5, 4.5);
             
@@ -294,4 +294,79 @@
             ring.rotation.x = -Math.PI / 2;
             ring.position.set(myPos.x, 0.2, myPos.z);
             scene.add(ring);
-            attack
+            attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
+        }
+
+        function update() {
+            let moveX = 0;
+            let moveZ = 0;
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) moveZ -= 1;
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) moveZ += 1;
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) moveX -= 1;
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) moveX += 1;
+
+            let isMoving = (moveX !== 0 || moveZ !== 0);
+
+            if (isMoving) {
+                const len = Math.hypot(moveX, moveZ);
+                moveX = (moveX / len) * myPos.speed;
+                moveZ = (moveZ / len) * myPos.speed;
+
+                myPos.x += moveX;
+                myPos.z += moveZ;
+                myPos.rotY = Math.atan2(moveX, moveZ);
+
+                if (socket.connected) {
+                    socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
+                }
+            }
+
+            if (myId && players[myId] && players[myId].mesh) {
+                players[myId].mesh.position.x = myPos.x;
+                players[myId].mesh.position.z = myPos.z;
+                players[myId].mesh.rotation.y = myPos.rotY;
+                players[myId].mesh.position.y = 0;
+
+                camera.position.x = myPos.x;
+                camera.position.y = 12;
+                camera.position.z = myPos.z + 14;
+                camera.lookAt(myPos.x, 1.5, myPos.z);
+            }
+
+            for (let i = attackRings.length - 1; i >= 0; i--) {
+                const r = attackRings[i];
+                r.scale += 0.35;
+                r.opacity -= 0.04;
+                r.mesh.scale.set(r.scale, r.scale, 1);
+                r.mesh.material.opacity = r.opacity;
+                if (r.opacity <= 0) {
+                    scene.remove(r.mesh);
+                    attackRings.splice(i, 1);
+                }
+            }
+
+            const delta = clock.getDelta();
+            animationMixers.forEach(item => {
+                if (item.model === (players[myId] ? players[myId].mesh : null)) {
+                    item.action.paused = !isMoving;
+                }
+                item.mixer.update(delta);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
