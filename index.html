@@ -75,7 +75,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Se încearcă încărcarea fișierului Knight.glb...</div>
+                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Se încearcă încărcarea fișierelor 3D...</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -96,7 +96,7 @@
         scene.background = new THREE.Color(0x0d0908);
         scene.fog = new THREE.FogExp2(0x0d0908, 0.012);
 
-        // Cameră poziționată mai sus și mai în spate pentru noul model
+        // Cameră poziționată pentru noul model
         const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 18, 25);
         camera.lookAt(0, 2, 0);
@@ -114,7 +114,7 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // Solul arenei
+        // Solul provizoriu (va fi înlocuit automat de map.glb când se va încărca)
         const floorGeo = new THREE.PlaneGeometry(120, 120);
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x221b18, roughness: 0.85 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -156,8 +156,9 @@
             return demon;
         }
 
-        // Încărcare GLTF cu raportare directă în chat
         const loader = new THREE.GLTFLoader();
+
+        // 1. Încărcare Knight.glb
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightModel.scale.set(4.5, 4.5, 4.5);
@@ -169,12 +170,10 @@
                 }
             });
 
-            // Afișăm succesul în chat
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            // Actualizăm jucătorii existenți dacă au apărut cu cubul roșu
             for (const id in players) {
                 if (players[id].mesh) {
                     scene.remove(players[id].mesh);
@@ -190,12 +189,39 @@
                 players[id].mesh = clone;
                 players[id].realMeshLoaded = true;
             }
-        }, (xhr) => {
-            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-        }, (error) => {
+        }, undefined, (error) => {
             console.error("Eroare la încărcarea modelului 3D:", error);
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca Knight.glb (Verifică fișierul de pe GitHub)!</div>`;
+            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca Knight.glb!</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        });
+
+        // 2. Încărcare map.glb (Harta 3D)
+        loader.load('./map.glb', (gltf) => {
+            const mapModel = gltf.scene;
+            mapModel.scale.set(1, 1, 1);
+            mapModel.position.set(0, 0, 0);
+
+            mapModel.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                }
+            });
+
+            scene.add(mapModel);
+
+            // Eliminăm podeaua provizorie odată ce harta reală a fost încărcată
+            scene.remove(floor);
+            scene.remove(gridHelper);
+
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta (map.glb) încărcată cu succes!</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+        }, undefined, (error) => {
+            console.error("Eroare la încărcarea hărții:", error);
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca map.glb!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
@@ -330,7 +356,6 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 0;
 
-                // Urmărire cameră corectată pentru noul model
                 camera.position.x = myPos.x;
                 camera.position.y = 18;
                 camera.position.z = myPos.z + 25;
