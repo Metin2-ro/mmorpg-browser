@@ -144,10 +144,10 @@
 
         function update() {
             let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(40, myPos.y - myPos.speed); moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 40, myPos.y + myPos.speed); moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(40, myPos.x - myPos.speed); myPos.facing = 'left'; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 40, myPos.x + myPos.speed); myPos.facing = 'right'; moved = true; }
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(50, myPos.y - myPos.speed); moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 50, myPos.y + myPos.speed); moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(50, myPos.x - myPos.speed); myPos.facing = 'left'; moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 50, myPos.x + myPos.speed); myPos.facing = 'right'; moved = true; }
 
             if (moved && socket.connected) {
                 socket.emit('playerMovement', { x: myPos.x, y: myPos.y });
@@ -159,25 +159,26 @@
             }
         }
 
-        // Desenare Cavaler 2D Detaliat și Realist
+        // Desenare Cavaler 2D Mărit și Detaliat
         function drawRealisticKnight(x, y, isMe, facing, name) {
             ctx.save();
             ctx.translate(x, y);
+            ctx.scale(1.7, 1.7); // Mărim scara personajului cu 70%
 
-            // Umbră realistă sub picioare
+            // Umbră
             ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
             ctx.beginPath();
-            ctx.ellipse(0, 24, 18, 7, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 24, 16, 6, 0, 0, Math.PI * 2);
             ctx.fill();
 
             if (facing === 'left') ctx.scale(-1, 1);
 
-            // Cizme / Picioare armură
+            // Cizme
             ctx.fillStyle = '#1a252f';
             ctx.fillRect(-7, 12, 5, 12);
             ctx.fillRect(2, 12, 5, 12);
 
-            // Torso / Armură completă din plăci (cu degrade metalic argintiu)
+            // Torso / Armură metalică
             let armorGrad = ctx.createLinearGradient(-12, -10, 12, 14);
             armorGrad.addColorStop(0, '#ecf0f1');
             armorGrad.addColorStop(0.5, '#95a5a6');
@@ -196,7 +197,7 @@
             ctx.strokeStyle = '#b7950b';
             ctx.strokeRect(-12, 10, 24, 4);
 
-            // Umeri / Pauldrons (Protecții metalice de umeri)
+            // Umeri
             ctx.fillStyle = '#bdc3c7';
             ctx.beginPath();
             ctx.arc(-13, -8, 6, 0, Math.PI * 2);
@@ -204,7 +205,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Cască de oțel realistă (Great Helm)
+            // Cască
             let helmGrad = ctx.createLinearGradient(-10, -28, 10, -10);
             helmGrad.addColorStop(0, '#bdc3c7');
             helmGrad.addColorStop(1, '#7f8c8d');
@@ -214,20 +215,20 @@
             ctx.fill();
             ctx.stroke();
 
-            // Vizor cască (fanta neagră pentru ochi)
+            // Vizor
             ctx.fillStyle = '#111';
             ctx.fillRect(1, -20, 7, 3);
 
-            // Sabie lată medievală în mână / lateral
+            // Sabie
             ctx.fillStyle = '#bdc3c7';
-            ctx.fillRect(14, -18, 4, 28); // Lamă
+            ctx.fillRect(14, -18, 4, 28);
             ctx.strokeStyle = '#111';
             ctx.lineWidth = 1;
             ctx.strokeRect(14, -18, 4, 28);
             ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(10, 6, 12, 4); // Gardă cruce aurie
+            ctx.fillRect(10, 6, 12, 4);
 
-            // Scut mare medieval în stânga (cu cruce roșie sau stazon nobil)
+            // Scut
             ctx.fillStyle = '#c0392b';
             ctx.beginPath();
             ctx.roundRect(-22, -6, 14, 22, 3);
@@ -235,31 +236,31 @@
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 2;
             ctx.stroke();
-            // Cruce pe scut
             ctx.fillStyle = '#f1c40f';
             ctx.fillRect(-17, 0, 4, 10);
             ctx.fillRect(-21, 3, 12, 4);
 
             ctx.restore();
 
-            // Numele jucătorului deasupra
+            // Nume
             ctx.fillStyle = isMe ? '#f1c40f' : '#ffffff';
-            ctx.font = "bold 12px sans-serif";
+            ctx.font = "bold 13px sans-serif";
             ctx.textAlign = "center";
             ctx.shadowColor = "black";
             ctx.shadowBlur = 4;
-            ctx.fillText(name || "Hero", x, y - 44);
+            ctx.fillText(name || "Hero", x, y - 52);
             ctx.shadowBlur = 0;
         }
 
-        // Desenare Monstru 2D detaliat
+        // Desenare Monstru 2D Mărit
         function drawMonster2D(x, y) {
             ctx.save();
             ctx.translate(x, y);
+            ctx.scale(1.7, 1.7); // Mărim scara monstrului cu 70%
 
             ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
             ctx.beginPath();
-            ctx.ellipse(0, 20, 16, 6, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, 20, 15, 5, 0, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = '#c0392b';
@@ -270,7 +271,7 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Coarne curbate
+            // Coarne
             ctx.fillStyle = '#f39c12';
             ctx.beginPath();
             ctx.moveTo(-11, -10); ctx.quadraticCurveTo(-20, -25, -6, -18);
@@ -278,7 +279,7 @@
             ctx.fill();
             ctx.stroke();
 
-            // Ochi roșii strălucitori
+            // Ochi
             ctx.fillStyle = '#f1c40f';
             ctx.beginPath();
             ctx.arc(-6, -3, 3.5, 0, Math.PI * 2);
@@ -293,15 +294,15 @@
             ctx.restore();
 
             ctx.fillStyle = '#ff6b6b';
-            ctx.font = "bold 10px sans-serif";
+            ctx.font = "bold 11px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("Lv.5 Demon", x, y - 30);
+            ctx.fillText("Lv.5 Demon", x, y - 40);
         }
 
-        // Obiecte colectabile
         function drawCollectible2D(x, y, type) {
             ctx.save();
             ctx.translate(x, y);
+            ctx.scale(1.4, 1.4); // Mărim puțin și itemele
             if (type === 'potion') {
                 ctx.fillStyle = '#e74c3c';
                 ctx.beginPath(); ctx.arc(0, 4, 9, 0, Math.PI * 2); ctx.fill();
