@@ -2,15 +2,17 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>MMORPG Browser</title>
+    <title>MMORPG Browser - Monștri & Iteme</title>
     <style>
         body { margin: 0; background: #111; color: white; text-align: center; font-family: sans-serif; }
         canvas { background: #222; display: block; margin: 20px auto; border: 2px solid #555; }
+        #scoreBoard { font-size: 18px; color: #33ccff; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>Joc MMORPG în Browser</h1>
-    <p>Folosește tastele <b>W, A, S, D</b> sau <b>Săgețile</b> pentru a te mișca!</p>
+    <p>Folosește tastele <b>W, A, S, D</b> sau <b>Săgețile</b> ca să colecționezi cristalele albastre!</p>
+    <div id="scoreBoard">Scor: 0</div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -20,12 +22,23 @@
         const ctx = canvas.getContext('2d');
 
         let players = {};
+        let monsters = {};
+        let collectibles = {};
         let myId = null;
         let myPos = { x: 400, y: 300, speed: 4 };
+        let myScore = 0;
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             myId = socket.id;
+        });
+
+        socket.on('currentMonsters', (serverMonsters) => {
+            monsters = serverMonsters;
+        });
+
+        socket.on('currentCollectibles', (serverCollectibles) => {
+            collectibles = serverCollectibles;
         });
 
         socket.on('newPlayer', (data) => {
@@ -39,6 +52,18 @@
             }
         });
 
+        socket.on('collectibleTaken', (data) => {
+            delete collectibles[data.collectibleId];
+            if (data.playerId === socket.id) {
+                myScore = data.score;
+                document.getElementById('scoreBoard').innerText = `Scor: ${myScore}`;
+            }
+        });
+
+        socket.on('newCollectible', (collectible) => {
+            collectibles[collectible.id] = collectible;
+        });
+
         socket.on('disconnect', (id) => {
             delete players[id];
         });
@@ -49,10 +74,10 @@
 
         function update() {
             let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y -= myPos.speed; moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y += myPos.speed; moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x -= myPos.speed; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x += myPos.speed; moved = true; }
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.y = Math.max(20, myPos.y - myPos.speed); moved = true; }
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.y = Math.min(canvas.height - 20, myPos.y + myPos.speed); moved = true; }
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x = Math.max(20, myPos.x - myPos.speed); moved = true; }
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x = Math.min(canvas.width - 20, myPos.x + myPos.speed); moved = true; }
 
             if (moved && socket.connected) {
                 socket.emit('playerMovement', { x: myPos.x, y: myPos.y });
@@ -62,6 +87,23 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Desenează obiectele de colectat (cristale verzi/albastre pătrate)
+            for (const id in collectibles) {
+                const c = collectibles[id];
+                ctx.fillStyle = '#00ffcc';
+                ctx.fillRect(c.x - 8, c.y - 8, 16, 16);
+            }
+
+            // Desenează monștrii (pătrate portocalii)
+            for (const id in monsters) {
+                const m = monsters[id];
+                ctx.fillStyle = m.color;
+                ctx.fillRect(m.x - 15, m.y - 15, 30, 30);
+                ctx.strokeStyle = '#ffffff';
+                ctx.strokeRect(m.x - 15, m.y - 15, 30, 30);
+            }
+
+            // Desenează jucătorii (cercuri)
             for (const id in players) {
                 const p = players[id];
                 ctx.fillStyle = (id === myId) ? '#ff3333' : (p.color || '#33ccff');
