@@ -79,7 +79,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;"><b>[System]:</b> Modelul 3D real (`knight.glb`) a fost încărcat! Folosește <b>W, A, S, D</b> pentru mișcare.</div>
+                <div style="color: #ff9900;"><b>[System]:</b> Modelul 3D a fost redimensionat la o mărime vizibilă! Folosește <b>W, A, S, D</b> pentru mișcare.</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -99,10 +99,10 @@
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0d0908);
-        scene.fog = new THREE.FogExp2(0x0d0908, 0.015);
+        scene.fog = new THREE.FogExp2(0x0d0908, 0.012);
 
         const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 14, 16);
+        camera.position.set(0, 12, 14);
         camera.lookAt(0, 1, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -134,12 +134,10 @@
         const loader = new THREE.GLTFLoader();
         let sharedKnightModel = null;
 
-        // Încărcare model `knight.glb` de pe GitHub
         loader.load('./knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
-            sharedKnightModel.scale.set(1.2, 1.2, 1.2); // Ajustează scara dacă e prea mare sau mic
+            sharedKnightModel.scale.set(4.5, 4.5, 4.5); // SCALA MĂRITĂ LA 4.5
             
-            // Aplică umbre pentru modelul încărcat
             sharedKnightModel.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
@@ -147,7 +145,6 @@
                 }
             });
 
-            // Dacă eroul local era deja creat, îl înlocuim cu modelul real
             if (myId && players[myId] && !players[myId].realMeshLoaded) {
                 scene.remove(players[myId].mesh);
                 const clone = sharedKnightModel.clone();
@@ -159,7 +156,6 @@
             console.error("Eroare la încărcarea modelului 3D:", error);
         });
 
-        // Funcție fallback (crează un cub temporar până se încarcă fișierul .glb)
         function createFallbackMesh() {
             const group = new THREE.Group();
             const geo = new THREE.BoxGeometry(1, 2, 1);
@@ -170,11 +166,10 @@
             return group;
         }
 
-        // Monstru 3D Demon
         function createDetailedMonster3D() {
             const demon = new THREE.Group();
             const skinMat = new THREE.MeshStandardMaterial({ color: 0x990000, roughness: 0.5 });
-            const bodyGeo = new THREE.SphereGeometry(0.95, 16, 16);
+            const bodyGeo = new THREE.SphereGeometry(1.2, 16, 16);
             const body = new THREE.Mesh(bodyGeo, skinMat);
             body.position.y = 1.2;
             demon.add(body);
@@ -317,8 +312,8 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
 
                 camera.position.x = myPos.x;
-                camera.position.y = 12;
-                camera.position.z = myPos.z + 14;
+                camera.position.y = 10;
+                camera.position.z = myPos.z + 12;
                 camera.lookAt(myPos.x, 1.5, myPos.z);
             }
 
