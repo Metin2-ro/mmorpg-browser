@@ -31,6 +31,24 @@
         /* Indicator Nivel Hartă */
         .map-level-badge { background: #2b1d16; border: 1px solid #d4af37; color: #ffd700; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-radius: 4px; margin-bottom: 8px; text-shadow: 1px 1px #000; }
 
+        /* Bule de dialog deasupra capului (Speech Bubbles) */
+        .speech-bubble {
+            position: absolute;
+            background: rgba(12, 10, 9, 0.88);
+            border: 2px solid #8c6239;
+            color: #ffd700;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+
         /* Chat 3D UI */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; }
         #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
@@ -79,7 +97,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Click pe ecran pentru a activa controlul 3D al camerei!</div>
+                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Click pe ecran pentru activare cameră 3D!</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -122,7 +140,7 @@
         
         let myPos = { x: 0, z: 0, walkSpeed: 0.10, runSpeed: 0.24, rotY: 0 };
         
-        // Control cameră prin Pointer Lock (fără ținere apăsată a mouse-ului)
+        // Control cameră prin Pointer Lock
         let cameraAngle = 0;
         let cameraPitch = 0.6;
         let cameraDistance = 25;
@@ -155,6 +173,7 @@
         let sharedKnightModel = null;
         let animationMixers = [];
         let clock = new THREE.Clock();
+        let activeBubbles = []; // Colectia pentru bulele de dialog flotante
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -324,11 +343,64 @@
             }
         });
 
+        // Recepționare mesaj chat și generare bule de dialog deasupra capului
         socket.on('chatMessage', (data) => {
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            // Determinăm cine a trimis mesajul
+            let senderMesh = null;
+            if (data.id && players[data.id] && players[data.id].mesh) {
+                senderMesh = players[data.id].mesh;
+            } else {
+                // Dacă serverul nu trimite ID-ul, încercăm să îl asociem după nume sau fallback la propriul mesh
+                for (let id in players) {
+                    if (players[id].name === data.name || id === myId) {
+                        senderMesh = players[id].mesh;
+                        break;
+                    }
+                }
+                if (!senderMesh && myId && players[myId]) {
+                    senderMesh = players[myId].mesh;
+                }
+            }
+
+            if (senderMesh) {
+                createSpeechBubble(senderMesh, data.message, data.name);
+            }
         });
+
+        function createSpeechBubble(mesh, text, name) {
+            // Ștergem bula anterioară a aceluiași jucător dacă mai există
+            activeBubbles = activeBubbles.filter(b => {
+                if (b.mesh === mesh) {
+                    b.element.remove();
+                    return false;
+                }
+                return true;
+            });
+
+            const el = document.createElement('div');
+            el.className = 'speech-bubble';
+            el.innerText = `${text}`;
+            document.getElementById('game-container').appendChild(el);
+
+            const bubbleObj = {
+                element: el,
+                mesh: mesh
+            };
+            activeBubbles.push(bubbleObj);
+
+            // Auto-ștergere după 4.5 secunde
+            setTimeout(() => {
+                el.style.opacity = '0';
+                setTimeout(() => {
+                    el.remove();
+                    activeBubbles = activeBubbles.filter(b => b !== bubbleObj);
+                }, 300);
+            }, 4500);
+        }
 
         const keys = {};
         window.addEventListener('keydown', (e) => {
@@ -344,13 +416,12 @@
             
             if (e.button === 0) { // Click Stânga -> Atac
                 triggerAttack3D();
-            } else if (e.button === 2) { // Click Dreapta -> Apărare / Gardă
+            } else if (e.button === 2) { // Click Dreapta -> Apărare
                 e.preventDefault();
                 triggerDefense3D();
             }
         });
 
-        // Previne meniul contextual la click dreapta
         window.addEventListener('contextmenu', e => e.preventDefault());
 
         function triggerAttack3D() {
@@ -370,7 +441,6 @@
             chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă! (Apărare activată)</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            // Cerc albastru de apărare sub picioare
             const shieldGeo = new THREE.RingGeometry(1.0, 1.4, 32);
             const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
             const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
@@ -378,7 +448,6 @@
             shieldMesh.position.set(myPos.x, 2.91, myPos.z);
             scene.add(shieldMesh);
             
-            // Îl scoatem după 1 secundă
             setTimeout(() => {
                 scene.remove(shieldMesh);
             }, 1000);
@@ -444,6 +513,9 @@
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
+            // Actualizare poziție bule de dialog pe ecran în funcție de poziția 3D a jucătorului
+            updateSpeechBubbles();
+
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
                 r.scale += 0.35;
@@ -463,6 +535,29 @@
                     item.action.paused = !isMoving;
                 }
                 item.mixer.update(delta);
+            });
+        }
+
+        const tempVector = new THREE.Vector3();
+        function updateSpeechBubbles() {
+            activeBubbles.forEach(b => {
+                if (!b.mesh) return;
+                tempVector.copy(b.mesh.position);
+                tempVector.y += 4.8; // Poziționare fix deasupra capului cavalerului
+
+                tempVector.project(camera);
+
+                const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(tempVector.y * 0.5) + 0.5) * window.innerHeight;
+
+                // Ascunde bula dacă e în spatele camerei
+                if (tempVector.z > 1) {
+                    b.element.style.display = 'none';
+                } else {
+                    b.element.style.display = 'block';
+                    b.element.style.left = `${x}px`;
+                    b.element.style.top = `${y}px`;
+                }
             });
         }
 
