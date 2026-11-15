@@ -7,6 +7,27 @@ const io = new Server(http);
 app.use(express.static(__dirname));
 
 const players = {};
+const monsters = {};
+const collectibles = {};
+
+// Generăm câțiva monștri inițiali pe hartă
+for (let i = 1; i <= 3; i++) {
+    monsters[i] = {
+        id: i,
+        x: Math.floor(Math.random() * 700) + 50,
+        y: Math.floor(Math.random() * 500) + 50,
+        color: '#ff9900' // Monștrii vor fi portocalii
+    };
+}
+
+// Generăm câteva obiecte de colectat (cristale)
+for (let i = 1; i <= 5; i++) {
+    collectibles[i] = {
+        id: i,
+        x: Math.floor(Math.random() * 720) + 40,
+        y: Math.floor(Math.random() * 520) + 40
+    };
+}
 
 io.on('connection', (socket) => {
     console.log(`Un jucător s-a conectat: ${socket.id}`);
@@ -14,16 +35,43 @@ io.on('connection', (socket) => {
     players[socket.id] = {
         x: Math.floor(Math.random() * 600) + 100,
         y: Math.floor(Math.random() * 400) + 100,
-        color: '#' + Math.floor(Math.random()*16777215).toString(16)
+        color: '#' + Math.floor(Math.random()*16777215).toString(16),
+        score: 0
     };
 
+    // Trimitem starea actuală jucătorului nou
     socket.emit('currentPlayers', players);
+    socket.emit('currentMonsters', monsters);
+    socket.emit('currentCollectibles', collectibles);
+
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
 
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
             players[socket.id].y = movementData.y;
+            
+            // Verificăm dacă jucătorul a colectat vreun item
+            for (const id in collectibles) {
+                const c = collectibles[id];
+                const dist = Math.hypot(players[socket.id].x - c.x, players[socket.id].y - c.y);
+                if (dist < 25) { // Dacă s-a apropiat de cristal
+                    players[socket.id].score += 1;
+                    delete collectibles[id];
+                    io.emit('collectibleTaken', { collectibleId: id, score: players[socket.id].score, playerId: socket.id });
+                    
+                    // Regenerăm obiectul în altă parte după o secundă
+                    setTimeout(() => {
+                        collectibles[id] = {
+                            id: id,
+                            x: Math.floor(Math.random() * 720) + 40,
+                            y: Math.floor(Math.random() * 520) + 40
+                        };
+                        io.emit('newCollectible', collectibles[id]);
+                    }, 2000);
+                }
+            }
+
             socket.broadcast.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
         }
     });
