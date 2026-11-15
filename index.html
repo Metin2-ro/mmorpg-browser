@@ -196,11 +196,18 @@
             chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
-        // 2. Încărcare map.glb (Harta 3D)
+        // 2. Încărcare map.glb (Harta 3D centrată automat)
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(1, 1, 1);
-            mapModel.position.set(0, 0, 0);
+
+            // Centragem automat harta pe mijloc și la nivelul solului
+            const box = new THREE.Box3().setFromObject(mapModel);
+            const center = box.getCenter(new THREE.Vector3());
+            
+            mapModel.position.x = -center.x;
+            mapModel.position.z = -center.z;
+            mapModel.position.y = -box.min.y;
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -211,12 +218,12 @@
 
             scene.add(mapModel);
 
-            // Eliminăm podeaua provizorie odată ce harta reală a fost încărcată
+            // Eliminăm podeaua provizorie
             scene.remove(floor);
             scene.remove(gridHelper);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta (map.glb) încărcată cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta (map.glb) a fost centrată și încărcată!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
