@@ -10,24 +10,36 @@ const players = {};
 const monsters = {};
 const collectibles = {};
 
-// Generăm câțiva monștri inițiali pe hartă
+// Generăm 3 monștri 2D pe hartă
 for (let i = 1; i <= 3; i++) {
     monsters[i] = {
         id: i,
-        x: Math.floor(Math.random() * 700) + 50,
-        y: Math.floor(Math.random() * 500) + 50,
-        color: '#ff9900' // Monștrii vor fi portocalii
+        x: Math.floor(Math.random() * 600) + 100,
+        y: Math.floor(Math.random() * 400) + 100
     };
 }
 
-// Generăm câteva obiecte de colectat (cristale)
+// Generăm cristale de colectat
 for (let i = 1; i <= 5; i++) {
     collectibles[i] = {
         id: i,
-        x: Math.floor(Math.random() * 720) + 40,
-        y: Math.floor(Math.random() * 520) + 40
+        x: Math.floor(Math.random() * 700) + 50,
+        y: Math.floor(Math.random() * 500) + 50
     };
 }
+
+// Monștrii se mișcă singuri la fiecare secundă
+setInterval(() => {
+    for (const id in monsters) {
+        monsters[id].x += Math.floor(Math.random() * 31) - 15; // mișcare aleatorie X
+        monsters[id].y += Math.floor(Math.random() * 31) - 15; // mișcare aleatorie Y
+        
+        // Păstrăm monștrii în limitele hărții
+        monsters[id].x = Math.max(30, Math.min(770, monsters[id].x));
+        monsters[id].y = Math.max(30, Math.min(570, monsters[id].y));
+    }
+    io.emit('monstersMoved', monsters);
+}, 1000);
 
 io.on('connection', (socket) => {
     console.log(`Un jucător s-a conectat: ${socket.id}`);
@@ -39,7 +51,6 @@ io.on('connection', (socket) => {
         score: 0
     };
 
-    // Trimitem starea actuală jucătorului nou
     socket.emit('currentPlayers', players);
     socket.emit('currentMonsters', monsters);
     socket.emit('currentCollectibles', collectibles);
@@ -51,21 +62,20 @@ io.on('connection', (socket) => {
             players[socket.id].x = movementData.x;
             players[socket.id].y = movementData.y;
             
-            // Verificăm dacă jucătorul a colectat vreun item
+            // Verificăm colectarea cristalelor
             for (const id in collectibles) {
                 const c = collectibles[id];
                 const dist = Math.hypot(players[socket.id].x - c.x, players[socket.id].y - c.y);
-                if (dist < 25) { // Dacă s-a apropiat de cristal
+                if (dist < 25) {
                     players[socket.id].score += 1;
                     delete collectibles[id];
                     io.emit('collectibleTaken', { collectibleId: id, score: players[socket.id].score, playerId: socket.id });
                     
-                    // Regenerăm obiectul în altă parte după o secundă
                     setTimeout(() => {
                         collectibles[id] = {
                             id: id,
-                            x: Math.floor(Math.random() * 720) + 40,
-                            y: Math.floor(Math.random() * 520) + 40
+                            x: Math.floor(Math.random() * 700) + 50,
+                            y: Math.floor(Math.random() * 500) + 50
                         };
                         io.emit('newCollectible', collectibles[id]);
                     }, 2000);
