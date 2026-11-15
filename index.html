@@ -2,34 +2,42 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>MMORPG 3D Browser</title>
+    <title>MU Dark Fantasy 3D MMORPG</title>
     <style>
         body { margin: 0; background: #050507; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
         
         #game-container { position: relative; width: 100vw; height: 100vh; }
         canvas { display: block; width: 100%; height: 100%; }
 
-        /* HUD Stil MMORPG */
-        #player-hud { position: absolute; top: 20px; left: 20px; background: rgba(15, 22, 36, 0.9); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 240px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); z-index: 10; }
-        .avatar-box { width: 45px; height: 45px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        /* HUD Stil Dark Fantasy MMORPG */
+        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; }
+        .avatar-box { width: 46px; height: 46px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
         .stats-box { flex: 1; display: flex; flex-direction: column; gap: 5px; }
         .player-name { font-size: 13px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px #000; }
         
         .bar-container { width: 100%; height: 11px; background: #1a1512; border-radius: 3px; overflow: hidden; position: relative; border: 1px solid #4a3520; }
-        .hp-fill { width: 100%; height: 100%; background: #e74c3c; }
-        .mp-fill { width: 100%; height: 100%; background: #3498db; }
+        .hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #8b0000, #ff2a2a); }
+        .mp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #003366, #1e90ff); }
         .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
+
+        /* Daily Quests Dreapta */
+        #quest-panel { position: absolute; top: 20px; right: 20px; width: 220px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; }
+        #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; }
+        .quest-item { margin-bottom: 6px; font-size: 11px; }
+        .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
+        .quest-bar { width: 100%; height: 6px; background: #222; border-radius: 2px; overflow: hidden; }
+        .quest-progress { height: 100%; background: #27ae60; width: 20%; transition: width 0.3s; }
 
         /* Chat 3D UI */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; }
-        #chat-messages { height: 110px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
+        #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
         #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
 
         /* Bară Abilități 3D */
         #action-bar { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(20, 15, 12, 0.92); padding: 8px 12px; border: 2px solid #8c6239; border-radius: 8px; z-index: 10; }
-        .skill-slot { width: 46px; height: 46px; background: #1b2838; border: 2px solid #5c4326; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
-        .skill-slot:hover { border-color: #ffd700; transform: scale(1.08); }
-        .skill-key { position: absolute; bottom: 2px; right: 4px; font-size: 9px; color: #ffd700; font-weight: bold; }
+        .skill-slot { width: 46px; height: 46px; background: radial-gradient(circle, #2b1d16 0%, #120c09 100%); border: 2px solid #5c4326; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
+        .skill-slot:hover { border-color: #ff6600; box-shadow: 0 0 12px #ff4500; transform: scale(1.08); }
+        .skill-key { position: absolute; bottom: -2px; right: 0px; background: #000; border: 1px solid #8c6239; border-radius: 3px; padding: 0 3px; font-size: 9px; color: #ffd700; font-weight: bold; }
     </style>
 
     <!-- Import Three.js -->
@@ -40,34 +48,47 @@
     <div id="game-container">
         <!-- HUD Profil -->
         <div id="player-hud">
-            <div class="avatar-box">🛡️</div>
+            <div class="avatar-box">🔥</div>
             <div class="stats-box">
-                <span class="player-name" id="ui-name">3D Hero</span>
+                <span class="player-name" id="ui-name">Dark Knight 3D</span>
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
-                    <div class="bar-text">HP: 1000/1000</div>
+                    <div class="bar-text">HP: 1500 / 1500</div>
                 </div>
                 <div class="bar-container">
                     <div class="mp-fill" style="width: 100%;"></div>
-                    <div class="bar-text">MP: 500/500</div>
+                    <div class="bar-text">MP: 700 / 700</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Daily Quests -->
+        <div id="quest-panel">
+            <h4>📜 Daily Quests 3D</h4>
+            <div class="quest-item">
+                <div class="quest-title"><span>Slay Demon Bull</span><span id="q1-count">0/5</span></div>
+                <div class="quest-bar"><div class="quest-progress" id="q1-bar" style="width: 0%;"></div></div>
+            </div>
+            <div class="quest-item">
+                <div class="quest-title"><span>Lava Beast</span><span>1/3</span></div>
+                <div class="quest-bar"><div class="quest-progress" style="width: 33%;"></div></div>
             </div>
         </div>
 
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #00ffcc;"><b>[System]:</b> Lumea 3D s-a încărcat! Folosește W, A, S, D pentru mișcare.</div>
+                <div style="color: #ff9900;"><b>[System]:</b> Lumea 3D Dark Fantasy este activă! Folosește <b>W, A, S, D</b> și <b>SPACE</b> pentru atac!</div>
             </div>
-            <input type="text" id="chat-input" placeholder="Scrie în chat..." autocomplete="off">
+            <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
 
         <!-- Bară Abilități -->
         <div id="action-bar">
-            <div class="skill-slot" title="Sword Attack">⚔️<span class="skill-key">1</span></div>
-            <div class="skill-slot" title="Fireball">🔥<span class="skill-key">2</span></div>
-            <div class="skill-slot" title="Heal">🧪<span class="skill-key">3</span></div>
-            <div class="skill-slot" title="Ultimate">⚡<span class="skill-key">4</span></div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Twisting Slash">⚔️<span class="skill-key">1</span></div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Hellfire">🔥<span class="skill-key">2</span></div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Lightning">⚡<span class="skill-key">3</span></div>
+            <div class="skill-slot" title="Potion">🧪<span class="skill-key">4</span></div>
         </div>
     </div>
 
@@ -75,77 +96,316 @@
     <script>
         const socket = io();
 
-        // Scenă 3D
+        // Scenă 3D Dark Fantasy
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0f18);
+        scene.background = new THREE.Color(0x0d0908);
+        scene.fog = new THREE.FogExp2(0x0d0908, 0.015);
 
-        // Cameră 3D plasată sus-față (vedere izometrică 3D garantat vizibilă)
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 25, 20);
-        camera.lookAt(0, 0, 0);
+        // Cameră 3D Cinematică (unghi RPG izometric/third-person)
+        const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 14, 16);
+        camera.lookAt(0, 1, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Lumini strălucitoare
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        // Iluminare Dark Fantasy (lumină caldă de torțe + lumină ambientală)
+        const ambientLight = new THREE.AmbientLight(0xffd2a6, 0.65);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        dirLight.position.set(10, 30, 10);
+        const dirLight = new THREE.DirectionalLight(0xffaa55, 1.1);
+        dirLight.position.set(15, 30, 15);
+        dirLight.castShadow = true;
         scene.add(dirLight);
 
-        // Sol 3D
-        const floorGeo = new THREE.PlaneGeometry(80, 80);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e3f20, roughness: 0.8 });
+        // Solul 3D (Arenă de piatră vulcanică cu grilă)
+        const floorGeo = new THREE.PlaneGeometry(120, 120);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x221b18, roughness: 0.85, metalness: 0.1 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
         scene.add(floor);
+
+        const gridHelper = new THREE.GridHelper(120, 30, 0x6e4f2c, 0x2c221e);
+        gridHelper.position.y = 0.02;
+        scene.add(gridHelper);
+
+        // Stâlpi cu flăcări / torțe în jurul arenei
+        function createPillar(px, pz) {
+            const pGeo = new THREE.CylinderGeometry(0.6, 0.8, 4.5, 8);
+            const pMat = new THREE.MeshStandardMaterial({ color: 0x3b302a, roughness: 0.9 });
+            const pillar = new THREE.Mesh(pGeo, pMat);
+            pillar.position.set(px, 2.25, pz);
+            pillar.castShadow = true;
+            scene.add(pillar);
+
+            // Flacără deasupra stâlpului
+            const fireGeo = new THREE.ConeGeometry(0.5, 1.2, 8);
+            const fireMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+            const fire = new THREE.Mesh(fireGeo, fireMat);
+            fire.position.set(px, 5.0, pz);
+            scene.add(fire);
+
+            const pLight = new THREE.PointLight(0xff6600, 1.2, 18);
+            pLight.position.set(px, 5.5, pz);
+            scene.add(pLight);
+        }
+
+        createPillar(-12, -12);
+        createPillar(12, -12);
+        createPillar(-12, 12);
+        createPillar(12, 12);
 
         let players = {};
         let monstersMeshes = {};
+        let attackRings = [];
+        let kills = 0;
+
         let myId = null;
-        let myPos = { x: 0, z: 0, speed: 0.35 };
+        let myPos = { x: 0, z: 0, speed: 0.25, rotY: 0 };
 
-        // Creare Cavaler 3D
-        function createKnightMesh(isMe) {
-            const group = new THREE.Group();
+        // MODEL 3D DETALIAT: DARK KNIGHT (Cavaler cu armură, cască, aripi și sabie de foc)
+        function createDetailedKnight3D(isMe) {
+            const knight = new THREE.Group();
 
-            const bodyGeo = new THREE.BoxGeometry(1.2, 2, 0.8);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: isMe ? 0xe74c3c : 0x3498db });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            body.position.y = 1;
-            group.add(body);
+            // Aură magică sub picioare
+            const ringGeo = new THREE.RingGeometry(1.1, 1.35, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: isMe ? 0xff8c00 : 0x00bfff, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.05;
+            knight.add(ring);
 
-            const headGeo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-            const headMat = new THREE.MeshStandardMaterial({ color: 0xf5cba7 });
-            const head = new THREE.Mesh(headGeo, headMat);
-            head.position.y = 2.4;
-            group.add(head);
+            const armorMat = new THREE.MeshStandardMaterial({ color: isMe ? 0x2b2b2b : 0x1e3f66, metalness: 0.7, roughness: 0.25 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 });
 
-            return group;
+            // Picioare (Cilindri)
+            const legGeo = new THREE.CylinderGeometry(0.22, 0.2, 1.1, 12);
+            const leftLeg = new THREE.Mesh(legGeo, armorMat);
+            leftLeg.position.set(-0.3, 0.55, 0);
+            knight.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeo, armorMat);
+            rightLeg.position.set(0.3, 0.55, 0);
+            knight.add(rightLeg);
+
+            // Trunchi / Platoșă armură
+            const torsoGeo = new THREE.CylinderGeometry(0.55, 0.42, 1.3, 12);
+            const torso = new THREE.Mesh(torsoGeo, armorMat);
+            torso.position.y = 1.65;
+            torso.castShadow = true;
+            knight.add(torso);
+
+            // Centură aurie
+            const beltGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.2, 12);
+            const belt = new THREE.Mesh(beltGeo, goldMat);
+            belt.position.y = 1.1;
+            knight.add(belt);
+
+            // Umeri masivi (Sfere cu margini aurii)
+            const shoulderGeo = new THREE.SphereGeometry(0.36, 12, 12);
+            const leftShoulder = new THREE.Mesh(shoulderGeo, goldMat);
+            leftShoulder.position.set(-0.72, 2.15, 0);
+            knight.add(leftShoulder);
+
+            const rightShoulder = new THREE.Mesh(shoulderGeo, goldMat);
+            rightShoulder.position.set(0.72, 2.15, 0);
+            knight.add(rightShoulder);
+
+            // Brațe
+            const armGeo = new THREE.CylinderGeometry(0.16, 0.14, 0.95, 10);
+            const leftArm = new THREE.Mesh(armGeo, armorMat);
+            leftArm.position.set(-0.75, 1.6, 0.15);
+            leftArm.rotation.x = -0.3;
+            knight.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeo, armorMat);
+            rightArm.position.set(0.75, 1.6, 0.25);
+            rightArm.rotation.x = -0.6;
+            knight.add(rightArm);
+
+            // Cap & Cască Dark Knight
+            const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
+            const head = new THREE.Mesh(headGeo, armorMat);
+            head.position.y = 2.65;
+            knight.add(head);
+
+            // Vizor luminos (Ochi roșii/albaștri)
+            const visorGeo = new THREE.BoxGeometry(0.45, 0.1, 0.2);
+            const visorMat = new THREE.MeshBasicMaterial({ color: isMe ? 0xff3300 : 0x00ffff });
+            const visor = new THREE.Mesh(visorGeo, visorMat);
+            visor.position.set(0, 2.68, 0.32);
+            knight.add(visor);
+
+            // Coarne aurii pe cască
+            const hornGeo = new THREE.ConeGeometry(0.08, 0.55, 8);
+            const hLeft = new THREE.Mesh(hornGeo, goldMat);
+            hLeft.position.set(-0.35, 3.05, 0);
+            hLeft.rotation.z = 0.45;
+            knight.add(hLeft);
+
+            const hRight = new THREE.Mesh(hornGeo, goldMat);
+            hRight.position.set(0.35, 3.05, 0);
+            hRight.rotation.z = -0.45;
+            knight.add(hRight);
+
+            // ARIPI 3D (Wings of Dragon / Angel) pe spate
+            const wingMat = new THREE.MeshStandardMaterial({ 
+                color: isMe ? 0xd92b04 : 0x1e90ff, 
+                emissive: isMe ? 0x661100 : 0x003366,
+                side: THREE.DoubleSide 
+            });
+            const wingGeo = new THREE.ConeGeometry(0.85, 2.2, 4);
+            
+            const wingL = new THREE.Mesh(wingGeo, wingMat);
+            wingL.position.set(-0.85, 2.2, -0.55);
+            wingL.rotation.set(-0.3, 0.2, 0.75);
+            knight.add(wingL);
+
+            const wingR = new THREE.Mesh(wingGeo, wingMat);
+            wingR.position.set(0.85, 2.2, -0.55);
+            wingR.rotation.set(-0.3, -0.2, -0.75);
+            knight.add(wingR);
+
+            // Scut medieval în mâna stângă
+            const shieldGeo = new THREE.CylinderGeometry(0.65, 0.55, 0.12, 16);
+            const shieldMat = new THREE.MeshStandardMaterial({ color: 0x8b0000, metalness: 0.6 });
+            const shield = new THREE.Mesh(shieldGeo, shieldMat);
+            shield.rotation.x = Math.PI / 2;
+            shield.rotation.z = 0.3;
+            shield.position.set(-0.9, 1.5, 0.55);
+            knight.add(shield);
+
+            // Sabie mare Dragon Sword cu lamă incandescentă în mâna dreaptă
+            const swordGroup = new THREE.Group();
+            const bladeGeo = new THREE.ConeGeometry(0.14, 2.3, 4);
+            const bladeMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xff3300, emissiveIntensity: 0.8 });
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.position.y = 1.25;
+            swordGroup.add(blade);
+
+            const guardGeo = new THREE.BoxGeometry(0.6, 0.12, 0.16);
+            const guard = new THREE.Mesh(guardGeo, goldMat);
+            guard.position.y = 0.15;
+            swordGroup.add(guard);
+
+            swordGroup.position.set(0.8, 1.4, 0.65);
+            swordGroup.rotation.x = Math.PI / 3;
+            knight.add(swordGroup);
+            knight.userData.sword = swordGroup;
+
+            return knight;
         }
 
-        // Creare Monstru 3D
-        function createMonsterMesh() {
-            const group = new THREE.Group();
-            const mGeo = new THREE.BoxGeometry(1.4, 1.4, 1.4);
-            const mMat = new THREE.MeshStandardMaterial({ color: 0xc0392b });
-            const mesh = new THREE.Mesh(mGeo, mMat);
-            mesh.position.y = 0.7;
-            group.add(mesh);
-            return group;
+        // MODEL 3D DETALIAT: MONSTRU DEMON / LAVA BEAST
+        function createDetailedMonster3D() {
+            const demon = new THREE.Group();
+
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0x990000, roughness: 0.5 });
+            const lavaMat = new THREE.MeshStandardMaterial({ color: 0xff4500, emissive: 0xaa2200, emissiveIntensity: 0.6 });
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0xf5e6cc, roughness: 0.3 });
+
+            // Picioare groase
+            const legGeo = new THREE.CylinderGeometry(0.32, 0.38, 1.1, 10);
+            const lLeg = new THREE.Mesh(legGeo, skinMat);
+            lLeg.position.set(-0.45, 0.55, 0);
+            demon.add(lLeg);
+
+            const rLeg = new THREE.Mesh(legGeo, skinMat);
+            rLeg.position.set(0.45, 0.55, 0);
+            demon.add(rLeg);
+
+            // Corp masiv musculos (Sferă turtită)
+            const bodyGeo = new THREE.SphereGeometry(0.95, 16, 16);
+            bodyGeo.scale(1.1, 1.2, 0.9);
+            const body = new THREE.Mesh(bodyGeo, lavaMat);
+            body.position.y = 1.75;
+            body.castShadow = true;
+            demon.add(body);
+
+            // Brațe masive
+            const armGeo = new THREE.CylinderGeometry(0.28, 0.22, 1.3, 10);
+            const lArm = new THREE.Mesh(armGeo, skinMat);
+            lArm.position.set(-1.1, 1.65, 0.25);
+            lArm.rotation.set(-0.4, 0, 0.3);
+            demon.add(lArm);
+
+            const rArm = new THREE.Mesh(armGeo, skinMat);
+            rArm.position.set(1.1, 1.65, 0.25);
+            rArm.rotation.set(-0.4, 0, -0.3);
+            demon.add(rArm);
+
+            // Cap demonic
+            const headGeo = new THREE.SphereGeometry(0.55, 14, 14);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.set(0, 2.75, 0.2);
+            demon.add(head);
+
+            // Ochi galbeni strălucitori
+            const eyeGeo = new THREE.SphereGeometry(0.1, 8, 8);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(-0.2, 2.82, 0.68);
+            demon.add(eyeL);
+
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeR.position.set(0.2, 2.82, 0.68);
+            demon.add(eyeR);
+
+            // Coarne mari curbate de taur
+            const hornGeo = new THREE.ConeGeometry(0.16, 1.1, 8);
+            const hornL = new THREE.Mesh(hornGeo, hornMat);
+            hornL.position.set(-0.55, 3.2, 0.15);
+            hornL.rotation.set(0.3, 0, 0.65);
+            demon.add(hornL);
+
+            const hornR = new THREE.Mesh(hornGeo, hornMat);
+            hornR.position.set(0.55, 3.2, 0.15);
+            hornR.rotation.set(0.3, 0, -0.65);
+            demon.add(hornR);
+
+            return demon;
+        }
+
+        // Atac 3D cu undă de șoc de foc
+        function triggerAttack3D() {
+            if (!myId || !players[myId] || !players[myId].mesh) return;
+
+            const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(myPos.x, 0.2, myPos.z);
+            scene.add(ring);
+            attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
+
+            // Animație lovitură sabie
+            const sword = players[myId].mesh.userData.sword;
+            if (sword) {
+                sword.rotation.x = Math.PI / 1.4;
+                setTimeout(() => { sword.rotation.x = Math.PI / 3; }, 200);
+            }
+
+            // Verifică monștri în rază
+            for (const id in monstersMeshes) {
+                const mMesh = monstersMeshes[id];
+                const dist = Math.hypot(myPos.x - mMesh.position.x, myPos.z - mMesh.position.z);
+                if (dist < 5.5) {
+                    kills = Math.min(5, kills + 1);
+                    document.getElementById('q1-count').innerText = `${kills}/5`;
+                    document.getElementById('q1-bar').style.width = `${(kills/5)*100}%`;
+                }
+            }
         }
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             myId = socket.id;
-            
-            // Creează mesh-uri pentru toți jucătorii existenți
             for (const id in players) {
                 if (!players[id].mesh) {
-                    const mesh = createKnightMesh(id === myId);
+                    const mesh = createDetailedKnight3D(id === myId);
                     scene.add(mesh);
                     players[id].mesh = mesh;
                 }
@@ -156,10 +416,10 @@
             for (const id in serverMonsters) {
                 const m = serverMonsters[id];
                 if (!monstersMeshes[id]) {
-                    const mM = createMonsterMesh();
-                    mM.position.set((m.x - 300) / 20, 0.5, (m.y - 200) / 20);
-                    scene.add(mM);
-                    monstersMeshes[id] = mM;
+                    const demon = createDetailedMonster3D();
+                    demon.position.set((m.x - 300) / 20, 0, (m.y - 200) / 20);
+                    scene.add(demon);
+                    monstersMeshes[id] = demon;
                 }
             }
         });
@@ -168,27 +428,37 @@
             for (const id in serverMonsters) {
                 const m = serverMonsters[id];
                 if (monstersMeshes[id]) {
-                    monstersMeshes[id].position.x = (m.x - 300) / 20;
-                    monstersMeshes[id].position.z = (m.y - 200) / 20;
+                    const targetX = (m.x - 300) / 20;
+                    const targetZ = (m.y - 200) / 20;
+                    const dx = targetX - monstersMeshes[id].position.x;
+                    const dz = targetZ - monstersMeshes[id].position.z;
+                    if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+                        monstersMeshes[id].rotation.y = Math.atan2(dx, dz);
+                    }
+                    monstersMeshes[id].position.x = targetX;
+                    monstersMeshes[id].position.z = targetZ;
                 }
             }
         });
 
         socket.on('newPlayer', (data) => {
             players[data.id] = data.player;
-            const mesh = createKnightMesh(false);
+            const mesh = createDetailedKnight3D(false);
             scene.add(mesh);
             players[data.id].mesh = mesh;
         });
 
         socket.on('playerMoved', (data) => {
-            if (players[data.id]) {
-                players[data.id].x = data.x;
-                players[data.id].y = data.y;
-                if (players[data.id].mesh) {
-                    players[data.id].mesh.position.x = data.x / 20;
-                    players[data.id].mesh.position.z = data.y / 20;
+            if (players[data.id] && players[data.id].mesh) {
+                const targetX = data.x / 20;
+                const targetZ = data.y / 20;
+                const dx = targetX - players[data.id].mesh.position.x;
+                const dz = targetZ - players[data.id].mesh.position.z;
+                if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+                    players[data.id].mesh.rotation.y = Math.atan2(dx, dz);
                 }
+                players[data.id].mesh.position.x = targetX;
+                players[data.id].mesh.position.z = targetZ;
             }
         });
 
@@ -217,27 +487,54 @@
         window.addEventListener('keydown', (e) => {
             if (document.activeElement === chatInput) return;
             keys[e.key] = true;
+            if (e.key === ' ' || e.key === '1' || e.key === '2' || e.key === '3') triggerAttack3D();
         });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
         function update() {
-            let moved = false;
-            if (keys['w'] || keys['W'] || keys['ArrowUp']) { myPos.z -= myPos.speed; moved = true; }
-            if (keys['s'] || keys['S'] || keys['ArrowDown']) { myPos.z += myPos.speed; moved = true; }
-            if (keys['a'] || keys['A'] || keys['ArrowLeft']) { myPos.x -= myPos.speed; moved = true; }
-            if (keys['d'] || keys['D'] || keys['ArrowRight']) { myPos.x += myPos.speed; moved = true; }
+            let moveX = 0;
+            let moveZ = 0;
+            if (keys['w'] || keys['W'] || keys['ArrowUp']) moveZ -= 1;
+            if (keys['s'] || keys['S'] || keys['ArrowDown']) moveZ += 1;
+            if (keys['a'] || keys['A'] || keys['ArrowLeft']) moveX -= 1;
+            if (keys['d'] || keys['D'] || keys['ArrowRight']) moveX += 1;
+
+            if (moveX !== 0 || moveZ !== 0) {
+                const len = Math.hypot(moveX, moveZ);
+                moveX = (moveX / len) * myPos.speed;
+                moveZ = (moveZ / len) * myPos.speed;
+
+                myPos.x += moveX;
+                myPos.z += moveZ;
+                myPos.rotY = Math.atan2(moveX, moveZ);
+
+                if (socket.connected) {
+                    socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
+                }
+            }
 
             if (myId && players[myId] && players[myId].mesh) {
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
+                players[myId].mesh.rotation.y = myPos.rotY;
 
-                // Urmărire cameră 3D fixă de sus
+                // Cameră 3D dinamică la unghi RPG
                 camera.position.x = myPos.x;
-                camera.position.z = myPos.z + 15;
-                camera.lookAt(myPos.x, 0, myPos.z);
+                camera.position.y = 12;
+                camera.position.z = myPos.z + 14;
+                camera.lookAt(myPos.x, 1.5, myPos.z);
+            }
 
-                if (moved && socket.connected) {
-                    socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
+            // Animație inele de atac
+            for (let i = attackRings.length - 1; i >= 0; i--) {
+                const r = attackRings[i];
+                r.scale += 0.35;
+                r.opacity -= 0.04;
+                r.mesh.scale.set(r.scale, r.scale, 1);
+                r.mesh.material.opacity = r.opacity;
+                if (r.opacity <= 0) {
+                    scene.remove(r.mesh);
+                    attackRings.splice(i, 1);
                 }
             }
         }
