@@ -2,16 +2,16 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>MMORPG Browser - Monștri & Iteme</title>
+    <title>MMORPG 2D - Monștri & Iteme</title>
     <style>
         body { margin: 0; background: #111; color: white; text-align: center; font-family: sans-serif; }
-        canvas { background: #222; display: block; margin: 20px auto; border: 2px solid #555; }
-        #scoreBoard { font-size: 18px; color: #33ccff; font-weight: bold; }
+        canvas { background: #1a1a1a; display: block; margin: 20px auto; border: 2px solid #555; }
+        #scoreBoard { font-size: 20px; color: #00ffcc; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Joc MMORPG în Browser</h1>
-    <p>Folosește tastele <b>W, A, S, D</b> sau <b>Săgețile</b> ca să colecționezi cristalele albastre!</p>
+    <h1>MMORPG 2D în Browser</h1>
+    <p>Folosește tastele <b>W, A, S, D</b> sau <b>Săgețile</b>. Ferește-te de monștri și adună diamantele!</p>
     <div id="scoreBoard">Scor: 0</div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
@@ -34,6 +34,10 @@
         });
 
         socket.on('currentMonsters', (serverMonsters) => {
+            monsters = serverMonsters;
+        });
+
+        socket.on('monstersMoved', (serverMonsters) => {
             monsters = serverMonsters;
         });
 
@@ -87,32 +91,28 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Desenează obiectele de colectat (cristale verzi/albastre pătrate)
+            ctx.font = "26px sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            // Desenează obiectele de colectat (Diamante 2D)
             for (const id in collectibles) {
                 const c = collectibles[id];
-                ctx.fillStyle = '#00ffcc';
-                ctx.fillRect(c.x - 8, c.y - 8, 16, 16);
+                ctx.fillText('💎', c.x, c.y);
             }
 
-            // Desenează monștrii (pătrate portocalii)
+            // Desenează monștrii 2D (Inamici extratereștri / monștri)
             for (const id in monsters) {
                 const m = monsters[id];
-                ctx.fillStyle = m.color;
-                ctx.fillRect(m.x - 15, m.y - 15, 30, 30);
-                ctx.strokeStyle = '#ffffff';
-                ctx.strokeRect(m.x - 15, m.y - 15, 30, 30);
+                ctx.fillText('👾', m.x, m.y);
             }
 
-            // Desenează jucătorii (cercuri)
+            // Desenează jucătorii (Eroii 2D)
             for (const id in players) {
                 const p = players[id];
-                ctx.fillStyle = (id === myId) ? '#ff3333' : (p.color || '#33ccff');
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#ffffff';
-                ctx.stroke();
+                // Dacă ești tu, afișăm un cavaler/vrăjitor 🧙, altfel alt emoji de erou 🛡️
+                const icon = (id === myId) ? '🧙‍♂️' : '🛡️';
+                ctx.fillText(icon, p.x, p.y);
             }
         }
 
