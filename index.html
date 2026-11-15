@@ -147,7 +147,7 @@
         
         let cameraAngle = 0;
         let cameraPitch = 0.5;
-        let cameraDistance = 25; 
+        let cameraDistance = 15; // Distanță clară în spatele cavalerului
         let isPointerLocked = false;
 
         const gameContainer = document.getElementById('game-container');
@@ -171,7 +171,7 @@
 
         window.addEventListener('wheel', (e) => {
             cameraDistance += e.deltaY * 0.05;
-            cameraDistance = Math.max(8, Math.min(45, cameraDistance));
+            cameraDistance = Math.max(5, Math.min(30, cameraDistance));
         });
 
         let sharedKnightModel = null;
@@ -201,17 +201,12 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scalare inteligentă
+        // 1. Încărcare Knight.glb cu SCALĂ FIXĂ SIGURĂ (0.03)
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             
-            const box = new THREE.Box3().setFromObject(sharedKnightModel);
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const targetHeight = 2.0; 
-            const scaleFactor = targetHeight / maxDim;
-            
-            sharedKnightModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            // Forțăm o dimensiune optimă pentru modelul 2K/1K
+            sharedKnightModel.scale.set(0.03, 0.03, 0.03);
 
             sharedKnightModel.traverse((node) => {
                 if (node.isMesh) {
@@ -221,7 +216,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes! (Animații: ${gltf.animations.length})</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb redimensionat la scară fixă! (Animații: ${gltf.animations.length})</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -356,7 +351,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.9; // Setat corect pe solul hărții
+                players[data.id].mesh.position.y = 2.9; // Pe solul hărții
             }
         });
 
@@ -449,7 +444,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 2.9, myPos.z); // Poziționat corect pe sol
+            ring.position.set(myPos.x, 2.9, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -525,9 +520,9 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 2.9; // Poziționat corect pe solul hărții
+                players[myId].mesh.position.y = 2.9; // Fixat pe solul hărții
 
-                const targetY = 2.9; 
+                const targetY = 3.5; // Centrul camerei fixat pe corpul cavalerului
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -585,7 +580,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 4.8; // Bule plasate deasupra capului pe hartă
+                tempVector.y += 2.2; // Bule deasupra capului
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
