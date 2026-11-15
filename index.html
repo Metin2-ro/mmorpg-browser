@@ -146,8 +146,8 @@
         };
         
         let cameraAngle = 0;
-        let cameraPitch = 0.4;
-        let cameraDistance = 8; // Distanță optimă apropie camera corect de cavaler
+        let cameraPitch = 0.5;
+        let cameraDistance = 12; // Distanță perfectă pentru urmărire
         let isPointerLocked = false;
 
         const gameContainer = document.getElementById('game-container');
@@ -171,7 +171,7 @@
 
         window.addEventListener('wheel', (e) => {
             cameraDistance += e.deltaY * 0.05;
-            cameraDistance = Math.max(3, Math.min(20, cameraDistance));
+            cameraDistance = Math.max(4, Math.min(25, cameraDistance));
         });
 
         let sharedKnightModel = null;
@@ -201,12 +201,13 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scală mult redusă (0.005) pentru a corecta modelul uriaș
+        // 1. Încărcare Knight.glb cu SCALĂ FIXĂ SIGURĂ DE 0.01 (optimizat pentru centimetri Sketchfab)
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             
-            // Scală micșorată agresiv pentru a aduce modelul la dimensiunea corectă pe hartă
-            sharedKnightModel.scale.set(0.005, 0.005, 0.005);
+            // Forțăm o scară fixă perfectă pentru a aduce modelul la ~2 unități înălțime
+            sharedKnightModel.scale.set(0.01, 0.01, 0.01);
+            sharedKnightModel.updateMatrixWorld(true);
 
             sharedKnightModel.traverse((node) => {
                 if (node.isMesh) {
@@ -216,7 +217,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb redimensionat corect! (Animații: ${gltf.animations.length})</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb 1K încărcat la scară corectă! (Animații: ${gltf.animations.length})</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -351,7 +352,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.9;
+                players[data.id].mesh.position.y = 2.9; // Poziționat corect pe solul hărții
             }
         });
 
@@ -522,7 +523,7 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 2.9;
 
-                const targetY = 3.3; // Centru corectat pentru noul model redimensionat
+                const targetY = 3.5; // Cameră centrată corect pe cavaler
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -580,7 +581,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 3.8; // Bule fixate corect deasupra capului cavalerului
+                tempVector.y += 2.2; // Bule deasupra capului
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
