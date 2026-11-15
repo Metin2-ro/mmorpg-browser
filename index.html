@@ -6,11 +6,11 @@
     <style>
         body { margin: 0; background: #050507; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; user-select: none; }
         
-        #game-container { position: relative; width: 100vw; height: 100vh; }
+        #game-container { position: relative; width: 100vw; height: 100vh; cursor: crosshair; }
         canvas { display: block; width: 100%; height: 100%; }
 
         /* HUD Stil Dark Fantasy MMORPG */
-        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; }
+        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; pointer-events: none; }
         .avatar-box { width: 46px; height: 46px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
         .stats-box { flex: 1; display: flex; flex-direction: column; gap: 5px; }
         .player-name { font-size: 13px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px #000; }
@@ -21,7 +21,7 @@
         .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
 
         /* Panou Niveluri și Quests (Dreapta) */
-        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; }
+        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; }
         #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; }
         .quest-item { margin-bottom: 8px; font-size: 11px; }
         .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
@@ -34,7 +34,7 @@
         /* Chat 3D UI */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; }
         #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
-        #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; }
+        #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; pointer-events: auto; }
 
         /* Bară Abilități 3D */
         #action-bar { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(20, 15, 12, 0.92); padding: 8px 12px; border: 2px solid #8c6239; border-radius: 8px; z-index: 10; }
@@ -79,7 +79,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Se încearcă încărcarea fișierelor 3D...</div>
+                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Click pe ecran pentru a activa controlul 3D al camerei!</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -122,24 +122,26 @@
         
         let myPos = { x: 0, z: 0, walkSpeed: 0.10, runSpeed: 0.24, rotY: 0 };
         
-        // Control cameră corectat
+        // Control cameră prin Pointer Lock (fără ținere apăsată a mouse-ului)
         let cameraAngle = 0;
         let cameraPitch = 0.6;
         let cameraDistance = 25;
-        let isMouseDown = false;
+        let isPointerLocked = false;
 
-        window.addEventListener('mousedown', (e) => {
+        const gameContainer = document.getElementById('game-container');
+
+        gameContainer.addEventListener('click', () => {
             if (document.activeElement === document.getElementById('chat-input')) return;
-            isMouseDown = true;
+            gameContainer.requestPointerLock();
         });
 
-        window.addEventListener('mouseup', () => {
-            isMouseDown = false;
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = (document.pointerLockElement === gameContainer);
         });
 
         window.addEventListener('mousemove', (e) => {
-            if (isMouseDown) {
-                cameraAngle += e.movementX * 0.005; // Coordonată corectată pentru sensul mouse-ului
+            if (isPointerLocked) {
+                cameraAngle += e.movementX * 0.005;
                 cameraPitch += e.movementY * 0.005;
                 cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
             }
@@ -336,6 +338,21 @@
         });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
+        // Click Stânga / Click Dreapta pentru Atac și Apărare
+        window.addEventListener('mousedown', (e) => {
+            if (document.activeElement === chatInput) return;
+            
+            if (e.button === 0) { // Click Stânga -> Atac
+                triggerAttack3D();
+            } else if (e.button === 2) { // Click Dreapta -> Apărare / Gardă
+                e.preventDefault();
+                triggerDefense3D();
+            }
+        });
+
+        // Previne meniul contextual la click dreapta
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
         function triggerAttack3D() {
             if (!myId || !players[myId] || !players[myId].mesh) return;
             const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
@@ -345,6 +362,26 @@
             ring.position.set(myPos.x, 2.9, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
+        }
+
+        function triggerDefense3D() {
+            if (!myId || !players[myId] || !players[myId].mesh) return;
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă! (Apărare activată)</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
+
+            // Cerc albastru de apărare sub picioare
+            const shieldGeo = new THREE.RingGeometry(1.0, 1.4, 32);
+            const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+            const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+            shieldMesh.rotation.x = -Math.PI / 2;
+            shieldMesh.position.set(myPos.x, 2.91, myPos.z);
+            scene.add(shieldMesh);
+            
+            // Îl scoatem după 1 secundă
+            setTimeout(() => {
+                scene.remove(shieldMesh);
+            }, 1000);
         }
 
         function update() {
@@ -359,11 +396,9 @@
                 let moveX = 0;
                 let moveZ = 0;
 
-                // Verificăm tasta Shift pentru sprint/alergare
                 let isRunning = keys['Shift'] || keys['SHIFT'];
                 let currentSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
-                // Calcul corect al direcțiilor bazate pe unghiul camerei (Forward / Right vectors)
                 const forwardX = -Math.sin(cameraAngle);
                 const forwardZ = -Math.cos(cameraAngle);
                 const rightX = Math.cos(cameraAngle);
@@ -395,7 +430,6 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 2.9;
 
-                // Poziționare cameră corectă (Orbit & Zoom)
                 const targetY = 2.9;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
@@ -405,7 +439,6 @@
                 camera.position.y = targetY + camHeight;
                 camera.lookAt(myPos.x, targetY, myPos.z);
 
-                // Calcul nivel hartă în funcție de distanța parcursă pe axa Z
                 let distanceTraveled = Math.abs(myPos.z);
                 let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 8) + 1);
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
