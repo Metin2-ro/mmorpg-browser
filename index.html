@@ -179,6 +179,9 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
+        // Înălțimea exactă a solului hărții (modifică această valoare dacă jucătorul e prea sus sau prea jos)
+        const GROUND_Y = 0.0; // Poți schimba de exemplu la 2.5 sau 5.0 dacă solul hărții e ridicat
+
         function createFallbackMesh() {
             const group = new THREE.Group();
             const geo = new THREE.BoxGeometry(1, 2, 1);
@@ -216,7 +219,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes! (Animații: ${gltf.animations.length})</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -227,8 +230,6 @@
             }
         }, undefined, (error) => {
             console.error("Eroare la încărcarea modelului 3D:", error);
-            const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[Eroare]:</b> Nu s-a putut încărca Knight.glb!</div>`;
         });
 
         function setupPlayerAnimations(id, gltf) {
@@ -273,7 +274,7 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            mapModel.position.y = -box.min.y;
+            mapModel.position.y = -box.min.y; // Poți adăuga un offset aici dacă harta e prea sus/jos, de ex: -box.min.y + 2.5
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -312,7 +313,7 @@
                 const m = serverMonsters[id];
                 if (!monstersMeshes[id]) {
                     const demon = createDetailedMonster3D();
-                    demon.position.set((m.x - 300) / 20, 0, (m.y - 200) / 20);
+                    demon.position.set((m.x - 300) / 20, GROUND_Y, (m.y - 200) / 20);
                     scene.add(demon);
                     monstersMeshes[id] = demon;
                 }
@@ -351,7 +352,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 6.5; // Înălțime corectată deasupra hărții
+                players[data.id].mesh.position.y = GROUND_Y;
             }
         });
 
@@ -444,7 +445,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 6.5, myPos.z);
+            ring.position.set(myPos.x, GROUND_Y + 0.05, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -459,7 +460,7 @@
             const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
             const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
             shieldMesh.rotation.x = -Math.PI / 2;
-            shieldMesh.position.set(myPos.x, 6.51, myPos.z);
+            shieldMesh.position.set(myPos.x, GROUND_Y + 0.06, myPos.z);
             scene.add(shieldMesh);
             
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
@@ -520,9 +521,9 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 6.5; // Înălțime fixată deasupra hărții
+                players[myId].mesh.position.y = GROUND_Y;
 
-                const targetY = 7.0; // Ținta camerei ajustată la nivelul cavalerului
+                const targetY = GROUND_Y + 1.2; // Ținta camerei centrată pe cavaler
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -580,7 +581,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 2.2; // Bule plasate corect deasupra capului
+                tempVector.y += 2.2; // Bule deasupra capului
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
