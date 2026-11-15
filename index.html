@@ -51,7 +51,7 @@
         <div id="player-hud">
             <div class="avatar-box">🔥</div>
             <div class="stats-box">
-                <span class="player-name" id="ui-name">Animated Hero</span>
+                <span class="player-name" id="ui-name">Animated Knight</span>
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
                     <div class="bar-text">HP: 1500 / 1500</div>
@@ -70,16 +70,12 @@
                 <div class="quest-title"><span>Slay Demon Bull</span><span id="q1-count">0/5</span></div>
                 <div class="quest-bar"><div class="quest-progress" id="q1-bar" style="width: 0%;"></div></div>
             </div>
-            <div class="quest-item">
-                <div class="quest-title"><span>Lava Beast</span><span>1/3</span></div>
-                <div class="quest-bar"><div class="quest-progress" style="width: 33%;"></div></div>
-            </div>
         </div>
 
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;"><b>[System]:</b> Modelul knight.glb încărcat cu succes! Folosește <b>W, A, S, D</b>.</div>
+                <div style="color: #ff9900;"><b>[System]:</b> Knight.glb încărcat cu succes! Folosește <b>W, A, S, D</b>.</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -89,7 +85,6 @@
             <div class="skill-slot" onclick="triggerAttack3D()" title="Sword Attack">⚔️<span class="skill-key">1</span></div>
             <div class="skill-slot" onclick="triggerAttack3D()" title="Fireball">🔥<span class="skill-key">2</span></div>
             <div class="skill-slot" onclick="triggerAttack3D()" title="Heal">🧪<span class="skill-key">3</span></div>
-            <div class="skill-slot" title="Ultimate">⚡<span class="skill-key">4</span></div>
         </div>
     </div>
 
@@ -130,13 +125,13 @@
         gridHelper.position.y = 0.02;
         scene.add(gridHelper);
 
-        // Încărcător GLTF cu denumirea curată (knight.glb)
+        // Încărcare GLTF cu litere exacte (Knight.glb)
         const loader = new THREE.GLTFLoader();
         let sharedKnightModel = null;
         let animationMixers = [];
         let clock = new THREE.Clock();
 
-        loader.load('Knight.glb', (gltf) => {
+        loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightModel.scale.set(4.5, 4.5, 4.5);
             
