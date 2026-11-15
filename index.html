@@ -276,7 +276,7 @@
             mapModel.position.z = -center.z;
             
             // COBORÂT HARTA: Am coborât-o exact cu valoarea minima a bounding box-ului + un offset de reglaj fin (- 12)
-            mapModel.position.y = -box.min.y - 0.20;
+            mapModel.position.y = -box.min.y - 0.10;
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
