@@ -147,7 +147,7 @@
         
         let cameraAngle = 0;
         let cameraPitch = 0.5;
-        let cameraDistance = 12; // Distanță perfectă pentru urmărire
+        let cameraDistance = 12; 
         let isPointerLocked = false;
 
         const gameContainer = document.getElementById('game-container');
@@ -201,11 +201,10 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu SCALĂ FIXĂ SIGURĂ DE 0.01 (optimizat pentru centimetri Sketchfab)
+        // 1. Încărcare Knight.glb cu scară fixă sigură de 0.01
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             
-            // Forțăm o scară fixă perfectă pentru a aduce modelul la ~2 unități înălțime
             sharedKnightModel.scale.set(0.01, 0.01, 0.01);
             sharedKnightModel.updateMatrixWorld(true);
 
@@ -217,7 +216,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb 1K încărcat la scară corectă! (Animații: ${gltf.animations.length})</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes! (Animații: ${gltf.animations.length})</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -352,7 +351,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.9; // Poziționat corect pe solul hărții
+                players[data.id].mesh.position.y = 6.5; // Înălțime corectată deasupra hărții
             }
         });
 
@@ -445,7 +444,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 2.9, myPos.z);
+            ring.position.set(myPos.x, 6.5, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -460,7 +459,7 @@
             const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
             const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
             shieldMesh.rotation.x = -Math.PI / 2;
-            shieldMesh.position.set(myPos.x, 2.91, myPos.z);
+            shieldMesh.position.set(myPos.x, 6.51, myPos.z);
             scene.add(shieldMesh);
             
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
@@ -521,9 +520,9 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 2.9;
+                players[myId].mesh.position.y = 6.5; // Înălțime fixată deasupra hărții
 
-                const targetY = 3.5; // Cameră centrată corect pe cavaler
+                const targetY = 7.0; // Ținta camerei ajustată la nivelul cavalerului
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -581,7 +580,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 2.2; // Bule deasupra capului
+                tempVector.y += 2.2; // Bule plasate corect deasupra capului
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
