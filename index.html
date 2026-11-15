@@ -179,7 +179,9 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        const GROUND_Y = 2.9;
+        // VARIABILĂ GLOBALĂ DE CONTROL PENTRU SOL
+        // Dacă cavalerul e sub hartă sau deasupra ei, modifici doar această valoare!
+        let GROUND_Y = 0.0;
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -203,7 +205,7 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scară fixă sigură 0.01
+        // 1. Încărcare Knight.glb cu scară fixă 0.01
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             
@@ -263,7 +265,7 @@
             });
         }
 
-        // 2. Încărcare map.glb
+        // 2. Încărcare map.glb și afișare informații în chat pentru debug
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -273,7 +275,9 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            mapModel.position.y = -box.min.y;
+            
+            // Setăm harta la Y = 0 pentru a fi siguri că e la nivelul de bază
+            mapModel.position.y = 0;
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -285,7 +289,7 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost încărcată corect!</div>`;
+            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Debug Map]:</b> min.y=${box.min.y.toFixed(1)}, max.y=${box.max.y.toFixed(1)}</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
