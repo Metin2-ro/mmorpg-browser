@@ -79,7 +79,7 @@
         <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;"><b>[System]:</b> Mișcare îmbunătățită cu efect de pași naturali! Folosește <b>W, A, S, D</b>.</div>
+                <div style="color: #ff9900;"><b>[System]:</b> Mișcare fixată pe sol cu înclinare naturală! Folosește <b>W, A, S, D</b>.</div>
             </div>
             <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
@@ -147,7 +147,6 @@
                 }
             });
 
-            // Suport pentru animații încorporate în model
             if (gltf.animations && gltf.animations.length > 0) {
                 const mixer = new THREE.AnimationMixer(sharedKnightModel);
                 const action = mixer.clipAction(gltf.animations[0]);
@@ -321,13 +320,10 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-
-                // Efect natural de pași (bobbing vertical fin când se mișcă)
-                if (isMoving) {
-                    players[myId].mesh.position.y = Math.sin(Date.now() * 0.02) * 0.12;
-                } else {
-                    players[myId].mesh.position.y = 0;
-                }
+                
+                // Ține picioarele ferm pe sol și oferă o înclinare fină în față când se deplasează
+                players[myId].mesh.position.y = 0;
+                players[myId].mesh.rotation.x = isMoving ? 0.08 : 0;
 
                 camera.position.x = myPos.x;
                 camera.position.y = 12;
@@ -347,7 +343,6 @@
                 }
             }
 
-            // Actualizare animații 3D
             const delta = clock.getDelta();
             animationMixers.forEach(item => {
                 item.mixer.update(delta);
