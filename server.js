@@ -1,96 +1,58 @@
 const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
+const http = require('http');
 const { Server } = require('socket.io');
-const io = new Server(http);
+const path = require('path');
 
-app.use(express.static(__dirname));
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-const players = {};
-const monsters = {};
-const collectibles = {};
+// Permite serverului să citească toate fișierele din folderul principal (inclusiv Knight.glb)
+app.use(express.static(path.join(__dirname)));
 
-// Generăm monștrii pe hartă
-for (let i = 1; i <= 4; i++) {
-    monsters[i] = {
-        id: i,
-        x: Math.floor(Math.random() * 500) + 100,
-        y: Math.floor(Math.random() * 350) + 100
-    };
-}
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
-// Generăm obiecte / poțiuni de colectat
-for (let i = 1; i <= 5; i++) {
-    collectibles[i] = {
-        id: i,
-        x: Math.floor(Math.random() * 600) + 50,
-        y: Math.floor(Math.random() * 450) + 50,
-        type: i % 2 === 0 ? 'potion' : 'gold'
-    };
-}
+let players = {};
+let monsters = {
+    m1: { id: 'm1', x: 400, y: 300 },
+    m2: { id: 'm2', x: 500, y: 400 }
+};
 
 io.on('connection', (socket) => {
-    console.log(`Un jucător s-a conectat: ${socket.id}`);
+    console.log('Jucător conectat:', socket.id);
 
     players[socket.id] = {
-        x: 350,
-        y: 250,
-        name: `Player ${Math.floor(Math.random() * 90) + 10}`,
-        potions: 1,
-        sword: 'Iron Sword',
-        gold: 5
+        x: 0,
+        y: 0,
+        playerId: socket.id
     };
 
     socket.emit('currentPlayers', players);
     socket.emit('currentMonsters', monsters);
-    socket.emit('currentCollectibles', collectibles);
-
     socket.broadcast.emit('newPlayer', { id: socket.id, player: players[socket.id] });
 
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
             players[socket.id].y = movementData.y;
-
-            // Verificăm colectarea de iteme
-            for (const id in collectibles) {
-                const c = collectibles[id];
-                const dist = Math.hypot(players[socket.id].x - c.x, players[socket.id].y - c.y);
-                if (dist < 30) {
-                    if (c.type === 'potion') players[socket.id].potions += 1;
-                    else players[socket.id].gold += 5;
-
-                    delete collectibles[id];
-                    io.emit('collectibleTaken', { collectibleId: id, playerId: socket.id, player: players[socket.id] });
-
-                    setTimeout(() => {
-                        collectibles[id] = {
-                            id: id,
-                            x: Math.floor(Math.random() * 600) + 50,
-                            y: Math.floor(Math.random() * 450) + 50,
-                            type: Math.random() > 0.5 ? 'potion' : 'gold'
-                        };
-                        io.emit('newCollectible', collectibles[id]);
-                    }, 3000);
-                }
-            }
-
             socket.broadcast.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
         }
     });
 
     socket.on('chatMessage', (msg) => {
-        io.emit('chatMessage', { name: players[socket.id] ? players[socket.id].name : 'Guest', message: msg });
+        io.emit('chatMessage', { name: 'Knight', message: msg });
     });
 
     socket.on('disconnect', () => {
-        console.log(`Jucător deconectat: ${socket.id}`);
+        console.log('Jucător deconectat:', socket.id);
         delete players[socket.id];
         io.emit('disconnect', socket.id);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Serverul MMORPG rulează pe portul ${PORT}`);
+server.listen(PORT, () => {
+    console.log(`Serverul rulează pe portul ${PORT}`);
 });
