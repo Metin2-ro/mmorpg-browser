@@ -120,12 +120,13 @@
         let attackRings = [];
         let myId = null;
         
-        let myPos = { x: 0, z: 0, speed: 0.12, rotY: 0 };
+        // Viteze de deplasare: mers normal și alergare (Sprint)
+        let myPos = { x: 0, z: 0, walkSpeed: 0.10, runSpeed: 0.24, rotY: 0 };
         
         // Control cameră complet (Mouse look stânga-dreapta + sus-jos și zoom rotiță)
         let cameraAngle = 0;
-        let cameraPitch = 0.6;       // Unghiul vertical al camerei (sus/jos)
-        let cameraDistance = 25;     // Distanța camerei față de caracter (zoom)
+        let cameraPitch = 0.6;
+        let cameraDistance = 25;
         let isMouseDown = false;
 
         window.addEventListener('mousedown', (e) => {
@@ -139,17 +140,15 @@
 
         window.addEventListener('mousemove', (e) => {
             if (isMouseDown) {
-                cameraAngle -= e.movementX * 0.005; // Rotește stânga-dreapta
-                cameraPitch += e.movementY * 0.005; // Rotește sus-jos
-                
-                // Limităm pitch-ul ca să nu se dea camera peste cap complet (între 0.15 și 1.4)
+                cameraAngle -= e.movementX * 0.005;
+                cameraPitch += e.movementY * 0.005;
                 cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
             }
         });
 
         window.addEventListener('wheel', (e) => {
-            cameraDistance += e.deltaY * 0.05; // Zoom cu rotița mouse-ului
-            cameraDistance = Math.max(8, Math.min(45, cameraDistance)); // Limite zoom min/max
+            cameraDistance += e.deltaY * 0.05;
+            cameraDistance = Math.max(8, Math.min(45, cameraDistance));
         });
 
         let sharedKnightModel = null;
@@ -361,7 +360,11 @@
                 let moveX = 0;
                 let moveZ = 0;
 
-                // Mișcare relativă la unghiul camerei (cameră 3D reală)
+                // Verificăm dacă tasta Shift este apăsată pentru a rula mai repede (sprint)
+                let isRunning = keys['Shift'] || keys['SHIFT'];
+                let currentSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
+
+                // Mișcare relativă la unghiul camerei 3D
                 if (moveForward) { moveX -= Math.sin(cameraAngle); moveZ -= Math.cos(cameraAngle); }
                 if (moveBackward) { moveX += Math.sin(cameraAngle); moveZ += Math.cos(cameraAngle); }
                 if (moveLeft) { moveX -= Math.cos(cameraAngle); moveZ += Math.sin(cameraAngle); }
@@ -369,8 +372,8 @@
 
                 const len = Math.hypot(moveX, moveZ);
                 if (len > 0) {
-                    moveX = (moveX / len) * myPos.speed;
-                    moveZ = (moveZ / len) * myPos.speed;
+                    moveX = (moveX / len) * currentSpeed;
+                    moveZ = (moveZ / len) * currentSpeed;
 
                     myPos.x += moveX;
                     myPos.z += moveZ;
@@ -388,7 +391,7 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 2.9;
 
-                // Poziționare cameră folosind coordonate sferice (Suportă acum și sus-jos cu mouse-ul)
+                // Poziționare cameră cu suport complet pentru rotire și zoom
                 const targetY = 2.9;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
@@ -398,7 +401,7 @@
                 camera.position.y = targetY + camHeight;
                 camera.lookAt(myPos.x, targetY, myPos.z);
 
-                // Calcul nivel hartă în funcție de distanța parcursă
+                // Calcul nivel hartă în funcție de distanța parcursă pe axa Z
                 let distanceTraveled = Math.abs(myPos.z);
                 let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 8) + 1);
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
