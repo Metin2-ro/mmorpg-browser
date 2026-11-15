@@ -179,7 +179,6 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // Înălțimea corectă a solului hărții
         const GROUND_Y = 2.9;
 
         function createFallbackMesh() {
@@ -342,7 +341,7 @@
         });
 
         socket.on('playerMoved', (data) => {
-            if (data.id === myId) return; // Ignorăm propriul ID ca să nu blocăm mișcarea locală
+            if (data.id === myId) return;
 
             if (players[data.id] && players[data.id].mesh) {
                 const targetX = data.x / 20;
@@ -428,7 +427,7 @@
         const keys = {};
         window.addEventListener('keydown', (e) => {
             if (document.activeElement === chatInput) return;
-            keys[e.code] = true; // Folosim e.code pentru a evita problemele de layout tastatură / Caps Lock
+            keys[e.code] = true;
             if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
         });
         window.addEventListener('keyup', (e) => {
@@ -471,7 +470,6 @@
         }
 
         function update() {
-            // Verificăm tastele folosind e.code (KeyW, KeyS, KeyA, KeyD, Arrow...)
             let moveForward = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
             let moveBackward = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
             let moveLeft = (keys['KeyA'] || keys['ArrowLeft']) ? 1 : 0;
@@ -546,7 +544,7 @@
 
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
-5                r.scale += 0.35;
+                r.scale += 0.35;
                 r.opacity -= 0.04;
                 r.mesh.scale.set(r.scale, r.scale, 1);
                 r.mesh.material.opacity = r.opacity;
