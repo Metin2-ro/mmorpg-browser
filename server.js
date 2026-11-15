@@ -1,10 +1,8 @@
 const express = require('express');
-const http = http = require('http');
-const { Server } = require('socket.io');
-
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const http = require('http').createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(http);
 
 app.use(express.static(__dirname));
 
@@ -38,6 +36,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+http.listen(PORT, () => {
     console.log(`Serverul MMORPG rulează pe portul ${PORT}`);
 });
