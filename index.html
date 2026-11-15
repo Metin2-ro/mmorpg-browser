@@ -273,7 +273,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = 2.5; // Înălțime mărită la 2.5
+                players[data.id].mesh.position.y = 2.9; // Înălțime fixată la 2.9
             }
         });
 
@@ -312,7 +312,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, 2.5, myPos.z);
+            ring.position.set(myPos.x, 2.9, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -345,7 +345,7 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = 2.5; // Înălțimea fixată la 2.5 pe axa Y
+                players[myId].mesh.position.y = 2.9; // Înălțimea fixată la 2.9 pe axa Y
 
                 camera.position.x = myPos.x;
                 camera.position.y = 18;
