@@ -2,18 +2,55 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <title>MMORPG 2D - Monștri & Iteme</title>
+    <title>Wartune Style Browser MMORPG</title>
     <style>
-        body { margin: 0; background: #111; color: white; text-align: center; font-family: sans-serif; }
-        canvas { background: #1a1a1a; display: block; margin: 20px auto; border: 2px solid #555; }
-        #scoreBoard { font-size: 20px; color: #00ffcc; font-weight: bold; }
+        body { margin: 0; background: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        h1 { margin: 5px 0; font-size: 22px; color: #f1c40f; text-shadow: 1px 1px 2px #000; }
+        
+        #game-container { display: flex; gap: 10px; background: #16202b; padding: 10px; border: 3px solid #34495e; border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.6); }
+        
+        canvas { background: #27ae60; display: block; border: 2px solid #2c3e50; box-shadow: inset 0 0 20px rgba(0,0,0,0.4); }
+
+        .sidebar { width: 240px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .panel { background: #1e2b38; border: 2px solid #4a6fa5; border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        .panel h3 { margin: 0 0 8px 0; font-size: 14px; color: #f39c12; border-bottom: 1px solid #4a6fa5; padding-bottom: 4px; text-transform: uppercase; }
+        
+        #inventory-box { height: 160px; font-size: 13px; color: #ecf0f1; line-height: 1.6; }
+        
+        #chat-box { height: 210px; display: flex; flex-direction: column; }
+        #chat-messages { flex: 1; font-size: 11px; overflow-y: auto; background: #111822; padding: 5px; border-radius: 4px; margin-bottom: 6px; border: 1px solid #2c3e50; }
+        #chat-input { width: 100%; padding: 5px; background: #2c3e50; border: 1px solid #4a6fa5; color: white; border-radius: 3px; box-sizing: border-box; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h1>MMORPG 2D în Browser</h1>
-    <p>Folosește tastele <b>W, A, S, D</b> sau <b>Săgețile</b>. Ferește-te de monștri și adună diamantele!</p>
-    <div id="scoreBoard">Scor: 0</div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <h1>⚔️ Wartune Browser Edition ⚔️</h1>
+
+    <div id="game-container">
+        <!-- Harta Canvas -->
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+        <!-- Panouri laterale (Inventory & Chat) -->
+        <div class="sidebar">
+            <div class="panel">
+                <h3>📦 Inventory</h3>
+                <div id="inventory-box">
+                    <div id="inv-potions">🧪 1x Health Potion</div>
+                    <div id="inv-sword">⚔️ Iron Sword</div>
+                    <div id="inv-gold">💰 5 Gold Coins</div>
+                </div>
+            </div>
+
+            <div class="panel" id="chat-box">
+                <h3>💬 Chat</h3>
+                <div id="chat-messages">
+                    <div><b>[System]:</b> Bun venit în lumea Wartune!</div>
+                </div>
+                <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
+            </div>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -25,29 +62,18 @@
         let monsters = {};
         let collectibles = {};
         let myId = null;
-        let myPos = { x: 400, y: 300, speed: 4 };
-        let myScore = 0;
+        let myPos = { x: 320, y: 240, speed: 3.5 };
 
         socket.on('currentPlayers', (serverPlayers) => {
             players = serverPlayers;
             myId = socket.id;
+            updateInventory();
         });
 
-        socket.on('currentMonsters', (serverMonsters) => {
-            monsters = serverMonsters;
-        });
+        socket.on('currentMonsters', (serverMonsters) => { monsters = serverMonsters; });
+        socket.on('currentCollectibles', (serverCollectibles) => { collectibles = serverCollectibles; });
 
-        socket.on('monstersMoved', (serverMonsters) => {
-            monsters = serverMonsters;
-        });
-
-        socket.on('currentCollectibles', (serverCollectibles) => {
-            collectibles = serverCollectibles;
-        });
-
-        socket.on('newPlayer', (data) => {
-            players[data.id] = data.player;
-        });
+        socket.on('newPlayer', (data) => { players[data.id] = data.player; });
 
         socket.on('playerMoved', (data) => {
             if (players[data.id]) {
@@ -59,21 +85,43 @@
         socket.on('collectibleTaken', (data) => {
             delete collectibles[data.collectibleId];
             if (data.playerId === socket.id) {
-                myScore = data.score;
-                document.getElementById('scoreBoard').innerText = `Scor: ${myScore}`;
+                players[socket.id] = data.player;
+                updateInventory();
             }
         });
 
-        socket.on('newCollectible', (collectible) => {
-            collectibles[collectible.id] = collectible;
+        socket.on('newCollectible', (item) => { collectibles[item.id] = item; });
+
+        socket.on('chatMessage', (data) => {
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div><b>[${data.name}]:</b> ${data.message}</div>`;
+            chatDiv.scrollTop = chatDiv.scrollHeight;
         });
 
-        socket.on('disconnect', (id) => {
-            delete players[id];
+        socket.on('disconnect', (id) => { delete players[id]; });
+
+        function updateInventory() {
+            if (!myId || !players[myId]) return;
+            const p = players[myId];
+            document.getElementById('inv-potions').innerText = `🧪 ${p.potions}x Health Potion`;
+            document.getElementById('inv-sword').innerText = `⚔️ ${p.sword}`;
+            document.getElementById('inv-gold').innerText = `💰 ${p.gold} Gold Coins`;
+        }
+
+        // Tastatură Chat
+        const chatInput = document.getElementById('chat-input');
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                socket.emit('chatMessage', chatInput.value);
+                chatInput.value = '';
+            }
         });
 
         const keys = {};
-        window.addEventListener('keydown', (e) => keys[e.key] = true);
+        window.addEventListener('keydown', (e) => {
+            if (document.activeElement === chatInput) return; // Blochează mișcarea când scrii în chat
+            keys[e.key] = true;
+        });
         window.addEventListener('keyup', (e) => keys[e.key] = false);
 
         function update() {
@@ -85,34 +133,54 @@
 
             if (moved && socket.connected) {
                 socket.emit('playerMovement', { x: myPos.x, y: myPos.y });
+                if (players[myId]) {
+                    players[myId].x = myPos.x;
+                    players[myId].y = myPos.y;
+                }
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(39, 174, 96, 0.4)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
 
-            ctx.font = "26px sans-serif";
+            ctx.font = "24px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
-            // Desenează obiectele de colectat (Diamante 2D)
+            // Desenează obiectele de colectat (Poțiuni / Monede)
             for (const id in collectibles) {
                 const c = collectibles[id];
-                ctx.fillText('💎', c.x, c.y);
+                ctx.fillText(c.type === 'potion' ? '🧪' : '💰', c.x, c.y);
             }
 
-            // Desenează monștrii 2D (Inamici extratereștri / monștri)
+            // Desenează monștrii (Demoni 😈)
             for (const id in monsters) {
                 const m = monsters[id];
-                ctx.fillText('👾', m.x, m.y);
+                ctx.fillText('👺', m.x, m.y);
             }
 
-            // Desenează jucătorii (Eroii 2D)
+            // Desenează jucătorii (Cavaler 🛡️ / Vrăjitor 🧙)
             for (const id in players) {
                 const p = players[id];
-                // Dacă ești tu, afișăm un cavaler/vrăjitor 🧙, altfel alt emoji de erou 🛡️
-                const icon = (id === myId) ? '🧙‍♂️' : '🛡️';
+                const icon = (id === myId) ? '🛡️' : '🧙‍♂️';
                 ctx.fillText(icon, p.x, p.y);
+
+                // Numele jucătorului deasupra
+                ctx.fillStyle = '#fff';
+                ctx.font = "11px sans-serif";
+                ctx.fillText(p.name, p.x, p.y - 18);
             }
         }
 
