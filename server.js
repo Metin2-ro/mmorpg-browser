@@ -10,45 +10,35 @@ const players = {};
 const monsters = {};
 const collectibles = {};
 
-// Generăm 3 monștri 2D pe hartă
-for (let i = 1; i <= 3; i++) {
+// Generăm monștrii pe hartă
+for (let i = 1; i <= 4; i++) {
     monsters[i] = {
         id: i,
-        x: Math.floor(Math.random() * 600) + 100,
-        y: Math.floor(Math.random() * 400) + 100
+        x: Math.floor(Math.random() * 500) + 100,
+        y: Math.floor(Math.random() * 350) + 100
     };
 }
 
-// Generăm cristale de colectat
+// Generăm obiecte / poțiuni de colectat
 for (let i = 1; i <= 5; i++) {
     collectibles[i] = {
         id: i,
-        x: Math.floor(Math.random() * 700) + 50,
-        y: Math.floor(Math.random() * 500) + 50
+        x: Math.floor(Math.random() * 600) + 50,
+        y: Math.floor(Math.random() * 450) + 50,
+        type: i % 2 === 0 ? 'potion' : 'gold'
     };
 }
-
-// Monștrii se mișcă singuri la fiecare secundă
-setInterval(() => {
-    for (const id in monsters) {
-        monsters[id].x += Math.floor(Math.random() * 31) - 15; // mișcare aleatorie X
-        monsters[id].y += Math.floor(Math.random() * 31) - 15; // mișcare aleatorie Y
-        
-        // Păstrăm monștrii în limitele hărții
-        monsters[id].x = Math.max(30, Math.min(770, monsters[id].x));
-        monsters[id].y = Math.max(30, Math.min(570, monsters[id].y));
-    }
-    io.emit('monstersMoved', monsters);
-}, 1000);
 
 io.on('connection', (socket) => {
     console.log(`Un jucător s-a conectat: ${socket.id}`);
 
     players[socket.id] = {
-        x: Math.floor(Math.random() * 600) + 100,
-        y: Math.floor(Math.random() * 400) + 100,
-        color: '#' + Math.floor(Math.random()*16777215).toString(16),
-        score: 0
+        x: 350,
+        y: 250,
+        name: `Player ${Math.floor(Math.random() * 90) + 10}`,
+        potions: 1,
+        sword: 'Iron Sword',
+        gold: 5
     };
 
     socket.emit('currentPlayers', players);
@@ -61,29 +51,36 @@ io.on('connection', (socket) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
             players[socket.id].y = movementData.y;
-            
-            // Verificăm colectarea cristalelor
+
+            // Verificăm colectarea de iteme
             for (const id in collectibles) {
                 const c = collectibles[id];
                 const dist = Math.hypot(players[socket.id].x - c.x, players[socket.id].y - c.y);
-                if (dist < 25) {
-                    players[socket.id].score += 1;
+                if (dist < 30) {
+                    if (c.type === 'potion') players[socket.id].potions += 1;
+                    else players[socket.id].gold += 5;
+
                     delete collectibles[id];
-                    io.emit('collectibleTaken', { collectibleId: id, score: players[socket.id].score, playerId: socket.id });
-                    
+                    io.emit('collectibleTaken', { collectibleId: id, playerId: socket.id, player: players[socket.id] });
+
                     setTimeout(() => {
                         collectibles[id] = {
                             id: id,
-                            x: Math.floor(Math.random() * 700) + 50,
-                            y: Math.floor(Math.random() * 500) + 50
+                            x: Math.floor(Math.random() * 600) + 50,
+                            y: Math.floor(Math.random() * 450) + 50,
+                            type: Math.random() > 0.5 ? 'potion' : 'gold'
                         };
                         io.emit('newCollectible', collectibles[id]);
-                    }, 2000);
+                    }, 3000);
                 }
             }
 
             socket.broadcast.emit('playerMoved', { id: socket.id, x: players[socket.id].x, y: players[socket.id].y });
         }
+    });
+
+    socket.on('chatMessage', (msg) => {
+        io.emit('chatMessage', { name: players[socket.id] ? players[socket.id].name : 'Guest', message: msg });
     });
 
     socket.on('disconnect', () => {
