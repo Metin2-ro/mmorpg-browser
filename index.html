@@ -179,9 +179,8 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // VARIABILĂ GLOBALĂ DE CONTROL PENTRU SOL
-        // Dacă cavalerul e sub hartă sau deasupra ei, modifici doar această valoare!
-        let GROUND_Y = 0.0;
+        // SOLUL FIX LA NIVELUL 0 PENTRU A FI ALINIAT CU HARTA
+        const GROUND_Y = 0.0;
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -265,7 +264,7 @@
             });
         }
 
-        // 2. Încărcare map.glb și afișare informații în chat pentru debug
+        // 2. Încărcare map.glb fixată la Y = 0 (fără offset greșit)
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -275,9 +274,7 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            
-            // Setăm harta la Y = 0 pentru a fi siguri că e la nivelul de bază
-            mapModel.position.y = 0;
+            mapModel.position.y = 0; // Harta fixată la nivelul solului de bază
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -289,7 +286,7 @@
             scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Debug Map]:</b> min.y=${box.min.y.toFixed(1)}, max.y=${box.max.y.toFixed(1)}</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost aliniată la sol!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -432,10 +429,12 @@
         window.addEventListener('keydown', (e) => {
             if (document.activeElement === chatInput) return;
             keys[e.code] = true;
+            keys[e.key.toLowerCase()] = true; // Suport dublu pentru taste (e.code și e.key)
             if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
         });
         window.addEventListener('keyup', (e) => {
             keys[e.code] = false;
+            keys[e.key.toLowerCase()] = false;
         });
 
         window.addEventListener('mousedown', (e) => {
@@ -474,12 +473,12 @@
         }
 
         function update() {
-            let moveForward = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
-            let moveBackward = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
-            let moveLeft = (keys['KeyA'] || keys['ArrowLeft']) ? 1 : 0;
-            let moveRight = (keys['KeyD'] || keys['ArrowRight']) ? 1 : 0;
+            let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
+            let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
+            let moveLeft = (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) ? 1 : 0;
+            let moveRight = (keys['KeyD'] || keys['d'] || keys['ArrowRight']) ? 1 : 0;
 
-            let isRunning = keys['ShiftLeft'] || keys['ShiftRight'];
+            let isRunning = keys['ShiftLeft'] || keys['ShiftRight'] || keys['shift'];
             let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
             let inputX = 0;
