@@ -179,8 +179,27 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // SOLUL FIX ALINIAT DIRECT PE SUPRAFAȚA PLATFORMELOR HĂRȚII
+        // Solul este detectat direct din geometria hartii.
         const GROUND_Y = 0.0;
+        let mapModel3D = null;
+        let mapBounds3D = null;
+        const groundRaycaster = new THREE.Raycaster();
+        groundRaycaster.far = 2000;
+
+        function getGroundHeight(x, z) {
+            if (!mapModel3D || !mapBounds3D) return GROUND_Y;
+
+            // Pornim raza de deasupra hartii si cautam prima suprafata de sub personaj.
+            const origin = new THREE.Vector3(
+                x,
+                mapBounds3D.max.y + 100,
+                z
+            );
+            groundRaycaster.set(origin, new THREE.Vector3(0, -1, 0));
+            const hits = groundRaycaster.intersectObject(mapModel3D, true);
+
+            return hits.length ? hits[0].point.y : GROUND_Y;
+        }
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -234,6 +253,11 @@
 
         function setupPlayerAnimations(id, gltf) {
             const clone = sharedKnightModel.clone();
+            clone.position.set(0, 0, 0);
+            clone.updateMatrixWorld(true);
+            const knightBounds = new THREE.Box3().setFromObject(clone);
+            clone.userData.footOffset = -knightBounds.min.y;
+
             const mixer = new THREE.AnimationMixer(clone);
             
             let walkAction = null;
@@ -269,14 +293,15 @@
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
 
+            // Calculam limitele dupa scalare, apoi asezam baza modelului la Y=0.
+            mapModel.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
-            
-            mapModel.position.x = -center.x;
-            mapModel.position.z = -center.z;
-            
-            // COBORÂT HARTA: Am coborât-o exact cu valoarea minima a bounding box-ului + un offset de reglaj fin (- 12)
-            mapModel.position.y = -box.min.y - 0.10;
+
+            mapModel.position.x -= center.x;
+            mapModel.position.z -= center.z;
+            mapModel.position.y -= box.min.y;
+            mapModel.updateMatrixWorld(true);
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
@@ -286,6 +311,9 @@
             });
 
             scene.add(mapModel);
+            mapModel3D = mapModel;
+            mapModel3D.updateMatrixWorld(true);
+            mapBounds3D = new THREE.Box3().setFromObject(mapModel3D);
 
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost coborâtă peste cavaler!</div>`;
@@ -356,7 +384,8 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = GROUND_Y;
+                const remoteGroundY = getGroundHeight(targetX, targetZ);
+                players[data.id].mesh.position.y = remoteGroundY + (players[data.id].mesh.userData.footOffset || 0);
             }
         });
 
@@ -529,7 +558,8 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = GROUND_Y;
+                const localGroundY = getGroundHeight(myPos.x, myPos.z);
+                players[myId].mesh.position.y = localGroundY + (players[myId].mesh.userData.footOffset || 0);
 
                 const targetY = GROUND_Y + 1.2; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
