@@ -122,9 +122,10 @@
         
         let myPos = { x: 0, z: 0, speed: 0.12, rotY: 0 };
         
-        // Control cameră (Mouse look & Zoom)
+        // Control cameră complet (Mouse look stânga-dreapta + sus-jos și zoom rotiță)
         let cameraAngle = 0;
-        let cameraDistance = 25;
+        let cameraPitch = 0.6;       // Unghiul vertical al camerei (sus/jos)
+        let cameraDistance = 25;     // Distanța camerei față de caracter (zoom)
         let isMouseDown = false;
 
         window.addEventListener('mousedown', (e) => {
@@ -138,13 +139,17 @@
 
         window.addEventListener('mousemove', (e) => {
             if (isMouseDown) {
-                cameraAngle -= e.movementX * 0.005; // Rotește camera când miști mouse-ul stânga/dreapta ținând apăsat
+                cameraAngle -= e.movementX * 0.005; // Rotește stânga-dreapta
+                cameraPitch += e.movementY * 0.005; // Rotește sus-jos
+                
+                // Limităm pitch-ul ca să nu se dea camera peste cap complet (între 0.15 și 1.4)
+                cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
             }
         });
 
         window.addEventListener('wheel', (e) => {
             cameraDistance += e.deltaY * 0.05; // Zoom cu rotița mouse-ului
-            cameraDistance = Math.max(8, Math.min(45, cameraDistance)); // Limite zoom (min/max)
+            cameraDistance = Math.max(8, Math.min(45, cameraDistance)); // Limite zoom min/max
         });
 
         let sharedKnightModel = null;
@@ -383,11 +388,15 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = 2.9;
 
-                // Actualizare cameră pe baza unghiului de rotire al mouse-ului și a distanței (zoom rotiță)
-                camera.position.x = myPos.x + Math.sin(cameraAngle) * cameraDistance;
-                camera.position.z = myPos.z + Math.cos(cameraAngle) * cameraDistance;
-                camera.position.y = 5 + (cameraDistance * 0.5); // Înălțimea se adaptează dinamic în funcție de zoom
-                camera.lookAt(myPos.x, 2.0, myPos.z);
+                // Poziționare cameră folosind coordonate sferice (Suportă acum și sus-jos cu mouse-ul)
+                const targetY = 2.9;
+                const camHeight = cameraDistance * Math.sin(cameraPitch);
+                const camRadius = cameraDistance * Math.cos(cameraPitch);
+
+                camera.position.x = myPos.x + Math.sin(cameraAngle) * camRadius;
+                camera.position.z = myPos.z + Math.cos(cameraAngle) * camRadius;
+                camera.position.y = targetY + camHeight;
+                camera.lookAt(myPos.x, targetY, myPos.z);
 
                 // Calcul nivel hartă în funcție de distanța parcursă
                 let distanceTraveled = Math.abs(myPos.z);
