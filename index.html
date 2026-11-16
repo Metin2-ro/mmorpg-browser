@@ -116,7 +116,7 @@
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0d0908);
-        scene.fog = new THREE.FogExp2(0x0d0908, 0.01);
+        scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
         const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -125,14 +125,17 @@
         renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Lumină mai puternică pentru a vedea clar cavalerul și detaliile hărții
-        const ambientLight = new THREE.AmbientLight(0xffe6cc, 1.3);
+        // Lumină ambientală și direcțională puternică + lumină care urmărește jucătorul
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffbb77, 1.5);
+        const dirLight = new THREE.DirectionalLight(0xffd2a6, 1.5);
         dirLight.position.set(20, 50, 20);
         dirLight.castShadow = true;
         scene.add(dirLight);
+
+        const playerPointLight = new THREE.PointLight(0xffaa44, 1.5, 25);
+        scene.add(playerPointLight);
 
         let players = {};
         let monstersMeshes = {};
@@ -140,15 +143,15 @@
         let myId = null;
         
         let myPos = { 
-            x: 0, y: 12, z: 0, 
+            x: 0, y: 4.3, z: 0, 
             velocityX: 0, velocityZ: 0, 
-            walkSpeed: 0.14, runSpeed: 0.30, 
+            walkSpeed: 0.16, runSpeed: 0.32, 
             rotY: 0 
         };
         
         let cameraAngle = 0;
-        let cameraPitch = 0.5;
-        let cameraDistance = 12; 
+        let cameraPitch = 0.45;
+        let cameraDistance = 10; 
         let isPointerLocked = false;
 
         const gameContainer = document.getElementById('game-container');
@@ -172,7 +175,7 @@
 
         window.addEventListener('wheel', (e) => {
             cameraDistance += e.deltaY * 0.05;
-            cameraDistance = Math.max(4, Math.min(25, cameraDistance));
+            cameraDistance = Math.max(3, Math.min(25, cameraDistance));
         });
 
         let sharedKnightModel = null;
@@ -182,21 +185,20 @@
         let activeBubbles = [];
 
         // ==========================================
-        // RAYCASTER PENTRU DETECTAREA AUTOMATĂ A PODELEI HĂRȚII
+        // RAYCASTER CALIBRAT LA NIVELUL PODELEI (PORNEȘTE DE LA Y = 6.5 CA SĂ EVITE ACOPERIȘURILE)
         // ==========================================
         let mapMeshes = [];
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
-        function getGroundHeight(x, z, fallbackY = 12) {
+        function getGroundHeight(x, z, fallbackY = 4.3) {
             if (mapMeshes.length === 0) return fallbackY;
             
-            // Tragem o rază din cer (Y = 100) direct în jos la coordonatele (x, z)
-            groundRaycaster.set(new THREE.Vector3(x, 100, z), downVector);
+            // Tragem raza de la 6.5 în jos ca să lovim direct podeaua, ignorând acoperișurile/arcadele de sus
+            groundRaycaster.set(new THREE.Vector3(x, 6.5, z), downVector);
             const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
             
             if (intersects.length > 0) {
-                // Returnează înălțimea exactă a primului punct lovit de sus în jos (suprafața pe care mergi)
                 return intersects[0].point.y;
             }
             return fallbackY;
@@ -224,12 +226,12 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb
+        // 1. Încărcare Knight.glb cu scară 0.025 (vizibil clar pe platformă)
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightAnimations = gltf.animations || [];
             
-            sharedKnightModel.scale.set(0.01, 0.01, 0.01);
+            sharedKnightModel.scale.set(0.025, 0.025, 0.025);
             sharedKnightModel.updateMatrixWorld(true);
 
             sharedKnightModel.traverse((node) => {
@@ -240,7 +242,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat și scalat!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -285,7 +287,7 @@
             });
         }
 
-        // 2. Încărcare map.glb și activarea detecției de teren
+        // 2. Încărcare map.glb
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -301,7 +303,6 @@
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
-                    // Asigurăm că ambele fețe ale poligoanelor sunt detectabile
                     if (node.material) {
                         node.material.side = THREE.DoubleSide;
                     }
@@ -312,11 +313,10 @@
             mapModel.updateMatrixWorld(true);
             scene.add(mapModel);
 
-            // Calculăm imediat înălțimea exactă a platformei sub cavaler
-            myPos.y = getGroundHeight(myPos.x, myPos.z, 12);
+            myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Suprafața hărții detectată la înălțimea Y = ${myPos.y.toFixed(1)}!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Podeaua platformei este la Y = ${myPos.y.toFixed(1)}!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -544,7 +544,6 @@
             myPos.x += myPos.velocityX;
             myPos.z += myPos.velocityZ;
 
-            // Actualizăm continuu înălțimea cavalerului ca să urce/coboare scările și relieful hărții!
             const targetGroundY = getGroundHeight(myPos.x, myPos.z, myPos.y);
             myPos.y += (targetGroundY - myPos.y) * 0.4;
 
@@ -569,7 +568,10 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = myPos.y;
 
-                const targetY = myPos.y + 1.2; 
+                // Lumina îl urmărește mereu pe cavaler
+                playerPointLight.position.set(myPos.x, myPos.y + 3, myPos.z);
+
+                const targetY = myPos.y + 1.5; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -627,7 +629,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 2.2; 
+                tempVector.y += 2.5; 
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
