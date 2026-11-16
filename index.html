@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D optimizat</p>
+                <p>Modelul 3D Knight.glb</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -159,13 +159,14 @@
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
         let localPlayerMesh = null;
-        let mixer = null, walkAction = null;
+        let mixer = null, animationsMap = {};
+        let activeAction = null, idleAction = null, walkAction = null;
         let clock = new THREE.Clock();
 
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
         let mapMeshes = [];
-        let playerPositionLight;
+        let playerPointLight;
         
         const keys = {};
         const groundRaycaster = new THREE.Raycaster();
@@ -214,7 +215,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // ÎNCĂRCARE MODEL CU CORECȚIE DE ROTAȚIE PENTRU ANIMAȚIE
+            // Încărcare model Knight.glb cu protecție totală anti-blocare
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -224,14 +225,9 @@
                 const size = box.getSize(new THREE.Vector3());
                 let scaleFactor = 0.0121;
                 if (size.y > 0.1) {
-                    scaleFactor = 1.2 / size.y;
+                    scaleFactor = 2.4 / size.y;
                 }
                 model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                
-                // CORECȚIE ORIENTARE: Dacă modelul e culcat pe o parte sau întors greșit, 
-                // poți ajusta rotația de mai jos (de ex. Math.PI / 2 sau Math.PI)
-                model.rotation.y = 0; // Schimbă în Math.PI / 2 sau -Math.PI / 2 dacă e întors lateral
-
                 model.updateMatrixWorld(true);
 
                 const scaledBox = new THREE.Box3().setFromObject(model);
@@ -252,22 +248,28 @@
                 });
 
                 scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se încarcă caractermiscare.glb...</div>`;
 
-                // Încărcăm animația separată de mers
-                loader.load('./caractermiscare.glb', (animGltf) => {
-                    if (animGltf.animations && animGltf.animations.length > 0) {
-                        mixer = new THREE.AnimationMixer(localPlayerMesh);
-                        walkAction = mixer.clipAction(animGltf.animations[0]);
-                        walkAction.setLoop(THREE.LoopRepeat);
-                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[SUCCES]:</b> Animația de mișcare cuplată!</div>`;
-                    } else {
-                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[Atentie]:</b> caractermiscare.glb nu are animații!</div>`;
+                // Configurare Animații în siguranță
+                try {
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(model);
+                        gltf.animations.forEach((clip) => {
+                            const action = mixer.clipAction(clip);
+                            animationsMap[clip.name.toLowerCase()] = action;
+                        });
+
+                        walkAction = animationsMap['walk'] || animationsMap['run'] || animationsMap['move'] || mixer.clipAction(gltf.animations[0]);
+                        idleAction = animationsMap['idle'] || animationsMap['stand'] || walkAction;
+
+                        if (idleAction) {
+                            idleAction.play();
+                            activeAction = idleAction;
+                        }
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații încărcate (${gltf.animations.length} găsite).</div>`;
                     }
-                }, undefined, (animErr) => {
-                    console.error(animErr);
-                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[EROARE]:</b> Nu s-a găsit caractermiscare.glb!</div>`;
-                });
+                } catch (animErr) {
+                    console.warn("Modelul nu are animații compatibile, rulează static:", animErr);
+                }
 
             }, undefined, (error) => {
                 console.error("Eroare la încărcarea Knight.glb:", error);
@@ -432,6 +434,18 @@
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
+        function fadeToAction(newAction, duration) {
+            if (!newAction || activeAction === newAction) return;
+            newAction.reset();
+            newAction.setEffectiveTimeScale(1);
+            newAction.setEffectiveWeight(1);
+            newAction.play();
+            if (activeAction) {
+                activeAction.crossFadeTo(newAction, duration, true);
+            }
+            activeAction = newAction;
+        }
+
         function update() {
             const delta = clock.getDelta();
             if (mixer) mixer.update(delta);
@@ -473,13 +487,12 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            if (walkAction) {
+            if (walkAction && idleAction) {
                 if (isMoving) {
-                    if (!walkAction.isRunning()) walkAction.play();
-                    let speedRatio = currentSpeed / myPos.walkSpeed;
-                    walkAction.setEffectiveTimeScale(speedRatio);
+                    fadeToAction(walkAction, 0.15);
+                    walkAction.setEffectiveTimeScale(isRunning ? 1.4 : 1.0);
                 } else {
-                    if (walkAction.isRunning()) walkAction.stop();
+                    fadeToAction(idleAction, 0.15);
                 }
             }
 
