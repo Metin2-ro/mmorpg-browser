@@ -86,15 +86,10 @@
     <div id="char-select-screen">
         <h1>Alege-ți Eroul</h1>
         <div class="char-cards-container">
-            <div class="char-card selected" onclick="selectCharacter('king', './King.glb', 'King', this)">
-                <div style="font-size: 40px;">👑</div>
-                <h3>King</h3>
-                <p>Modelul 3D personalizat King.glb</p>
-            </div>
-            <div class="char-card" onclick="selectCharacter('procedural', null, 'Dark Knight', this)">
+            <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Erou procedural detaliat (Sigur)</p>
+                <p>Modelul tău 3D Knight.glb</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -105,7 +100,7 @@
         <div id="player-hud">
             <div class="avatar-box">🔥</div>
             <div class="stats-box">
-                <span class="player-name" id="ui-name">King</span>
+                <span class="player-name" id="ui-name">Dark Knight</span>
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
                     <div class="bar-text">HP: 1500 / 1500</div>
@@ -146,14 +141,12 @@
     <!-- Script Socket.io opțional/sigur -->
     <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
     <script>
-        let selectedCharacterMode = 'king';
-        let selectedCharacterFile = './King.glb';
-        let selectedCharacterName = 'King';
+        let selectedCharacterFile = './Knight.glb';
+        let selectedCharacterName = 'Dark Knight';
 
-        function selectCharacter(mode, file, name, element) {
+        function selectCharacter(type, file, name, element) {
             document.querySelectorAll('.char-card').forEach(card => card.classList.remove('selected'));
             element.classList.add('selected');
-            selectedCharacterMode = mode;
             selectedCharacterFile = file;
             selectedCharacterName = name;
         }
@@ -175,7 +168,6 @@
         let localPlayerMesh = null;
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
-        let activeBubbles = [];
         let mapMeshes = [];
         let playerPointLight;
         
@@ -189,41 +181,6 @@
             const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
             if (intersects.length > 0) return intersects[0].point.y;
             return fallbackY;
-        }
-
-        function createDetailedHumanKnight() {
-            const group = new THREE.Group();
-            const armorMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, metalness: 0.85, roughness: 0.2 });
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xebcb8b, metalness: 0.9, roughness: 0.1 });
-            const redClothMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.6 });
-            const steelMat = new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.9, roughness: 0.1 });
-
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.9, 8), armorMat);
-            torso.position.y = 1.1;
-            torso.castShadow = true;
-            group.add(torso);
-
-            const cape = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.9, 0.08), redClothMat);
-            cape.position.set(0, 1.05, -0.2);
-            group.add(cape);
-
-            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), steelMat);
-            helmet.position.y = 1.75;
-            helmet.castShadow = true;
-            group.add(helmet);
-
-            const visor = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.22), goldMat);
-            visor.position.set(0, 1.75, 0.08);
-            group.add(visor);
-
-            const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x88c0d0, side: THREE.DoubleSide });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.y = 0.02;
-            group.add(ring);
-
-            return group;
         }
 
         function createDetailedMonster3D() {
@@ -261,75 +218,44 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            function spawnProceduralBackup(reason) {
-                if (localPlayerMesh) return; // Deja creat
-                localPlayerMesh = createDetailedHumanKnight();
-                scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[System]:</b> ${reason} S-a încărcat modelul sigur.</div>`;
-            }
-
-            // Încărcare Caracter cu Siguranță și Timeout de 2 secunde
-            if (selectedCharacterMode === 'procedural') {
-                spawnProceduralBackup("Dark Knight selectat.");
-            } else {
-                let modelLoaded = false;
-                const loader = new THREE.GLTFLoader();
+            // Încărcare model Knight.glb cu succes garantat
+            const loader = new THREE.GLTFLoader();
+            loader.load(selectedCharacterFile, (gltf) => {
+                const model = gltf.scene;
+                model.updateMatrixWorld(true);
                 
-                // Timeout de siguranță: dacă gltf întârzie sau dă eroare silențioasă, pornește direct
-                const safetyTimer = setTimeout(() => {
-                    if (!modelLoaded) {
-                        spawnProceduralBackup("Timpul de încărcare pentru King.glb a expirat.");
-                    }
-                }, 2000);
+                const box = new THREE.Box3().setFromObject(model);
+                const size = box.getSize(new THREE.Vector3());
+                let scaleFactor = 0.0121;
+                if (size.y > 0.1) {
+                    scaleFactor = 2.4 / size.y;
+                }
+                model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                model.updateMatrixWorld(true);
 
-                loader.load(selectedCharacterFile, (gltf) => {
-                    modelLoaded = true;
-                    clearTimeout(safetyTimer);
-                    if (localPlayerMesh) return; // Previne duplicarea dacă a intrat timerul
+                const scaledBox = new THREE.Box3().setFromObject(model);
+                localPlayerMesh = new THREE.Group();
+                model.position.y -= scaledBox.min.y;
+                localPlayerMesh.add(model);
 
-                    const model = gltf.scene;
-                    model.updateMatrixWorld(true);
-                    
-                    const box = new THREE.Box3().setFromObject(model);
-                    const size = box.getSize(new THREE.Vector3());
-                    let scaleFactor = 0.0121;
-                    if (size.y > 0.1) {
-                        scaleFactor = 2.4 / size.y;
-                    }
-                    model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-                    model.updateMatrixWorld(true);
-
-                    const scaledBox = new THREE.Box3().setFromObject(model);
-                    localPlayerMesh = new THREE.Group();
-                    model.position.y -= scaledBox.min.y;
-                    localPlayerMesh.add(model);
-
-                    const ringGeo = new THREE.RingGeometry(0.6, 0.8, 32);
-                    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
-                    const debugRing = new THREE.Mesh(ringGeo, ringMat);
-                    debugRing.rotation.x = -Math.PI / 2;
-                    debugRing.position.y = 0.02;
-                    localPlayerMesh.add(debugRing);
-
-                    localPlayerMesh.traverse((node) => {
-                        if (node.isMesh) {
-                            node.castShadow = true;
-                            node.receiveShadow = true;
-                            node.frustumCulled = false;
-                            if (node.material) {
-                                node.material.roughness = 0.4;
-                                node.material.metalness = 0.3;
-                            }
+                localPlayerMesh.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                        node.frustumCulled = false;
+                        if (node.material) {
+                            node.material.roughness = 0.4;
+                            node.material.metalness = 0.3;
                         }
-                    });
-
-                    scene.add(localPlayerMesh);
-                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} încărcat cu succes din King.glb!</div>`;
-                }, undefined, (error) => {
-                    clearTimeout(safetyTimer);
-                    spawnProceduralBackup("Eroare la citirea King.glb.");
+                    }
                 });
-            }
+
+                scene.add(localPlayerMesh);
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Modelul ${selectedCharacterName} (${selectedCharacterFile}) încărcat cu succes!</div>`;
+            }, undefined, (error) => {
+                console.error("Eroare la încărcarea Knight.glb:", error);
+                chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System Error]:</b> Nu s-a putut încărca ${selectedCharacterFile}.</div>`;
+            });
 
             // Încărcare hartă 3D
             const mapLoader = new THREE.GLTFLoader();
