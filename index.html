@@ -222,13 +222,19 @@
         const loader = new THREE.GLTFLoader();
 
         // ==========================================
-        // SCARA CAVALERULUI SETATĂ LA 0.005
+        // SCALARE AUTOMATĂ BAZATĂ PE DIMENSIUNEA MONȘTRILOR (~2.4 UNITĂȚI ÎNĂLȚIME)
         // ==========================================
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightAnimations = gltf.animations || [];
             
-            sharedKnightModel.scale.set(0.005, 0.005, 0.005);
+            // Calculăm automat dimensiunea reală a modelului și îl aducem la înălțimea monstrului (2.4 unități)
+            const box = new THREE.Box3().setFromObject(sharedKnightModel);
+            const size = box.getSize(new THREE.Vector3());
+            const targetHeight = 2.4; // Înălțimea exactă a monștrilor
+            const scaleFactor = targetHeight / size.y;
+            
+            sharedKnightModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
             sharedKnightModel.updateMatrixWorld(true);
 
             sharedKnightModel.traverse((node) => {
@@ -239,7 +245,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb redimensionat la scară 0.005!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb redimensionat automat la înălțimea monștrilor!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
