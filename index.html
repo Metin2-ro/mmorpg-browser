@@ -3,7 +3,9 @@
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MU Dark Fantasy 3D MMORPG</title>
+
     <style>
         body {
             margin: 0;
@@ -471,7 +473,7 @@
 
         let localPlayerMesh = null;
 
-        // Sistem animații
+        // SISTEM ANIMATII
         let mixer = null;
         let animationsMap = {};
 
@@ -484,6 +486,9 @@
 
         let combatActionActive = false;
         let movementIntent = false;
+        let currentAnimationName = '';
+
+        const ANIMATION_FADE_TIME = 0.18;
 
         let clock = new THREE.Clock();
 
@@ -599,7 +604,7 @@
             const chatDiv = document.getElementById('chat-messages');
 
             // =====================================================
-            // ÎNCĂRCARE KNIGHT.GL B
+            // INCARCARE KNIGHT.GL B
             // =====================================================
 
             const loader = new THREE.GLTFLoader();
@@ -652,7 +657,7 @@
                     scene.add(localPlayerMesh);
 
                     // =============================================
-                    // CONFIGURARE ANIMAȚII
+                    // CONFIGURARE ANIMATII
                     // =============================================
 
                     try {
@@ -663,8 +668,6 @@
                             console.log("====== ANIMATII KNIGHT ======");
 
                             gltf.animations.forEach((clip, index) => {
-                                const name = clip.name.toLowerCase().trim();
-
                                 console.log(
                                     index,
                                     clip.name,
@@ -672,12 +675,13 @@
                                     clip.duration
                                 );
 
-                                animationsMap[name] = mixer.clipAction(clip);
+                                animationsMap[clip.name.toLowerCase().trim()] =
+                                    mixer.clipAction(clip);
                             });
 
                             function findAnimation(patterns) {
                                 const foundClip = gltf.animations.find((clip) => {
-                                    const name = clip.name.toLowerCase();
+                                    const name = clip.name.toLowerCase().trim();
 
                                     return patterns.some(pattern => pattern.test(name));
                                 });
@@ -734,17 +738,16 @@
                             console.log("RUN:", !!runAction);
                             console.log("ATTACK:", !!attackAction);
                             console.log("DEFENSE:", !!defenseAction);
-
                             console.log("============================");
 
-                            // Pornim numai IDLE dacă există.
+                            // Pornim IDLE la incarcarea personajului.
                             stopAllCharacterAnimations();
 
                             if (idleAction) {
-                                playCharacterAction(idleAction, true);
-                            } else {
-                                console.warn(
-                                    "Nu există animație IDLE. Personajul va sta static."
+                                playCharacterAction(
+                                    idleAction,
+                                    'idle',
+                                    true
                                 );
                             }
 
@@ -788,7 +791,7 @@
             );
 
             // =====================================================
-            // ÎNCĂRCARE HARTĂ
+            // INCARCARE HARTA
             // =====================================================
 
             const mapLoader = new THREE.GLTFLoader();
@@ -893,6 +896,13 @@
                 keys[e.key.toLowerCase()] = false;
             });
 
+            // Evitam taste blocate daca utilizatorul schimba fereastra.
+            window.addEventListener('blur', () => {
+                Object.keys(keys).forEach(key => {
+                    keys[key] = false;
+                });
+            });
+
             // =====================================================
             // SOCKET.IO
             // =====================================================
@@ -943,14 +953,18 @@
                     });
 
                     socket.on('chatMessage', (data) => {
-                        chatDiv.innerHTML += `
-                            <div>
-                                <b style="color:#ffd700;">
-                                    [${data.name}]:
-                                </b>
-                                ${data.message}
-                            </div>`;
+                        const message = document.createElement('div');
+                        const name = document.createElement('b');
 
+                        name.style.color = '#ffd700';
+                        name.textContent = '[' + data.name + ']: ';
+
+                        message.appendChild(name);
+                        message.appendChild(
+                            document.createTextNode(data.message)
+                        );
+
+                        chatDiv.appendChild(message);
                         chatDiv.scrollTop = chatDiv.scrollHeight;
                     });
                 }
@@ -1013,14 +1027,24 @@
                     e.key === 'Enter' &&
                     chatInput.value.trim() !== ''
                 ) {
+                    const messageText = chatInput.value.trim();
+
                     if (socket && socket.connected) {
-                        socket.emit('chatMessage', chatInput.value);
+                        socket.emit('chatMessage', messageText);
                     } else {
-                        chatDiv.innerHTML += `
-                            <div>
-                                <b style="color:#ffd700;">[Local]:</b>
-                                ${chatInput.value}
-                            </div>`;
+                        const message = document.createElement('div');
+                        const name = document.createElement('b');
+
+                        name.style.color = '#ffd700';
+                        name.textContent = '[Local]: ';
+
+                        message.appendChild(name);
+                        message.appendChild(
+                            document.createTextNode(messageText)
+                        );
+
+                        chatDiv.appendChild(message);
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
                     }
 
                     chatInput.value = '';
@@ -1033,6 +1057,11 @@
 
             window.addEventListener('mousedown', (e) => {
                 if (document.activeElement === chatInput) {
+                    return;
+                }
+
+                // Nu declansam atacul cand apasam pe interfata.
+                if (e.target.closest('#action-bar')) {
                     return;
                 }
 
@@ -1052,7 +1081,7 @@
         }
 
         // =========================================================
-        // SISTEM CENTRAL DE ANIMATII
+        // SISTEM CENTRAL ANIMATII
         // =========================================================
 
         function stopAllCharacterAnimations() {
@@ -1061,24 +1090,26 @@
             }
 
             activeAction = null;
+            currentAnimationName = '';
         }
 
-        function playCharacterAction(action, loop = true) {
+        function playCharacterAction(action, animationName, loop = true) {
             if (!mixer || !action) {
                 return false;
             }
 
-            // Nu repornim animația în fiecare cadru.
+            // Daca actiunea corecta ruleaza deja, nu o repornim.
             if (
                 activeAction === action &&
-                action.isRunning()
+                action.isRunning() &&
+                currentAnimationName === animationName
             ) {
                 return true;
             }
 
-            // O singură acțiune activă la un moment dat.
-            stopAllCharacterAnimations();
+            const previousAction = activeAction;
 
+            // Pregatim noua animatie.
             action.reset();
             action.enabled = true;
             action.setEffectiveWeight(1);
@@ -1092,9 +1123,26 @@
                 action.clampWhenFinished = true;
             }
 
+            // Pornim actiunea noua.
             action.play();
 
+            // Tranzitie intre animatii.
+            if (
+                previousAction &&
+                previousAction !== action &&
+                previousAction.isRunning()
+            ) {
+                previousAction.crossFadeTo(
+                    action,
+                    ANIMATION_FADE_TIME,
+                    false
+                );
+            } else {
+                action.fadeIn(ANIMATION_FADE_TIME);
+            }
+
             activeAction = action;
+            currentAnimationName = animationName;
 
             return true;
         }
@@ -1109,20 +1157,48 @@
                 keys['ShiftRight'] ||
                 keys['shift'];
 
-            if (movementIntent) {
-                if (running && runAction) {
-                    playCharacterAction(runAction, true);
-                } else if (walkAction) {
-                    playCharacterAction(walkAction, true);
-                } else if (idleAction) {
-                    playCharacterAction(idleAction, true);
-                }
-            } else {
+            // PERSONAJUL STA PE LOC.
+            if (!movementIntent) {
                 if (idleAction) {
-                    playCharacterAction(idleAction, true);
-                } else {
-                    stopAllCharacterAnimations();
+                    playCharacterAction(
+                        idleAction,
+                        'idle',
+                        true
+                    );
                 }
+
+                return;
+            }
+
+            // SHIFT + W/A/S/D = RUN.
+            if (running && runAction) {
+                playCharacterAction(
+                    runAction,
+                    'run',
+                    true
+                );
+
+                return;
+            }
+
+            // W/A/S/D = WALK.
+            if (walkAction) {
+                playCharacterAction(
+                    walkAction,
+                    'walk',
+                    true
+                );
+
+                return;
+            }
+
+            // Fallback.
+            if (idleAction) {
+                playCharacterAction(
+                    idleAction,
+                    'idle',
+                    true
+                );
             }
         }
 
@@ -1138,7 +1214,11 @@
             if (attackAction && mixer) {
                 combatActionActive = true;
 
-                playCharacterAction(attackAction, false);
+                playCharacterAction(
+                    attackAction,
+                    'attack',
+                    false
+                );
 
                 const actionToWatch = attackAction;
 
@@ -1162,7 +1242,7 @@
                 );
             }
 
-            // Efect vizual atac
+            // Efect vizual atac.
             const ringGeo = new THREE.RingGeometry(
                 0.5,
                 1.2,
@@ -1207,7 +1287,11 @@
             if (defenseAction && mixer) {
                 combatActionActive = true;
 
-                playCharacterAction(defenseAction, false);
+                playCharacterAction(
+                    defenseAction,
+                    'defense',
+                    false
+                );
 
                 const actionToWatch = defenseAction;
 
@@ -1242,7 +1326,7 @@
 
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            // Efect vizual scut
+            // Efect vizual scut.
             const shieldGeo = new THREE.RingGeometry(
                 1.0,
                 1.4,
@@ -1274,6 +1358,8 @@
             setTimeout(() => {
                 if (scene) {
                     scene.remove(shieldMesh);
+                    shieldGeo.dispose();
+                    shieldMat.dispose();
                 }
             }, 1000);
         }
@@ -1283,11 +1369,7 @@
         // =========================================================
 
         function update() {
-            const delta = clock.getDelta();
-
-            if (mixer) {
-                mixer.update(delta);
-            }
+            const delta = Math.min(clock.getDelta(), 0.05);
 
             let moveForward =
                 (keys['KeyW'] || keys['w'] || keys['ArrowUp'])
@@ -1353,7 +1435,7 @@
                 targetVz = (inputZ / len) * targetSpeed;
             }
 
-            // Mișcare fluidă
+            // Miscare fluida.
             myPos.velocityX +=
                 (targetVx - myPos.velocityX) * 0.5;
 
@@ -1377,19 +1459,22 @@
                 myPos.velocityZ
             );
 
-            // Separăm intenția de mișcare de inerția fizică.
-            movementIntent = len > 0;
+            // Intentia vine din taste, nu din inertie.
+            movementIntent = len > 0.001;
 
-            const isMoving = currentSpeed > 0.005;
-
-            // Alegem numai animația corespunzătoare stării actuale.
+            // Alegem animatia inainte de actualizarea mixerului.
             updateCharacterMovementAnimation();
+
+            // Actualizam animatiile o singura data pe cadru.
+            if (mixer) {
+                mixer.update(delta);
+            }
 
             // =====================================================
             // ORIENTARE PERSONAJ
             // =====================================================
 
-            if (isMoving) {
+            if (currentSpeed > 0.005) {
                 let targetRotY = Math.atan2(
                     myPos.velocityX,
                     myPos.velocityZ
@@ -1416,7 +1501,7 @@
             }
 
             // =====================================================
-            // PERSONAJ ȘI CAMERĂ
+            // PERSONAJ SI CAMERA
             // =====================================================
 
             if (localPlayerMesh) {
@@ -1516,7 +1601,7 @@
         }
 
         // =========================================================
-        // REDIMENSIONARE FEREASTRĂ
+        // REDIMENSIONARE FEREASTRA
         // =========================================================
 
         window.addEventListener('resize', () => {
