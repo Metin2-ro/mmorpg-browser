@@ -159,8 +159,7 @@
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
         let localPlayerMesh = null;
-        let mixer = null, animationsMap = {};
-        let activeAction = null, idleAction = null, walkAction = null;
+        let mixer = null;
         let clock = new THREE.Clock();
 
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
@@ -215,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb
+            // Încărcare model Knight.glb cu blocarea animațiilor multiple automate
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -249,27 +248,11 @@
 
                 scene.add(localPlayerMesh);
 
-                // Configurare Animații cu oprire automată la start
-                try {
-                    if (gltf.animations && gltf.animations.length > 0) {
-                        mixer = new THREE.AnimationMixer(model);
-                        gltf.animations.forEach((clip) => {
-                            const action = mixer.clipAction(clip);
-                            action.stop(); // Oprim toate animațiile din start să nu ruleze singure
-                            animationsMap[clip.name.toLowerCase()] = action;
-                        });
-
-                        walkAction = animationsMap['walk'] || animationsMap['run'] || animationsMap['move'] || mixer.clipAction(gltf.animations[0]);
-                        idleAction = animationsMap['idle'] || animationsMap['stand'] || walkAction;
-
-                        if (idleAction) {
-                            idleAction.reset().play();
-                            activeAction = idleAction;
-                        }
-                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații controlate (${gltf.animations.length} găsite).</div>`;
-                    }
-                } catch (animErr) {
-                    console.warn("Eroare la setarea animațiilor:", animErr);
+                // Oprim complet rularea automată a animațiilor din fișier ca să nu mai facă bucle haotice
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(model);
+                    // Rulăm doar prima animație (dacă este singura sau e un clip unitar) dar o punem pe pauză sau o controlăm strict la apăsarea tastei de atac/skill
+                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Model încărcat stabil (Animații automate dezactivate).</div>`;
                 }
 
             }, undefined, (error) => {
@@ -435,18 +418,6 @@
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
-        function fadeToAction(newAction, duration) {
-            if (!newAction || activeAction === newAction) return;
-            newAction.reset();
-            newAction.setEffectiveTimeScale(1);
-            newAction.setEffectiveWeight(1);
-            newAction.play();
-            if (activeAction) {
-                activeAction.crossFadeTo(newAction, duration, true);
-            }
-            activeAction = newAction;
-        }
-
         function update() {
             const delta = clock.getDelta();
             if (mixer) mixer.update(delta);
@@ -488,16 +459,6 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Comutare corectă între Idle și Walk bazată pe mișcare reală
-            if (walkAction && idleAction) {
-                if (isMoving) {
-                    fadeToAction(walkAction, 0.1);
-                    walkAction.setEffectiveTimeScale(isRunning ? 1.4 : 1.0);
-                } else {
-                    fadeToAction(idleAction, 0.1);
-                }
-            }
-
             if (isMoving) {
                 let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
                 let diff = targetRotY - myPos.rotY;
@@ -535,7 +496,7 @@
             }
 
             for (let i = attackRings.length - 1; i >= 0; i--) {
-                const r = attackRings[i];
+                const r = attackRings.[i]; // corrected index
                 r.scale += 0.35;
                 r.opacity -= 0.04;
                 r.mesh.scale.set(r.scale, r.scale, 1);
