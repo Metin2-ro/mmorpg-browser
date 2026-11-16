@@ -89,7 +89,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Erou armat cu sabie și scut, gata de luptă.</p>
+                <p>Erou armat complet cu sabie, scut și armură.</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -172,9 +172,7 @@
         let mapMeshes = [];
         let playerPointLight;
         
-        // Declararea corectă a obiectului pentru taste
         const keys = {};
-
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
@@ -186,46 +184,75 @@
             return fallbackY;
         }
 
-        function createProceduralKnight() {
+        // CAVALER DETALIAT CU CORP UMAN COMPLET, BRAȚE, PICIOARE, SABIE ȘI SCUT
+        function createDetailedHumanKnight() {
             const group = new THREE.Group();
 
-            const armorMat = new THREE.MeshStandardMaterial({ color: 0x4c566a, metalness: 0.85, roughness: 0.2 });
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, metalness: 0.85, roughness: 0.2 });
             const goldMat = new THREE.MeshStandardMaterial({ color: 0xebcb8b, metalness: 0.9, roughness: 0.1 });
             const redClothMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.6 });
             const steelMat = new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.9, roughness: 0.1 });
+            const bootMat = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.8 });
 
-            // Torso / Armură
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.28, 1.1, 8), armorMat);
-            torso.position.y = 0.95;
+            // 1. Torso / Armură principală
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.9, 8), armorMat);
+            torso.position.y = 1.1;
             torso.castShadow = true;
             group.add(torso);
 
-            // Pelerină roșie spate
-            const cape = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.08), redClothMat);
-            cape.position.set(0, 0.9, -0.22);
+            // 2. Pelerină roșie spate
+            const cape = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.9, 0.08), redClothMat);
+            cape.position.set(0, 1.05, -0.2);
             group.add(cape);
 
-            // Cap / Coif
-            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), steelMat);
-            helmet.position.y = 1.65;
+            // 3. Cap / Coif cu vizor de oțel
+            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), steelMat);
+            helmet.position.y = 1.75;
             helmet.castShadow = true;
             group.add(helmet);
 
-            // Sabie în mână dreaptă
-            const swordHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3), goldMat);
-            swordHilt.position.set(0.5, 0.9, 0.25);
-            group.add(swordHilt);
+            const visor = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.08, 0.22), goldMat);
+            visor.position.set(0, 1.75, 0.08);
+            group.add(visor);
 
-            const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.02), steelMat);
-            swordBlade.position.set(0.5, 1.4, 0.25);
-            group.add(swordBlade);
+            // 4. Brațul stâng + Scut
+            const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 8), armorMat);
+            leftArm.rotation.z = Math.PI / 12;
+            leftArm.position.set(-0.42, 1.15, 0);
+            group.add(leftArm);
 
-            // Scut în mână stângă
-            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.6, 0.08), armorMat);
-            shield.position.set(-0.5, 1.0, 0.1);
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.65, 0.08), armorMat);
+            shield.position.set(-0.52, 1.15, 0.12);
             group.add(shield);
 
-            // Inel luminos la bază
+            const shieldEmblem = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.1), goldMat);
+            shieldEmblem.position.set(-0.52, 1.15, 0.16);
+            group.add(shieldEmblem);
+
+            // 5. Brațul drept + Sabie
+            const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.6, 8), armorMat);
+            rightArm.rotation.z = -Math.PI / 12;
+            rightArm.position.set(0.42, 1.15, 0);
+            group.add(rightArm);
+
+            const swordHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25), goldMat);
+            swordHilt.position.set(0.5, 0.95, 0.25);
+            group.add(swordHilt);
+
+            const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.02), steelMat);
+            swordBlade.position.set(0.5, 1.45, 0.25);
+            group.add(swordBlade);
+
+            // 6. Picioare / Cizme
+            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 8), bootMat);
+            leftLeg.position.set(-0.16, 0.45, 0);
+            group.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 8), bootMat);
+            rightLeg.position.set(0.16, 0.45, 0);
+            group.add(rightLeg);
+
+            // 7. Inel luminos la bază (pentru orientare ușoară)
             const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x88c0d0, side: THREE.DoubleSide });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -269,15 +296,15 @@
             playerPositionLight = new THREE.PointLight(0xffaa44, 3.0, 40);
             scene.add(playerPositionLight);
 
-            // Generăm modelul local imediat și îl adăugăm în scenă
-            sharedPlayerContainer = createProceduralKnight();
+            // Generăm cavalerul detaliat cu corp uman
+            sharedPlayerContainer = createDetailedHumanKnight();
             localPlayerMesh = sharedPlayerContainer.clone();
             scene.add(localPlayerMesh);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat și afișat cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat cu brațe, picioare și armură completă!</div>`;
 
-            // Încărcare hartă
+            // Încărcare hartă 3D
             const loader = new THREE.GLTFLoader();
             loader.load('./map.glb', (gltf) => {
                 const mapModel = gltf.scene;
@@ -314,7 +341,7 @@
                 mapMeshes.push(plane);
             });
 
-            // Ascultători pentru taste
+            // Ascultători taste
             window.addEventListener('keydown', (e) => {
                 if (document.activeElement === document.getElementById('chat-input')) return;
                 keys[e.code] = true;
