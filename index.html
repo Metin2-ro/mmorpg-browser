@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb cu decupare curată a animației de mers
+            // Încărcare model Knight.glb cu sincronizare precisă a animației
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -248,12 +248,10 @@
 
                 scene.add(localPlayerMesh);
 
-                // Configurare și decupare animație de mers
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
                     let clip = gltf.animations[0];
 
-                    // Dacă fișierul are animația combinată (lungă), luăm doar primele cadre pentru mers
                     let walkClip = clip;
                     if (clip.duration > 2.5) {
                         walkClip = THREE.AnimationUtils.subclip(clip, 'walk_only', 0, 45, 30);
@@ -261,7 +259,7 @@
 
                     walkAction = mixer.clipAction(walkClip);
                     walkAction.setLoop(THREE.LoopRepeat);
-                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animație de mers sincronizată cu succes!</div>`;
+                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animație sincronizată cu viteza hărții!</div>`;
                 }
 
             }, undefined, (error) => {
@@ -468,11 +466,13 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Controlul animației de mers: pornește doar când te miști și se oprește când stai pe loc
+            // Sincronizarea dinamică a vitezei pașilor cu viteza de deplasare pe hartă
             if (walkAction) {
                 if (isMoving) {
                     if (!walkAction.isRunning()) walkAction.play();
-                    walkAction.setEffectiveTimeScale(isRunning ? 1.5 : 1.0);
+                    // Ajustăm viteza animației (timeScale) în funcție de cât de repede te miști
+                    let speedFactor = currentSpeed / myPos.walkSpeed;
+                    walkAction.setEffectiveTimeScale(speedFactor);
                 } else {
                     if (walkAction.isRunning()) walkAction.stop();
                 }
