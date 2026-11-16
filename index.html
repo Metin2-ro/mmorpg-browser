@@ -215,7 +215,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb cu protecție totală anti-blocare
+            // Încărcare model Knight.glb
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -249,12 +249,13 @@
 
                 scene.add(localPlayerMesh);
 
-                // Configurare Animații în siguranță
+                // Configurare Animații cu oprire automată la start
                 try {
                     if (gltf.animations && gltf.animations.length > 0) {
                         mixer = new THREE.AnimationMixer(model);
                         gltf.animations.forEach((clip) => {
                             const action = mixer.clipAction(clip);
+                            action.stop(); // Oprim toate animațiile din start să nu ruleze singure
                             animationsMap[clip.name.toLowerCase()] = action;
                         });
 
@@ -262,13 +263,13 @@
                         idleAction = animationsMap['idle'] || animationsMap['stand'] || walkAction;
 
                         if (idleAction) {
-                            idleAction.play();
+                            idleAction.reset().play();
                             activeAction = idleAction;
                         }
-                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații încărcate (${gltf.animations.length} găsite).</div>`;
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații controlate (${gltf.animations.length} găsite).</div>`;
                     }
                 } catch (animErr) {
-                    console.warn("Modelul nu are animații compatibile, rulează static:", animErr);
+                    console.warn("Eroare la setarea animațiilor:", animErr);
                 }
 
             }, undefined, (error) => {
@@ -487,12 +488,13 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
+            // Comutare corectă între Idle și Walk bazată pe mișcare reală
             if (walkAction && idleAction) {
                 if (isMoving) {
-                    fadeToAction(walkAction, 0.15);
+                    fadeToAction(walkAction, 0.1);
                     walkAction.setEffectiveTimeScale(isRunning ? 1.4 : 1.0);
                 } else {
-                    fadeToAction(idleAction, 0.15);
+                    fadeToAction(idleAction, 0.1);
                 }
             }
 
