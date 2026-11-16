@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D optimizat</p>
+                <p>Modelul 3D</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // ÎNCĂRCARE MODEL ȘI EXTRAGERE DOAR A MERSULUI DIN ALLANIMATIONS
+            // ÎNCĂRCARE DIRECTĂ: Folosim clipul integral 'allanimations' fără tăieri, să vedem cum reacționează oasele
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -248,17 +248,13 @@
 
                 scene.add(localPlayerMesh);
 
-                // Extragem doar secțiunea de mers din allanimations
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
-                    let fullClip = gltf.animations.find(c => c.name.toLowerCase().includes('all')) || gltf.animations[0];
+                    let fullClip = gltf.animations[0]; // Preluăm "allanimations" direct
                     
-                    // Decupăm doar primele 1.5 secunde (sau cadrele de mers) din clipul general
-                    let walkClip = THREE.AnimationUtils.subclip(fullClip, 'only_walk', 0, 40, 30);
-                    
-                    walkAction = mixer.clipAction(walkClip);
+                    walkAction = mixer.clipAction(fullClip);
                     walkAction.setLoop(THREE.LoopRepeat);
-                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animația "allanimations" a fost decupată: se folosește doar mersul!</div>`;
+                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animația completă încărcată direct pe model.</div>`;
                 }
 
             }, undefined, (error) => {
@@ -465,7 +461,7 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Controlul animației decupate: rulează doar când te miști și se oprește instant când stai
+            // Rulăm animația integrală când te miști și o oprim când stai
             if (walkAction) {
                 if (isMoving) {
                     if (!walkAction.isRunning()) walkAction.play();
