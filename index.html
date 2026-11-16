@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D Knight.glb</p>
+                <p>Modelul 3D cu animații interne</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -159,7 +159,8 @@
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
         let localPlayerMesh = null;
-        let mixer = null, walkAction = null;
+        let mixer = null, activeAction = null;
+        let animationsMap = {};
         let clock = new THREE.Clock();
 
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
@@ -214,7 +215,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb cu sincronizare precisă a animației
+            // ÎNCĂRCARE DIRECTĂ: Preluăm modelul și animațiile interne din Knight.glb
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -248,18 +249,17 @@
 
                 scene.add(localPlayerMesh);
 
+                // Scanăm și mapăm animațiile interne din fișierul glb
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
-                    let clip = gltf.animations[0];
-
-                    let walkClip = clip;
-                    if (clip.duration > 2.5) {
-                        walkClip = THREE.AnimationUtils.subclip(clip, 'walk_only', 0, 45, 30);
-                    }
-
-                    walkAction = mixer.clipAction(walkClip);
-                    walkAction.setLoop(THREE.LoopRepeat);
-                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animație sincronizată cu viteza hărții!</div>`;
+                    gltf.animations.forEach((clip) => {
+                        const action = mixer.clipAction(clip);
+                        action.stop(); // Oprim animația la start să nu ruleze singură
+                        animationsMap[clip.name.toLowerCase()] = action;
+                        chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Anim]:</b> Găsită: "${clip.name}"</div>`;
+                    });
+                } else {
+                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System]:</b> Knight.glb nu conține animații interne!</div>`;
                 }
 
             }, undefined, (error) => {
@@ -466,15 +466,18 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Sincronizarea dinamică a vitezei pașilor cu viteza de deplasare pe hartă
-            if (walkAction) {
+            // Căutăm animația de mers după cuvinte cheie în nume (walk, move, run) sau o luăm pe prima
+            let walkKey = Object.keys(animationsMap).find(k => k.includes('walk') || k.includes('move') || k.includes('run')) || Object.keys(animationsMap)[0];
+            let currentWalkAction = walkKey ? animationsMap[walkKey] : null;
+
+            if (currentWalkAction) {
                 if (isMoving) {
-                    if (!walkAction.isRunning()) walkAction.play();
-                    // Ajustăm viteza animației (timeScale) în funcție de cât de repede te miști
-                    let speedFactor = currentSpeed / myPos.walkSpeed;
-                    walkAction.setEffectiveTimeScale(speedFactor);
+                    if (!currentWalkAction.isRunning()) currentWalkAction.play();
+                    // Sincronizăm viteza animației cu viteza de mișcare ca să eliminăm alunecarea
+                    let ratio = currentSpeed / myPos.walkSpeed;
+                    currentWalkAction.setEffectiveTimeScale(ratio);
                 } else {
-                    if (walkAction.isRunning()) walkAction.stop();
+                    if (currentWalkAction.isRunning()) currentWalkAction.stop();
                 }
             }
 
