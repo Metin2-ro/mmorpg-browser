@@ -165,7 +165,7 @@
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
         let mapMeshes = [];
-        let playerPointLight;
+        let playerPositionLight;
         
         const keys = {};
         const groundRaycaster = new THREE.Raycaster();
@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb cu blocarea animațiilor multiple automate
+            // Încărcare model Knight.glb fără animații automate haotice
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -248,10 +248,8 @@
 
                 scene.add(localPlayerMesh);
 
-                // Oprim complet rularea automată a animațiilor din fișier ca să nu mai facă bucle haotice
                 if (gltf.animations && gltf.animations.length > 0) {
                     mixer = new THREE.AnimationMixer(model);
-                    // Rulăm doar prima animație (dacă este singura sau e un clip unitar) dar o punem pe pauză sau o controlăm strict la apăsarea tastei de atac/skill
                     chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Model încărcat stabil (Animații automate dezactivate).</div>`;
                 }
 
@@ -496,7 +494,7 @@
             }
 
             for (let i = attackRings.length - 1; i >= 0; i--) {
-                const r = attackRings.[i]; // corrected index
+                const r = attackRings[i];
                 r.scale += 0.35;
                 r.opacity -= 0.04;
                 r.mesh.scale.set(r.scale, r.scale, 1);
