@@ -138,8 +138,8 @@
         </div>
     </div>
 
-    <!-- Încercare sigură de încărcare Socket.io (dacă lipsește serverul, nu blochează jocul) -->
-    <script src="/socket.io/socket.io.js" onerror="console.warn('Serverul Socket.io nu este disponibil. Jocul rulează local.')"></script>
+    <!-- Script Socket.io opțional/sigur -->
+    <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
     <script>
         let selectedCharacterType = 'knight';
         let selectedCharacterName = 'Dark Knight';
@@ -165,10 +165,10 @@
         let socket = null;
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
-        let myId = 'local-player';
+        let localPlayerMesh = null; // Referință directă garantată pentru jucătorul local
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
-        let sharedPlayerContainer = null, clock = new THREE.Clock(), activeBubbles = [];
+        let sharedPlayerContainer = null, activeBubbles = [];
         let mapMeshes = [];
         let playerPointLight;
         const groundRaycaster = new THREE.Raycaster();
@@ -185,10 +185,10 @@
         function createProceduralKnight() {
             const group = new THREE.Group();
 
-            const armorMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, metalness: 0.85, roughness: 0.2 });
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
-            const redClothMat = new THREE.MeshStandardMaterial({ color: 0x900c3f, roughness: 0.6 });
-            const steelMat = new THREE.MeshStandardMaterial({ color: 0xe5e9f0, metalness: 0.9, roughness: 0.1 });
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x4c566a, metalness: 0.85, roughness: 0.2 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xebcb8b, metalness: 0.9, roughness: 0.1 });
+            const redClothMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.6 });
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.9, roughness: 0.1 });
 
             // Torso / Armură
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.28, 1.1, 8), armorMat);
@@ -223,7 +223,7 @@
 
             // Inel luminos la bază
             const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x88c0d0, side: THREE.DoubleSide });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
             ring.position.y = 0.02;
@@ -234,7 +234,7 @@
 
         function createDetailedMonster3D() {
             const demon = new THREE.Group();
-            const skinMat = new THREE.MeshStandardMaterial({ color: 0x990000, roughness: 0.5 });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.5 });
             const bodyGeo = new THREE.SphereGeometry(1.2, 16, 16);
             const body = new THREE.Mesh(bodyGeo, skinMat);
             body.position.y = 1.2;
@@ -243,17 +243,77 @@
         }
 
         function initGame() {
-            // Conectare sigură Socket.io
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d0908);
+            scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
+
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffd2a6, 2.5);
+            dirLight.position.set(20, 50, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            playerPositionLight = new THREE.PointLight(0xffaa44, 3.0, 40);
+            scene.add(playerPositionLight);
+
+            // Generăm modelul local imediat și îl adăugăm în scenă
+            sharedPlayerContainer = createProceduralKnight();
+            localPlayerMesh = sharedPlayerContainer.clone();
+            scene.add(localPlayerMesh);
+
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat și afișat cu succes!</div>`;
+
+            // Încărcare hartă
+            const loader = new THREE.GLTFLoader();
+            loader.load('./map.glb', (gltf) => {
+                const mapModel = gltf.scene;
+                mapModel.scale.set(3, 1, 3);
+
+                const box = new THREE.Box3().setFromObject(mapModel);
+                const center = box.getCenter(new THREE.Vector3());
+                
+                mapModel.position.x = -center.x;
+                mapModel.position.z = -center.z;
+                mapModel.position.y = -box.min.y;
+
+                mapModel.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                        if (node.material) node.material.side = THREE.DoubleSide;
+                        mapMeshes.push(node);
+                    }
+                });
+
+                mapModel.updateMatrixWorld(true);
+                scene.add(mapModel);
+                myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
+
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta 3D încărcată!</div>`;
+            }, undefined, (err) => {
+                console.warn("map.glb negăsit, se folosește podea standard.");
+                const planeGeo = new THREE.PlaneGeometry(150, 150);
+                const planeMat = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.8 });
+                const plane = new THREE.Mesh(planeGeo, planeMat);
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+                mapMeshes.push(plane);
+            });
+
+            // Încercare conexiune Socket.io sigură
             try {
                 if (typeof io !== 'undefined') {
                     socket = io();
-                    socket.on('currentPlayers', (serverPlayers) => {
-                        players = serverPlayers;
-                        myId = socket.id;
-                        for (const id in players) {
-                            if (!players[id].mesh) setupPlayerAnimations(id);
-                        }
-                    });
                     socket.on('currentMonsters', (serverMonsters) => {
                         for (const id in serverMonsters) {
                             const m = serverMonsters[id];
@@ -280,57 +340,14 @@
                             }
                         }
                     });
-                    socket.on('newPlayer', (data) => {
-                        players[data.id] = data.player;
-                        setupPlayerAnimations(data.id);
-                    });
-                    socket.on('playerMoved', (data) => {
-                        if (data.id === myId) return;
-                        if (players[data.id] && players[data.id].mesh) {
-                            const targetX = data.x / 20;
-                            const targetZ = data.y / 20;
-                            players[data.id].mesh.position.x = targetX;
-                            players[data.id].mesh.position.z = targetZ;
-                            players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
-                        }
-                    });
-                    socket.on('disconnect', (id) => {
-                        if (players[id] && players[id].mesh) {
-                            scene.remove(players[id].mesh);
-                            delete players[id];
-                        }
-                    });
                     socket.on('chatMessage', (data) => {
-                        const chatDiv = document.getElementById('chat-messages');
                         chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
                         chatDiv.scrollTop = chatDiv.scrollHeight;
                     });
                 }
             } catch (e) {
-                console.log("Mod offline activat.");
+                console.log("Rulare în mod offline complet.");
             }
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0d0908);
-            scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
-
-            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.getElementById('game-container').appendChild(renderer.domElement);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-            scene.add(ambientLight);
-
-            const dirLight = new THREE.DirectionalLight(0xffd2a6, 2.0);
-            dirLight.position.set(20, 50, 20);
-            dirLight.castShadow = true;
-            scene.add(dirLight);
-
-            playerPositionLight = new THREE.PointLight(0xffaa44, 2.5, 35);
-            scene.add(playerPositionLight);
 
             const gameContainer = document.getElementById('game-container');
             gameContainer.addEventListener('click', () => {
@@ -353,49 +370,6 @@
             window.addEventListener('wheel', (e) => {
                 cameraDistance += e.deltaY * 0.05;
                 cameraDistance = Math.max(3, Math.min(25, cameraDistance));
-            });
-
-            // Generăm modelul propriu
-            sharedPlayerContainer = createProceduralKnight();
-            setupPlayerAnimations(myId);
-
-            const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat cu succes!</div>`;
-
-            const loader = new THREE.GLTFLoader();
-            loader.load('./map.glb', (gltf) => {
-                const mapModel = gltf.scene;
-                mapModel.scale.set(3, 1, 3);
-
-                const box = new THREE.Box3().setFromObject(mapModel);
-                const center = box.getCenter(new THREE.Vector3());
-                
-                mapModel.position.x = -center.x;
-                mapModel.position.z = -center.z;
-                mapModel.position.y = -box.min.y;
-
-                mapModel.traverse((node) => {
-                    if (node.isMesh) {
-                        node.castShadow = true;
-                        node.receiveShadow = true;
-                        if (node.material) node.material.side = THREE.DoubleSide;
-                        mapMeshes.push(node);
-                    }
-                });
-
-                mapModel.updateMatrixWorld(true);
-                scene.add(mapModel);
-                myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
-
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată!</div>`;
-            }, undefined, (err) => {
-                console.warn("map.glb negăsit, se folosește un plan simplu.");
-                const planeGeo = new THREE.PlaneGeometry(100, 100);
-                const planeMat = new THREE.MeshStandardMaterial({ color: 0x1a1512, roughness: 0.8 });
-                const plane = new THREE.Mesh(planeGeo, planeMat);
-                plane.rotation.x = -Math.PI / 2;
-                scene.add(plane);
-                mapMeshes.push(plane);
             });
 
             const chatInput = document.getElementById('chat-input');
@@ -433,16 +407,7 @@
             animateGame();
         }
 
-        function setupPlayerAnimations(id) {
-            if (!sharedPlayerContainer) return;
-            const clone = sharedPlayerContainer.clone();
-            scene.add(clone);
-            if (!players[id]) players[id] = {};
-            players[id].mesh = clone;
-        }
-
         function triggerAttack3D() {
-            if (!players[myId] || !players[myId].mesh) return;
             const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -516,11 +481,12 @@
                 }
             }
 
-            if (players[myId] && players[myId].mesh) {
-                players[myId].mesh.position.x = myPos.x;
-                players[myId].mesh.position.z = myPos.z;
-                players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = myPos.y;
+            // Actualizare poziție jucător local și cameră garantată
+            if (localPlayerMesh) {
+                localPlayerMesh.position.x = myPos.x;
+                localPlayerMesh.position.z = myPos.z;
+                localPlayerMesh.rotation.y = myPos.rotY;
+                localPlayerMesh.position.y = myPos.y;
 
                 if (playerPositionLight) {
                     playerPositionLight.position.set(myPos.x, myPos.y + 3, myPos.z);
