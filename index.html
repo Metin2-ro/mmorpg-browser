@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D cu animație separată</p>
+                <p>Modelul 3D cu caractermiscare.glb</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // ÎNCĂRCARE SEPARATĂ: Mai întâi modelul 3D, apoi încărcăm caractermiscare.glb
+            // ÎNCĂRCARE SEPARATĂ CU DIAGNOSTIC EXPLICIT ÎN CHAT
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -224,7 +224,7 @@
                 const size = box.getSize(new THREE.Vector3());
                 let scaleFactor = 0.0121;
                 if (size.y > 0.1) {
-                    scaleFactor = 1.2 / size.y; // Dimensiune optimizată
+                    scaleFactor = 1.2 / size.y;
                 }
                 model.scale.set(scaleFactor, scaleFactor, scaleFactor);
                 model.updateMatrixWorld(true);
@@ -247,7 +247,7 @@
                 });
 
                 scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se încarcă caractermiscare.glb...</div>`;
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se caută caractermiscare.glb...</div>`;
 
                 // Încărcăm fișierul separat de animație pentru mers
                 loader.load('./caractermiscare.glb', (animGltf) => {
@@ -255,13 +255,13 @@
                         mixer = new THREE.AnimationMixer(localPlayerMesh);
                         walkAction = mixer.clipAction(animGltf.animations[0]);
                         walkAction.setLoop(THREE.LoopRepeat);
-                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> caractermiscare.glb sincronizat cu succes!</div>`;
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[SUCCES]:</b> caractermiscare.glb încărcat și cuplat cu succes!</div>`;
                     } else {
-                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[System]:</b> caractermiscare.glb nu conține animații.</div>`;
+                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[Atenție]:</b> caractermiscare.glb s-a încărcat, dar nu conține nicio animație!</div>`;
                     }
                 }, undefined, (animErr) => {
-                    console.warn("caractermiscare.glb negăsit.");
-                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System Warning]:</b> Pune fișierul caractermiscare.glb în folder.</div>`;
+                    console.error("Eroare caractermiscare.glb:", animErr);
+                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[EROARE]:</b> Nu s-a găsit fișierul caractermiscare.glb în folder!</div>`;
                 });
 
             }, undefined, (error) => {
@@ -468,7 +468,6 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Controlul animației separate din caractermiscare.glb
             if (walkAction) {
                 if (isMoving) {
                     if (!walkAction.isRunning()) walkAction.play();
