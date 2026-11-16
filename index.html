@@ -57,13 +57,6 @@
         /* Indicator Nivel Hartă */
         .map-level-badge { background: #2b1d16; border: 1px solid #d4af37; color: #ffd700; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-radius: 4px; margin-bottom: 8px; text-shadow: 1px 1px #000; }
 
-        /* Bule de dialog deasupra capului */
-        .speech-bubble {
-            position: absolute; background: rgba(12, 10, 9, 0.88); border: 2px solid #8c6239; color: #ffd700;
-            padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; pointer-events: none;
-            transform: translate(-50%, -100%); white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.8); z-index: 20; transition: opacity 0.3s ease;
-        }
-
         /* Chat 3D UI */
         #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; display: none; }
         #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
@@ -89,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul tău 3D Knight.glb</p>
+                <p>Modelul 3D Knight.glb</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -166,7 +159,11 @@
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
         let localPlayerMesh = null;
-        let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
+        let mixer = null, animationsMap = {};
+        let activeAction = null, idleAction = null, walkAction = null;
+        let clock = new THREE.Clock();
+
+        let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
         let mapMeshes = [];
         let playerPointLight;
@@ -218,7 +215,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare model Knight.glb cu succes garantat
+            // Încărcare model Knight.glb cu suport complet de animații
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -251,7 +248,28 @@
                 });
 
                 scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Modelul ${selectedCharacterName} (${selectedCharacterFile}) încărcat cu succes!</div>`;
+
+                // Configurare Animații din fișierul GLB
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(model);
+                    gltf.animations.forEach((clip) => {
+                        const action = mixer.clipAction(clip);
+                        animationsMap[clip.name.toLowerCase()] = action;
+                    });
+
+                    // Căutăm animația de mers sau o preluăm pe prima disponibilă
+                    walkAction = animationsMap['walk'] || animationsMap['run'] || animationsMap['move'] || mixer.clipAction(gltf.animations[0]);
+                    idleAction = animationsMap['idle'] || animationsMap['stand'] || walkAction;
+
+                    if (idleAction) {
+                        idleAction.play();
+                        activeAction = idleAction;
+                    }
+                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații încărcate (${gltf.animations.length} găsite).</div>`;
+                } else {
+                    chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[System]:</b> Modelul nu conține animații.</div>`;
+                }
+
             }, undefined, (error) => {
                 console.error("Eroare la încărcarea Knight.glb:", error);
                 chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System Error]:</b> Nu s-a putut încărca ${selectedCharacterFile}.</div>`;
@@ -415,7 +433,22 @@
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
+        function fadeToAction(newAction, duration) {
+            if (!newAction || activeAction === newAction) return;
+            newAction.reset();
+            newAction.setEffectiveTimeScale(1);
+            newAction.setEffectiveWeight(1);
+            newAction.play();
+            if (activeAction) {
+                activeAction.crossFadeTo(newAction, duration, true);
+            }
+            activeAction = newAction;
+        }
+
         function update() {
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
+
             let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
             let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
             let moveLeft = (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) ? 1 : 0;
@@ -452,6 +485,17 @@
 
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
+
+            // Gestionare Animație Mers vs Idle
+            if (walkAction && idleAction) {
+                if (isMoving) {
+                    fadeToAction(walkAction, 0.15);
+                    // Sincronizăm viteza animației cu viteza de mișcare ca să prevenim alunecarea
+                    walkAction.setEffectiveTimeScale(isRunning ? 1.4 : 1.0);
+                } else {
+                    fadeToAction(idleAction, 0.15);
+                }
+            }
 
             if (isMoving) {
                 let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
@@ -514,9 +558,4 @@
             if (camera && renderer) {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-    </script>
-</body>
-</html>
+                renderer.setSize
