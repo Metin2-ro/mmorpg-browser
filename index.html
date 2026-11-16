@@ -138,7 +138,8 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- Încercare sigură de încărcare Socket.io (dacă lipsește serverul, nu blochează jocul) -->
+    <script src="/socket.io/socket.io.js" onerror="console.warn('Serverul Socket.io nu este disponibil. Jocul rulează local.')"></script>
     <script>
         let selectedCharacterType = 'knight';
         let selectedCharacterName = 'Dark Knight';
@@ -161,13 +162,15 @@
             initGame();
         }
 
-        let socket, scene, camera, renderer;
+        let socket = null;
+        let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
-        let myId = null;
+        let myId = 'local-player';
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
-        let sharedPlayerContainer = null, animationMixers = [], clock = new THREE.Clock(), activeBubbles = [];
+        let sharedPlayerContainer = null, clock = new THREE.Clock(), activeBubbles = [];
         let mapMeshes = [];
+        let playerPointLight;
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
@@ -179,7 +182,6 @@
             return fallbackY;
         }
 
-        // CAVALER 3D PROCEDURAL GARANTAT VIZIBIL ȘI DETALIAT (Fără erori de fișiere GLB corupte)
         function createProceduralKnight() {
             const group = new THREE.Group();
 
@@ -219,7 +221,7 @@
             shield.position.set(-0.5, 1.0, 0.1);
             group.add(shield);
 
-            // Inel luminos la bază pentru orientare perfectă
+            // Inel luminos la bază
             const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -241,7 +243,72 @@
         }
 
         function initGame() {
-            socket = io();
+            // Conectare sigură Socket.io
+            try {
+                if (typeof io !== 'undefined') {
+                    socket = io();
+                    socket.on('currentPlayers', (serverPlayers) => {
+                        players = serverPlayers;
+                        myId = socket.id;
+                        for (const id in players) {
+                            if (!players[id].mesh) setupPlayerAnimations(id);
+                        }
+                    });
+                    socket.on('currentMonsters', (serverMonsters) => {
+                        for (const id in serverMonsters) {
+                            const m = serverMonsters[id];
+                            if (!monstersMeshes[id]) {
+                                const demon = createDetailedMonster3D();
+                                const mx = (m.x - 300) / 20;
+                                const mz = (m.y - 200) / 20;
+                                const my = getGroundHeight(mx, mz, myPos.y);
+                                demon.position.set(mx, my, mz);
+                                scene.add(demon);
+                                monstersMeshes[id] = demon;
+                            }
+                        }
+                    });
+                    socket.on('monstersMoved', (serverMonsters) => {
+                        for (const id in serverMonsters) {
+                            const m = serverMonsters[id];
+                            if (monstersMeshes[id]) {
+                                const mx = (m.x - 300) / 20;
+                                const mz = (m.y - 200) / 20;
+                                monstersMeshes[id].position.x = mx;
+                                monstersMeshes[id].position.z = mz;
+                                monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
+                            }
+                        }
+                    });
+                    socket.on('newPlayer', (data) => {
+                        players[data.id] = data.player;
+                        setupPlayerAnimations(data.id);
+                    });
+                    socket.on('playerMoved', (data) => {
+                        if (data.id === myId) return;
+                        if (players[data.id] && players[data.id].mesh) {
+                            const targetX = data.x / 20;
+                            const targetZ = data.y / 20;
+                            players[data.id].mesh.position.x = targetX;
+                            players[data.id].mesh.position.z = targetZ;
+                            players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
+                        }
+                    });
+                    socket.on('disconnect', (id) => {
+                        if (players[id] && players[id].mesh) {
+                            scene.remove(players[id].mesh);
+                            delete players[id];
+                        }
+                    });
+                    socket.on('chatMessage', (data) => {
+                        const chatDiv = document.getElementById('chat-messages');
+                        chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                    });
+                }
+            } catch (e) {
+                console.log("Mod offline activat.");
+            }
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0d0908);
@@ -262,8 +329,8 @@
             dirLight.castShadow = true;
             scene.add(dirLight);
 
-            const playerPointLight = new THREE.PointLight(0xffaa44, 2.5, 35);
-            scene.add(playerPositionLight = playerPointLight);
+            playerPositionLight = new THREE.PointLight(0xffaa44, 2.5, 35);
+            scene.add(playerPositionLight);
 
             const gameContainer = document.getElementById('game-container');
             gameContainer.addEventListener('click', () => {
@@ -288,12 +355,12 @@
                 cameraDistance = Math.max(3, Math.min(25, cameraDistance));
             });
 
-            // Setăm modelul procedural direct
+            // Generăm modelul propriu
             sharedPlayerContainer = createProceduralKnight();
+            setupPlayerAnimations(myId);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat și pregătit de luptă!</div>`;
-            chatDiv.scrollTop = chatDiv.scrollHeight;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat cu succes!</div>`;
 
             const loader = new THREE.GLTFLoader();
             loader.load('./map.glb', (gltf) => {
@@ -320,103 +387,27 @@
                 scene.add(mapModel);
                 myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
 
-                const chatDiv = document.getElementById('chat-messages');
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată cu succes!</div>`;
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-            });
-
-            socket.on('currentPlayers', (serverPlayers) => {
-                players = serverPlayers;
-                myId = socket.id;
-                for (const id in players) {
-                    if (!players[id].mesh) {
-                        setupPlayerAnimations(id);
-                    }
-                }
-            });
-
-            socket.on('currentMonsters', (serverMonsters) => {
-                for (const id in serverMonsters) {
-                    const m = serverMonsters[id];
-                    if (!monstersMeshes[id]) {
-                        const demon = createDetailedMonster3D();
-                        const mx = (m.x - 300) / 20;
-                        const mz = (m.y - 200) / 20;
-                        const my = getGroundHeight(mx, mz, myPos.y);
-                        demon.position.set(mx, my, mz);
-                        scene.add(demon);
-                        monstersMeshes[id] = demon;
-                    }
-                }
-            });
-
-            socket.on('monstersMoved', (serverMonsters) => {
-                for (const id in serverMonsters) {
-                    const m = serverMonsters[id];
-                    if (monstersMeshes[id]) {
-                        const mx = (m.x - 300) / 20;
-                        const mz = (m.y - 200) / 20;
-                        monstersMeshes[id].position.x = mx;
-                        monstersMeshes[id].position.z = mz;
-                        monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
-                    }
-                }
-            });
-
-            socket.on('newPlayer', (data) => {
-                players[data.id] = data.player;
-                setupPlayerAnimations(data.id);
-            });
-
-            socket.on('playerMoved', (data) => {
-                if (data.id === myId) return;
-                if (players[data.id] && players[data.id].mesh) {
-                    const targetX = data.x / 20;
-                    const targetZ = data.y / 20;
-                    const dx = targetX - players[data.id].mesh.position.x;
-                    const dz = targetZ - players[data.id].mesh.position.z;
-                    if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
-                        players[data.id].mesh.rotation.y = Math.atan2(dx, dz);
-                    }
-                    players[data.id].mesh.position.x = targetX;
-                    players[data.id].mesh.position.z = targetZ;
-                    players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
-                }
-            });
-
-            socket.on('disconnect', (id) => {
-                if (players[id] && players[id].mesh) {
-                    scene.remove(players[id].mesh);
-                    delete players[id];
-                }
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată!</div>`;
+            }, undefined, (err) => {
+                console.warn("map.glb negăsit, se folosește un plan simplu.");
+                const planeGeo = new THREE.PlaneGeometry(100, 100);
+                const planeMat = new THREE.MeshStandardMaterial({ color: 0x1a1512, roughness: 0.8 });
+                const plane = new THREE.Mesh(planeGeo, planeMat);
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+                mapMeshes.push(plane);
             });
 
             const chatInput = document.getElementById('chat-input');
             chatInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-                    socket.emit('chatMessage', chatInput.value);
+                    if (socket && socket.connected) {
+                        socket.emit('chatMessage', chatInput.value);
+                    } else {
+                        chatDiv.innerHTML += `<div><b style="color:#ffd700;">[Local]:</b> ${chatInput.value}</div>`;
+                    }
                     chatInput.value = '';
                 }
-            });
-
-            socket.on('chatMessage', (data) => {
-                const chatDiv = document.getElementById('chat-messages');
-                chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-
-                let senderMesh = null;
-                if (data.id && players[data.id] && players[data.id].mesh) {
-                    senderMesh = players[data.id].mesh;
-                } else {
-                    for (let id in players) {
-                        if (players[id].name === data.name || id === myId) {
-                            senderMesh = players[id].mesh;
-                            break;
-                        }
-                    }
-                    if (!senderMesh && myId && players[myId]) senderMesh = players[myId].mesh;
-                }
-                if (senderMesh) createSpeechBubble(senderMesh, data.message);
             });
 
             const keys = {};
@@ -443,14 +434,15 @@
         }
 
         function setupPlayerAnimations(id) {
+            if (!sharedPlayerContainer) return;
             const clone = sharedPlayerContainer.clone();
             scene.add(clone);
+            if (!players[id]) players[id] = {};
             players[id].mesh = clone;
-            players[id].realMeshLoaded = true;
         }
 
         function triggerAttack3D() {
-            if (!myId || !players[myId] || !players[myId].mesh) return;
+            if (!players[myId] || !players[myId].mesh) return;
             const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -461,7 +453,6 @@
         }
 
         function triggerDefense3D() {
-            if (!myId || !players[myId] || !players[myId].mesh) return;
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
@@ -525,13 +516,15 @@
                 }
             }
 
-            if (myId && players[myId] && players[myId].mesh) {
+            if (players[myId] && players[myId].mesh) {
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = myPos.y;
 
-                playerPositionLight.position.set(myPos.x, myPos.y + 3, myPos.z);
+                if (playerPositionLight) {
+                    playerPositionLight.position.set(myPos.x, myPos.y + 3, myPos.z);
+                }
 
                 const targetY = myPos.y + 1.8; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
@@ -547,8 +540,6 @@
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
-            updateSpeechBubbles();
-
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
                 r.scale += 0.35;
@@ -562,57 +553,12 @@
             }
         }
 
-        const tempVector = new THREE.Vector3();
-        function updateSpeechBubbles() {
-            activeBubbles.forEach(b => {
-                if (!b.mesh) return;
-                tempVector.copy(b.mesh.position);
-                tempVector.y += 2.8; 
-                tempVector.project(camera);
-
-                const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-(tempVector.y * 0.5) + 0.5) * window.innerHeight;
-
-                if (tempVector.z > 1) {
-                    b.element.style.display = 'none';
-                } else {
-                    b.element.style.display = 'block';
-                    b.element.style.left = `${x}px`;
-                    b.element.style.top = `${y}px`;
-                }
-            });
-        }
-
-        function createSpeechBubble(mesh, text) {
-            activeBubbles = activeBubbles.filter(b => {
-                if (b.mesh === mesh) {
-                    b.element.remove();
-                    return false;
-                }
-                return true;
-            });
-
-            const el = document.createElement('div');
-            el.className = 'speech-bubble';
-            el.innerText = `${text}`;
-            document.getElementById('game-container').appendChild(el);
-
-            const bubbleObj = { element: el, mesh: mesh };
-            activeBubbles.push(bubbleObj);
-
-            setTimeout(() => {
-                el.style.opacity = '0';
-                setTimeout(() => {
-                    el.remove();
-                    activeBubbles = activeBubbles.filter(b => b !== bubbleObj);
-                }, 300);
-            }, 4500);
-        }
-
         function animateGame() {
             requestAnimationFrame(animateGame);
             update();
-            renderer.render(scene, camera);
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
         }
 
         window.addEventListener('resize', () => {
