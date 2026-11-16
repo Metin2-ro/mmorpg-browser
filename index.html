@@ -94,7 +94,7 @@
             <div class="char-card" onclick="selectCharacter('procedural', null, 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Erou procedural detaliat (Backup sigur)</p>
+                <p>Erou procedural detaliat (Sigur)</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -146,7 +146,7 @@
     <!-- Script Socket.io opțional/sigur -->
     <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
     <script>
-        let selectedCharacterMode = 'king'; // 'king' sau 'procedural'
+        let selectedCharacterMode = 'king';
         let selectedCharacterFile = './King.glb';
         let selectedCharacterName = 'King';
 
@@ -191,14 +191,12 @@
             return fallbackY;
         }
 
-        // Cavaler procedural de rezervă
         function createDetailedHumanKnight() {
             const group = new THREE.Group();
             const armorMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, metalness: 0.85, roughness: 0.2 });
             const goldMat = new THREE.MeshStandardMaterial({ color: 0xebcb8b, metalness: 0.9, roughness: 0.1 });
             const redClothMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.6 });
             const steelMat = new THREE.MeshStandardMaterial({ color: 0xd8dee9, metalness: 0.9, roughness: 0.1 });
-            const bootMat = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.8 });
 
             const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.9, 8), armorMat);
             torso.position.y = 1.1;
@@ -263,15 +261,32 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // Încărcare Caracter (Fie King.glb, fie Procedural)
-            if (selectedCharacterMode === 'procedural') {
+            function spawnProceduralBackup(reason) {
+                if (localPlayerMesh) return; // Deja creat
                 localPlayerMesh = createDetailedHumanKnight();
                 scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Dark Knight procedural generat!</div>`;
+                chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[System]:</b> ${reason} S-a încărcat modelul sigur.</div>`;
+            }
+
+            // Încărcare Caracter cu Siguranță și Timeout de 2 secunde
+            if (selectedCharacterMode === 'procedural') {
+                spawnProceduralBackup("Dark Knight selectat.");
             } else {
-                // Încărcare King.glb cu siguranță anti-negru și frustum culling dezactivat
+                let modelLoaded = false;
                 const loader = new THREE.GLTFLoader();
+                
+                // Timeout de siguranță: dacă gltf întârzie sau dă eroare silențioasă, pornește direct
+                const safetyTimer = setTimeout(() => {
+                    if (!modelLoaded) {
+                        spawnProceduralBackup("Timpul de încărcare pentru King.glb a expirat.");
+                    }
+                }, 2000);
+
                 loader.load(selectedCharacterFile, (gltf) => {
+                    modelLoaded = true;
+                    clearTimeout(safetyTimer);
+                    if (localPlayerMesh) return; // Previne duplicarea dacă a intrat timerul
+
                     const model = gltf.scene;
                     model.updateMatrixWorld(true);
                     
@@ -289,7 +304,6 @@
                     model.position.y -= scaledBox.min.y;
                     localPlayerMesh.add(model);
 
-                    // Inel debug la bază pentru vizibilitate sigură
                     const ringGeo = new THREE.RingGeometry(0.6, 0.8, 32);
                     const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
                     const debugRing = new THREE.Mesh(ringGeo, ringMat);
@@ -301,7 +315,7 @@
                         if (node.isMesh) {
                             node.castShadow = true;
                             node.receiveShadow = true;
-                            node.frustumCulled = false; // Oprește dispariția modelului
+                            node.frustumCulled = false;
                             if (node.material) {
                                 node.material.roughness = 0.4;
                                 node.material.metalness = 0.3;
@@ -312,10 +326,8 @@
                     scene.add(localPlayerMesh);
                     chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} încărcat cu succes din King.glb!</div>`;
                 }, undefined, (error) => {
-                    console.error("Eroare la încărcarea King.glb, se folosește modelul de rezervă:", error);
-                    localPlayerMesh = createDetailedHumanKnight();
-                    scene.add(localPlayerMesh);
-                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System]:</b> King.glb negăsit/eroare. S-a trecut la modelul de rezervă.</div>`;
+                    clearTimeout(safetyTimer);
+                    spawnProceduralBackup("Eroare la citirea King.glb.");
                 });
             }
 
