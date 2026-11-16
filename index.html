@@ -9,8 +9,34 @@
         #game-container { position: relative; width: 100vw; height: 100vh; cursor: crosshair; }
         canvas { display: block; width: 100%; height: 100%; }
 
+        /* Ecran Selecție Caracter */
+        #char-select-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle, rgba(20,15,12,0.96) 0%, rgba(5,5,7,0.98) 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; gap: 20px;
+        }
+        #char-select-screen h1 { color: #ffd700; text-shadow: 0 0 15px rgba(212,175,55,0.6); margin-bottom: 10px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+        .char-cards-container { display: flex; gap: 20px; }
+        .char-card {
+            width: 200px; background: linear-gradient(180deg, rgba(35,25,20,0.9) 0%, rgba(15,10,8,0.95) 100%);
+            border: 2px solid #5c4326; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+        }
+        .char-card:hover { border-color: #ffd700; transform: translateY(-5px); box-shadow: 0 0 20px rgba(255,165,0,0.4); }
+        .char-card.selected { border-color: #ff6600; box-shadow: 0 0 25px rgba(255,69,0,0.7); background: linear-gradient(180deg, rgba(55,30,20,0.95) 0%, rgba(20,12,8,0.98) 100%); }
+        .char-card h3 { color: #f39c12; margin: 10px 0 5px 0; font-size: 16px; }
+        .char-card p { color: #aaa; font-size: 11px; margin: 0; }
+        
+        #start-game-btn {
+            background: linear-gradient(180deg, #d4af37 0%, #8c6239 100%); color: #fff; border: 2px solid #ffd700;
+            padding: 12px 35px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); transition: 0.2s; margin-top: 15px;
+        }
+        #start-game-btn:hover { background: linear-gradient(180deg, #ffd700 0%, #d4af37 100%); color: #000; transform: scale(1.05); }
+
         /* HUD Stil Dark Fantasy MMORPG */
-        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; pointer-events: none; }
+        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; pointer-events: none; display: none; }
         .avatar-box { width: 46px; height: 46px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
         .stats-box { flex: 1; display: flex; flex-direction: column; gap: 5px; }
         .player-name { font-size: 13px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px #000; }
@@ -21,7 +47,7 @@
         .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
 
         /* Panou Niveluri și Quests (Dreapta) */
-        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; }
+        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; display: none; }
         #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; }
         .quest-item { margin-bottom: 8px; font-size: 11px; }
         .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
@@ -31,31 +57,20 @@
         /* Indicator Nivel Hartă */
         .map-level-badge { background: #2b1d16; border: 1px solid #d4af37; color: #ffd700; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-radius: 4px; margin-bottom: 8px; text-shadow: 1px 1px #000; }
 
-        /* Bule de dialog deasupra capului (Speech Bubbles) */
+        /* Bule de dialog deasupra capului */
         .speech-bubble {
-            position: absolute;
-            background: rgba(12, 10, 9, 0.88);
-            border: 2px solid #8c6239;
-            color: #ffd700;
-            padding: 5px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: bold;
-            pointer-events: none;
-            transform: translate(-50%, -100%);
-            white-space: nowrap;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.8);
-            z-index: 20;
-            transition: opacity 0.3s ease;
+            position: absolute; background: rgba(12, 10, 9, 0.88); border: 2px solid #8c6239; color: #ffd700;
+            padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -100%); white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.8); z-index: 20; transition: opacity 0.3s ease;
         }
 
         /* Chat 3D UI */
-        #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; }
+        #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; display: none; }
         #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
         #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; pointer-events: auto; }
 
         /* Bară Abilități 3D */
-        #action-bar { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(20, 15, 12, 0.92); padding: 8px 12px; border: 2px solid #8c6239; border-radius: 8px; z-index: 10; }
+        #action-bar { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(20, 15, 12, 0.92); padding: 8px 12px; border: 2px solid #8c6239; border-radius: 8px; z-index: 10; display: none; }
         .skill-slot { width: 46px; height: 46px; background: radial-gradient(circle, #2b1d16 0%, #120c09 100%); border: 2px solid #5c4326; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
         .skill-slot:hover { border-color: #ff6600; box-shadow: 0 0 12px #ff4500; transform: scale(1.08); }
         .skill-key { position: absolute; bottom: -2px; right: 0px; background: #000; border: 1px solid #8c6239; border-radius: 3px; padding: 0 3px; font-size: 9px; color: #ffd700; font-weight: bold; }
@@ -67,12 +82,25 @@
 </head>
 <body>
 
+    <!-- Ecranul de Selecție Caracter -->
+    <div id="char-select-screen">
+        <h1>Alege-ți Eroul</h1>
+        <div class="char-cards-container">
+            <div class="char-card selected" onclick="selectCharacter('knight', 'Dark Knight', this)">
+                <div style="font-size: 40px;">⚔️</div>
+                <h3>Dark Knight</h3>
+                <p>Erou armat cu sabie și scut, gata de luptă.</p>
+            </div>
+        </div>
+        <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
+    </div>
+
     <div id="game-container">
         <!-- HUD Profil -->
         <div id="player-hud">
             <div class="avatar-box">🔥</div>
             <div class="stats-box">
-                <span class="player-name" id="ui-name">Animated Knight</span>
+                <span class="player-name" id="ui-name">Dark Knight</span>
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
                     <div class="bar-text">HP: 1500 / 1500</div>
@@ -112,100 +140,93 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        let selectedCharacterType = 'knight';
+        let selectedCharacterName = 'Dark Knight';
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0d0908);
-        scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
+        function selectCharacter(type, name, element) {
+            document.querySelectorAll('.char-card').forEach(card => card.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCharacterType = type;
+            selectedCharacterName = name;
+        }
 
-        const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+        function startGame() {
+            document.getElementById('char-select-screen').style.display = 'none';
+            document.getElementById('player-hud').style.display = 'flex';
+            document.getElementById('quest-panel').style.display = 'block';
+            document.getElementById('chat-container').style.display = 'flex';
+            document.getElementById('action-bar').style.display = 'flex';
+            document.getElementById('ui-name').innerText = selectedCharacterName;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.getElementById('game-container').appendChild(renderer.domElement);
+            initGame();
+        }
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0xffd2a6, 1.5);
-        dirLight.position.set(20, 50, 20);
-        dirLight.castShadow = true;
-        scene.add(dirLight);
-
-        const playerPointLight = new THREE.PointLight(0xffaa44, 1.8, 30);
-        scene.add(playerPointLight);
-
-        let players = {};
-        let monstersMeshes = {};
-        let attackRings = [];
+        let socket, scene, camera, renderer;
+        let players = {}, monstersMeshes = {}, attackRings = [];
         let myId = null;
-        
-        let myPos = { 
-            x: 0, y: 4.3, z: 0, 
-            velocityX: 0, velocityZ: 0, 
-            walkSpeed: 0.16, runSpeed: 0.32, 
-            rotY: 0 
-        };
-        
-        let cameraAngle = 0;
-        let cameraPitch = 0.45;
-        let cameraDistance = 10; 
-        let isPointerLocked = false;
-
-        const gameContainer = document.getElementById('game-container');
-
-        gameContainer.addEventListener('click', () => {
-            if (document.activeElement === document.getElementById('chat-input')) return;
-            gameContainer.requestPointerLock();
-        });
-
-        document.addEventListener('pointerlockchange', () => {
-            isPointerLocked = (document.pointerLockElement === gameContainer);
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (isPointerLocked) {
-                cameraAngle += e.movementX * 0.005;
-                cameraPitch += e.movementY * 0.005;
-                cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
-            }
-        });
-
-        window.addEventListener('wheel', (e) => {
-            cameraDistance += e.deltaY * 0.05;
-            cameraDistance = Math.max(3, Math.min(25, cameraDistance));
-        });
-
-        let sharedKnightContainer = null; // Containerul care va asigura poziționarea corectă a tălpilor
-        let sharedKnightAnimations = [];
-        let animationMixers = [];
-        let clock = new THREE.Clock();
-        let activeBubbles = [];
-
+        let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
+        let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
+        let sharedPlayerContainer = null, animationMixers = [], clock = new THREE.Clock(), activeBubbles = [];
         let mapMeshes = [];
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
         function getGroundHeight(x, z, fallbackY = 4.3) {
             if (mapMeshes.length === 0) return fallbackY;
-            
             groundRaycaster.set(new THREE.Vector3(x, 6.5, z), downVector);
             const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
-            
-            if (intersects.length > 0) {
-                return intersects[0].point.y;
-            }
+            if (intersects.length > 0) return intersects[0].point.y;
             return fallbackY;
         }
 
-        function createFallbackMesh() {
+        // CAVALER 3D PROCEDURAL GARANTAT VIZIBIL ȘI DETALIAT (Fără erori de fișiere GLB corupte)
+        function createProceduralKnight() {
             const group = new THREE.Group();
-            const geo = new THREE.BoxGeometry(1, 2, 1);
-            const mat = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.y = 1;
-            group.add(mesh);
+
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, metalness: 0.85, roughness: 0.2 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9, roughness: 0.1 });
+            const redClothMat = new THREE.MeshStandardMaterial({ color: 0x900c3f, roughness: 0.6 });
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0xe5e9f0, metalness: 0.9, roughness: 0.1 });
+
+            // Torso / Armură
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.28, 1.1, 8), armorMat);
+            torso.position.y = 0.95;
+            torso.castShadow = true;
+            group.add(torso);
+
+            // Pelerină roșie spate
+            const cape = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.08), redClothMat);
+            cape.position.set(0, 0.9, -0.22);
+            group.add(cape);
+
+            // Cap / Coif
+            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), steelMat);
+            helmet.position.y = 1.65;
+            helmet.castShadow = true;
+            group.add(helmet);
+
+            // Sabie în mână dreaptă
+            const swordHilt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3), goldMat);
+            swordHilt.position.set(0.5, 0.9, 0.25);
+            group.add(swordHilt);
+
+            const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.02), steelMat);
+            swordBlade.position.set(0.5, 1.4, 0.25);
+            group.add(swordBlade);
+
+            // Scut în mână stângă
+            const shield = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.6, 0.08), armorMat);
+            shield.position.set(-0.5, 1.0, 0.1);
+            group.add(shield);
+
+            // Inel luminos la bază pentru orientare perfectă
+            const ringGeo = new THREE.RingGeometry(0.5, 0.7, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.02;
+            group.add(ring);
+
             return group;
         }
 
@@ -219,283 +240,214 @@
             return demon;
         }
 
-        const loader = new THREE.GLTFLoader();
+        function initGame() {
+            socket = io();
 
-        // ==========================================
-        // ÎNCĂRCARE ȘI ALINIERE AUTOMATĂ A TĂLPILOR (PIVOT FIX)
-        // ==========================================
-        loader.load('./Knight.glb', (gltf) => {
-            const model = gltf.scene;
-            sharedKnightAnimations = gltf.animations || [];
-            
-            model.updateMatrixWorld(true);
-            const box = new THREE.Box3().setFromObject(model);
-            const size = box.getSize(new THREE.Vector3());
-            
-            let scaleFactor = 0.0121;
-            if (size.y > 0.1) {
-                const targetHeight = 2.4; // Înălțimea monștrilor
-                scaleFactor = targetHeight / size.y;
-            }
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d0908);
+            scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
-            model.scale.set(scaleFactor, scaleFactor, scaleFactor);
-            model.updateMatrixWorld(true);
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            // Recalculăm bounding box-ul după scalare pentru a pune tălpile exact la baza containerului (Y = 0)
-            const scaledBox = new THREE.Box3().setFromObject(model);
-            
-            // Cream un container (Group) care va servi drept pivot exact la picioarele cavalerului
-            sharedKnightContainer = new THREE.Group();
-            
-            // Mutăm modelul în jos în interiorul containerului cu exact valoarea minimă pe Y
-            model.position.y -= scaledBox.min.y;
-            sharedKnightContainer.add(model);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
 
-            sharedKnightContainer.traverse((node) => {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffd2a6, 2.0);
+            dirLight.position.set(20, 50, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            const playerPointLight = new THREE.PointLight(0xffaa44, 2.5, 35);
+            scene.add(playerPositionLight = playerPointLight);
+
+            const gameContainer = document.getElementById('game-container');
+            gameContainer.addEventListener('click', () => {
+                if (document.activeElement === document.getElementById('chat-input')) return;
+                gameContainer.requestPointerLock();
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = (document.pointerLockElement === gameContainer);
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (isPointerLocked) {
+                    cameraAngle += e.movementX * 0.005;
+                    cameraPitch += e.movementY * 0.005;
+                    cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
                 }
             });
 
+            window.addEventListener('wheel', (e) => {
+                cameraDistance += e.deltaY * 0.05;
+                cameraDistance = Math.max(3, Math.min(25, cameraDistance));
+            });
+
+            // Setăm modelul procedural direct
+            sharedPlayerContainer = createProceduralKnight();
+
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight scalat (${scaleFactor.toFixed(4)}) și aliniat pe tălpi!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> ${selectedCharacterName} generat și pregătit de luptă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            for (const id in players) {
-                if (players[id].mesh) {
-                    scene.remove(players[id].mesh);
+            const loader = new THREE.GLTFLoader();
+            loader.load('./map.glb', (gltf) => {
+                const mapModel = gltf.scene;
+                mapModel.scale.set(3, 1, 3);
+
+                const box = new THREE.Box3().setFromObject(mapModel);
+                const center = box.getCenter(new THREE.Vector3());
+                
+                mapModel.position.x = -center.x;
+                mapModel.position.z = -center.z;
+                mapModel.position.y = -box.min.y;
+
+                mapModel.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                        if (node.material) node.material.side = THREE.DoubleSide;
+                        mapMeshes.push(node);
+                    }
+                });
+
+                mapModel.updateMatrixWorld(true);
+                scene.add(mapModel);
+                myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
+
+                const chatDiv = document.getElementById('chat-messages');
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată cu succes!</div>`;
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+            });
+
+            socket.on('currentPlayers', (serverPlayers) => {
+                players = serverPlayers;
+                myId = socket.id;
+                for (const id in players) {
+                    if (!players[id].mesh) {
+                        setupPlayerAnimations(id);
+                    }
                 }
-                setupPlayerAnimations(id);
-            }
-        }, undefined, (error) => {
-            console.error("Eroare la încărcarea modelului 3D:", error);
-        });
+            });
+
+            socket.on('currentMonsters', (serverMonsters) => {
+                for (const id in serverMonsters) {
+                    const m = serverMonsters[id];
+                    if (!monstersMeshes[id]) {
+                        const demon = createDetailedMonster3D();
+                        const mx = (m.x - 300) / 20;
+                        const mz = (m.y - 200) / 20;
+                        const my = getGroundHeight(mx, mz, myPos.y);
+                        demon.position.set(mx, my, mz);
+                        scene.add(demon);
+                        monstersMeshes[id] = demon;
+                    }
+                }
+            });
+
+            socket.on('monstersMoved', (serverMonsters) => {
+                for (const id in serverMonsters) {
+                    const m = serverMonsters[id];
+                    if (monstersMeshes[id]) {
+                        const mx = (m.x - 300) / 20;
+                        const mz = (m.y - 200) / 20;
+                        monstersMeshes[id].position.x = mx;
+                        monstersMeshes[id].position.z = mz;
+                        monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
+                    }
+                }
+            });
+
+            socket.on('newPlayer', (data) => {
+                players[data.id] = data.player;
+                setupPlayerAnimations(data.id);
+            });
+
+            socket.on('playerMoved', (data) => {
+                if (data.id === myId) return;
+                if (players[data.id] && players[data.id].mesh) {
+                    const targetX = data.x / 20;
+                    const targetZ = data.y / 20;
+                    const dx = targetX - players[data.id].mesh.position.x;
+                    const dz = targetZ - players[data.id].mesh.position.z;
+                    if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
+                        players[data.id].mesh.rotation.y = Math.atan2(dx, dz);
+                    }
+                    players[data.id].mesh.position.x = targetX;
+                    players[data.id].mesh.position.z = targetZ;
+                    players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
+                }
+            });
+
+            socket.on('disconnect', (id) => {
+                if (players[id] && players[id].mesh) {
+                    scene.remove(players[id].mesh);
+                    delete players[id];
+                }
+            });
+
+            const chatInput = document.getElementById('chat-input');
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
+                    socket.emit('chatMessage', chatInput.value);
+                    chatInput.value = '';
+                }
+            });
+
+            socket.on('chatMessage', (data) => {
+                const chatDiv = document.getElementById('chat-messages');
+                chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
+                chatDiv.scrollTop = chatDiv.scrollHeight;
+
+                let senderMesh = null;
+                if (data.id && players[data.id] && players[data.id].mesh) {
+                    senderMesh = players[data.id].mesh;
+                } else {
+                    for (let id in players) {
+                        if (players[id].name === data.name || id === myId) {
+                            senderMesh = players[id].mesh;
+                            break;
+                        }
+                    }
+                    if (!senderMesh && myId && players[myId]) senderMesh = players[myId].mesh;
+                }
+                if (senderMesh) createSpeechBubble(senderMesh, data.message);
+            });
+
+            const keys = {};
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement === chatInput) return;
+                keys[e.code] = true;
+                keys[e.key.toLowerCase()] = true;
+                if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+                keys[e.key.toLowerCase()] = false;
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                if (document.activeElement === chatInput) return;
+                if (e.button === 0) triggerAttack3D();
+                else if (e.button === 2) { e.preventDefault(); triggerDefense3D(); }
+            });
+
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            animateGame();
+        }
 
         function setupPlayerAnimations(id) {
-            const clone = sharedKnightContainer.clone();
-            const mixer = new THREE.AnimationMixer(clone);
-            
-            let walkAction = null;
-            let runAction = null;
-
-            if (sharedKnightAnimations.length > 0) {
-                walkAction = mixer.clipAction(sharedKnightAnimations[0]);
-                walkAction.play();
-                
-                if (sharedKnightAnimations.length > 1) {
-                    runAction = mixer.clipAction(sharedKnightAnimations[1]);
-                    runAction.play();
-                } else {
-                    runAction = walkAction;
-                }
-            }
-
+            const clone = sharedPlayerContainer.clone();
             scene.add(clone);
             players[id].mesh = clone;
             players[id].realMeshLoaded = true;
-
-            animationMixers.push({
-                id: id,
-                mixer: mixer,
-                model: clone,
-                walkAction: walkAction,
-                runAction: runAction
-            });
         }
-
-        loader.load('./map.glb', (gltf) => {
-            const mapModel = gltf.scene;
-            mapModel.scale.set(3, 1, 3);
-
-            const box = new THREE.Box3().setFromObject(mapModel);
-            const center = box.getCenter(new THREE.Vector3());
-            
-            mapModel.position.x = -center.x;
-            mapModel.position.z = -center.z;
-            mapModel.position.y = -box.min.y;
-
-            mapModel.traverse((node) => {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-                    if (node.material) {
-                        node.material.side = THREE.DoubleSide;
-                    }
-                    mapMeshes.push(node);
-                }
-            });
-
-            mapModel.updateMatrixWorld(true);
-            scene.add(mapModel);
-
-            myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
-
-            const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată și pregătită de luptă!</div>`;
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-        }, undefined, (error) => {
-            console.error("Eroare la încărcarea hărții:", error);
-        });
-
-        socket.on('currentPlayers', (serverPlayers) => {
-            players = serverPlayers;
-            myId = socket.id;
-            for (const id in players) {
-                if (!players[id].mesh) {
-                    if (sharedKnightContainer) {
-                        setupPlayerAnimations(id);
-                    } else {
-                        let mesh = createFallbackMesh();
-                        scene.add(mesh);
-                        players[id].mesh = mesh;
-                    }
-                }
-            }
-        });
-
-        socket.on('currentMonsters', (serverMonsters) => {
-            for (const id in serverMonsters) {
-                const m = serverMonsters[id];
-                if (!monstersMeshes[id]) {
-                    const demon = createDetailedMonster3D();
-                    const mx = (m.x - 300) / 20;
-                    const mz = (m.y - 200) / 20;
-                    const my = getGroundHeight(mx, mz, myPos.y);
-                    demon.position.set(mx, my, mz);
-                    scene.add(demon);
-                    monstersMeshes[id] = demon;
-                }
-            }
-        });
-
-        socket.on('monstersMoved', (serverMonsters) => {
-            for (const id in serverMonsters) {
-                const m = serverMonsters[id];
-                if (monstersMeshes[id]) {
-                    const mx = (m.x - 300) / 20;
-                    const mz = (m.y - 200) / 20;
-                    monstersMeshes[id].position.x = mx;
-                    monstersMeshes[id].position.z = mz;
-                    monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
-                }
-            }
-        });
-
-        socket.on('newPlayer', (data) => {
-            players[data.id] = data.player;
-            if (sharedKnightContainer) {
-                setupPlayerAnimations(data.id);
-            } else {
-                const mesh = createFallbackMesh();
-                scene.add(mesh);
-                players[data.id].mesh = mesh;
-            }
-        });
-
-        socket.on('playerMoved', (data) => {
-            if (data.id === myId) return;
-
-            if (players[data.id] && players[data.id].mesh) {
-                const targetX = data.x / 20;
-                const targetZ = data.y / 20;
-                const dx = targetX - players[data.id].mesh.position.x;
-                const dz = targetZ - players[data.id].mesh.position.z;
-                if (Math.abs(dx) > 0.01 || Math.abs(dz) > 0.01) {
-                    players[data.id].mesh.rotation.y = Math.atan2(dx, dz);
-                }
-                players[data.id].mesh.position.x = targetX;
-                players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
-            }
-        });
-
-        socket.on('disconnect', (id) => {
-            if (players[id] && players[id].mesh) {
-                scene.remove(players[id].mesh);
-                delete players[id];
-            }
-            animationMixers = animationMixers.filter(item => item.id !== id);
-        });
-
-        const chatInput = document.getElementById('chat-input');
-        chatInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && chatInput.value.trim() !== '') {
-                socket.emit('chatMessage', chatInput.value);
-                chatInput.value = '';
-            }
-        });
-
-        socket.on('chatMessage', (data) => {
-            const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-
-            let senderMesh = null;
-            if (data.id && players[data.id] && players[data.id].mesh) {
-                senderMesh = players[data.id].mesh;
-            } else {
-                for (let id in players) {
-                    if (players[id].name === data.name || id === myId) {
-                        senderMesh = players[id].mesh;
-                        break;
-                    }
-                }
-                if (!senderMesh && myId && players[myId]) {
-                    senderMesh = players[myId].mesh;
-                }
-            }
-
-            if (senderMesh) {
-                createSpeechBubble(senderMesh, data.message);
-            }
-        });
-
-        function createSpeechBubble(mesh, text) {
-            activeBubbles = activeBubbles.filter(b => {
-                if (b.mesh === mesh) {
-                    b.element.remove();
-                    return false;
-                }
-                return true;
-            });
-
-            const el = document.createElement('div');
-            el.className = 'speech-bubble';
-            el.innerText = `${text}`;
-            document.getElementById('game-container').appendChild(el);
-
-            const bubbleObj = { element: el, mesh: mesh };
-            activeBubbles.push(bubbleObj);
-
-            setTimeout(() => {
-                el.style.opacity = '0';
-                setTimeout(() => {
-                    el.remove();
-                    activeBubbles = activeBubbles.filter(b => b !== bubbleObj);
-                }, 300);
-            }, 4500);
-        }
-
-        const keys = {};
-        window.addEventListener('keydown', (e) => {
-            if (document.activeElement === chatInput) return;
-            keys[e.code] = true;
-            keys[e.key.toLowerCase()] = true;
-            if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
-        });
-        window.addEventListener('keyup', (e) => {
-            keys[e.code] = false;
-            keys[e.key.toLowerCase()] = false;
-        });
-
-        window.addEventListener('mousedown', (e) => {
-            if (document.activeElement === chatInput) return;
-            if (e.button === 0) triggerAttack3D();
-            else if (e.button === 2) { e.preventDefault(); triggerDefense3D(); }
-        });
-
-        window.addEventListener('contextmenu', e => e.preventDefault());
 
         function triggerAttack3D() {
             if (!myId || !players[myId] || !players[myId].mesh) return;
@@ -520,7 +472,6 @@
             shieldMesh.rotation.x = -Math.PI / 2;
             shieldMesh.position.set(myPos.x, myPos.y + 0.06, myPos.z);
             scene.add(shieldMesh);
-            
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
@@ -533,9 +484,7 @@
             let isRunning = keys['ShiftLeft'] || keys['ShiftRight'] || keys['shift'];
             let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
-            let inputX = 0;
-            let inputZ = 0;
-
+            let inputX = 0, inputZ = 0;
             const forwardX = -Math.sin(cameraAngle);
             const forwardZ = -Math.cos(cameraAngle);
             const rightX = Math.cos(cameraAngle);
@@ -546,8 +495,7 @@
             if (moveLeft) { inputX -= rightX; inputZ -= rightZ; }
             if (moveRight) { inputX += rightX; inputZ += rightZ; }
 
-            let targetVx = 0;
-            let targetVz = 0;
+            let targetVx = 0, targetVz = 0;
             const len = Math.hypot(inputX, inputZ);
             if (len > 0) {
                 targetVx = (inputX / len) * targetSpeed;
@@ -556,7 +504,6 @@
 
             myPos.velocityX += (targetVx - myPos.velocityX) * 0.5;
             myPos.velocityZ += (targetVz - myPos.velocityZ) * 0.5;
-
             myPos.x += myPos.velocityX;
             myPos.z += myPos.velocityZ;
 
@@ -573,7 +520,7 @@
                 while (diff > Math.PI) diff -= Math.PI * 2;
                 myPos.rotY += diff * 0.3;
 
-                if (socket.connected) {
+                if (socket && socket.connected) {
                     socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
                 }
             }
@@ -584,7 +531,7 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = myPos.y;
 
-                playerPointLight.position.set(myPos.x, myPos.y + 3, myPos.z);
+                playerPositionLight.position.set(myPos.x, myPos.y + 3, myPos.z);
 
                 const targetY = myPos.y + 1.8; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
@@ -613,30 +560,6 @@
                     attackRings.splice(i, 1);
                 }
             }
-
-            const delta = clock.getDelta();
-            animationMixers.forEach(item => {
-                const isLocalPlayer = (item.id === myId);
-                let activeMoving = isLocalPlayer ? isMoving : true;
-
-                if (item.walkAction && item.runAction) {
-                    if (!activeMoving) {
-                        item.walkAction.paused = true;
-                        item.runAction.paused = true;
-                    } else {
-                        if (isRunning && isLocalPlayer) {
-                            item.runAction.paused = false;
-                            item.runAction.timeScale = 1.2;
-                            if (item.walkAction !== item.runAction) item.walkAction.paused = true;
-                        } else {
-                            item.walkAction.paused = false;
-                            item.walkAction.timeScale = isRunning ? 1.8 : 1.0;
-                            if (item.runAction !== item.walkAction) item.runAction.paused = true;
-                        }
-                    }
-                }
-                item.mixer.update(delta);
-            });
         }
 
         const tempVector = new THREE.Vector3();
@@ -660,16 +583,44 @@
             });
         }
 
-        (function animate() {
-            requestAnimationFrame(animate);
+        function createSpeechBubble(mesh, text) {
+            activeBubbles = activeBubbles.filter(b => {
+                if (b.mesh === mesh) {
+                    b.element.remove();
+                    return false;
+                }
+                return true;
+            });
+
+            const el = document.createElement('div');
+            el.className = 'speech-bubble';
+            el.innerText = `${text}`;
+            document.getElementById('game-container').appendChild(el);
+
+            const bubbleObj = { element: el, mesh: mesh };
+            activeBubbles.push(bubbleObj);
+
+            setTimeout(() => {
+                el.style.opacity = '0';
+                setTimeout(() => {
+                    el.remove();
+                    activeBubbles = activeBubbles.filter(b => b !== bubbleObj);
+                }, 300);
+            }, 4500);
+        }
+
+        function animateGame() {
+            requestAnimationFrame(animateGame);
             update();
             renderer.render(scene, camera);
-        })();
+        }
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
         });
     </script>
 </body>
