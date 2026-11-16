@@ -1,384 +1,103 @@
-
 <!DOCTYPE html>
 <html lang="ro">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MU Dark Fantasy 3D MMORPG</title>
-
     <style>
-        body {
-            margin: 0;
-            background: #050507;
-            color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            user-select: none;
-        }
+        body { margin: 0; background: #050507; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; user-select: none; }
+        
+        #game-container { position: relative; width: 100vw; height: 100vh; cursor: crosshair; }
+        canvas { display: block; width: 100%; height: 100%; }
 
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            cursor: crosshair;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
+        /* Ecran Selecție Caracter */
         #char-select-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: radial-gradient(circle, rgba(20,15,12,0.96) 0%, rgba(5,5,7,0.98) 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            gap: 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; gap: 20px;
         }
-
-        #char-select-screen h1 {
-            color: #ffd700;
-            text-shadow: 0 0 15px rgba(212,175,55,0.6);
-            margin-bottom: 10px;
-            font-size: 28px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .char-cards-container {
-            display: flex;
-            gap: 20px;
-        }
-
+        #char-select-screen h1 { color: #ffd700; text-shadow: 0 0 15px rgba(212,175,55,0.6); margin-bottom: 10px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+        .char-cards-container { display: flex; gap: 20px; }
         .char-card {
-            width: 200px;
-            background: linear-gradient(180deg, rgba(35,25,20,0.9) 0%, rgba(15,10,8,0.95) 100%);
-            border: 2px solid #5c4326;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.3s;
+            width: 200px; background: linear-gradient(180deg, rgba(35,25,20,0.9) 0%, rgba(15,10,8,0.95) 100%);
+            border: 2px solid #5c4326; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: 0.3s;
             box-shadow: 0 5px 15px rgba(0,0,0,0.8);
         }
-
-        .char-card:hover {
-            border-color: #ffd700;
-            transform: translateY(-5px);
-            box-shadow: 0 0 20px rgba(255,165,0,0.4);
-        }
-
-        .char-card.selected {
-            border-color: #ff6600;
-            box-shadow: 0 0 25px rgba(255,69,0,0.7);
-            background: linear-gradient(180deg, rgba(55,30,20,0.95) 0%, rgba(20,12,8,0.98) 100%);
-        }
-
-        .char-card h3 {
-            color: #f39c12;
-            margin: 10px 0 5px 0;
-            font-size: 16px;
-        }
-
-        .char-card p {
-            color: #aaa;
-            font-size: 11px;
-            margin: 0;
-        }
-
+        .char-card:hover { border-color: #ffd700; transform: translateY(-5px); box-shadow: 0 0 20px rgba(255,165,0,0.4); }
+        .char-card.selected { border-color: #ff6600; box-shadow: 0 0 25px rgba(255,69,0,0.7); background: linear-gradient(180deg, rgba(55,30,20,0.95) 0%, rgba(20,12,8,0.98) 100%); }
+        .char-card h3 { color: #f39c12; margin: 10px 0 5px 0; font-size: 16px; }
+        .char-card p { color: #aaa; font-size: 11px; margin: 0; }
+        
         #start-game-btn {
-            background: linear-gradient(180deg, #d4af37 0%, #8c6239 100%);
-            color: #fff;
-            border: 2px solid #ffd700;
-            padding: 12px 35px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
-            transition: 0.2s;
-            margin-top: 15px;
+            background: linear-gradient(180deg, #d4af37 0%, #8c6239 100%); color: #fff; border: 2px solid #ffd700;
+            padding: 12px 35px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 5px 15px rgba(0,0,0,0.8); transition: 0.2s; margin-top: 15px;
         }
+        #start-game-btn:hover { background: linear-gradient(180deg, #ffd700 0%, #d4af37 100%); color: #000; transform: scale(1.05); }
 
-        #start-game-btn:hover {
-            background: linear-gradient(180deg, #ffd700 0%, #d4af37 100%);
-            color: #000;
-            transform: scale(1.05);
-        }
+        /* HUD Stil Dark Fantasy MMORPG */
+        #player-hud { position: absolute; top: 20px; left: 20px; background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%); border: 2px solid #8c6239; border-radius: 6px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 245px; box-shadow: 0 5px 15px rgba(0,0,0,0.85); z-index: 10; pointer-events: none; display: none; }
+        .avatar-box { width: 46px; height: 46px; background: radial-gradient(circle, #591616 0%, #1a0505 100%); border: 2px solid #d4af37; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 10px rgba(212, 175, 55, 0.4); }
+        .stats-box { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .player-name { font-size: 13px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px #000; }
+        
+        .bar-container { width: 100%; height: 11px; background: #1a1512; border-radius: 3px; overflow: hidden; position: relative; border: 1px solid #4a3520; }
+        .hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #8b0000, #ff2a2a); }
+        .mp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #003366, #1e90ff); }
+        .bar-text { position: absolute; width: 100%; height: 100%; top: 0; left: 0; font-size: 8px; text-align: center; line-height: 11px; color: white; font-weight: bold; text-shadow: 1px 1px #000; }
 
-        #player-hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: linear-gradient(180deg, rgba(28,20,16,0.92) 0%, rgba(14,10,8,0.95) 100%);
-            border: 2px solid #8c6239;
-            border-radius: 6px;
-            padding: 10px 14px;
-            display: none;
-            align-items: center;
-            gap: 12px;
-            width: 245px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.85);
-            z-index: 10;
-            pointer-events: none;
-        }
+        /* Panou Niveluri și Quests (Dreapta) */
+        #quest-panel { position: absolute; top: 20px; right: 20px; width: 230px; background: rgba(16, 13, 11, 0.9); border: 2px solid #6e4f2c; border-radius: 6px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); z-index: 10; pointer-events: none; display: none; }
+        #quest-panel h4 { margin: 0 0 8px 0; font-size: 12px; color: #f39c12; border-bottom: 1px solid #4a3520; padding-bottom: 4px; text-transform: uppercase; }
+        .quest-item { margin-bottom: 8px; font-size: 11px; }
+        .quest-title { display: flex; justify-content: space-between; color: #dcd0c0; margin-bottom: 2px; }
+        .quest-bar { width: 100%; height: 6px; background: #222; border-radius: 2px; overflow: hidden; }
+        .quest-progress { height: 100%; background: #27ae60; width: 20%; transition: width 0.3s; }
 
-        .avatar-box {
-            width: 46px;
-            height: 46px;
-            background: radial-gradient(circle, #591616 0%, #1a0505 100%);
-            border: 2px solid #d4af37;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
-        }
+        /* Indicator Nivel Hartă */
+        .map-level-badge { background: #2b1d16; border: 1px solid #d4af37; color: #ffd700; text-align: center; padding: 5px; font-weight: bold; font-size: 12px; border-radius: 4px; margin-bottom: 8px; text-shadow: 1px 1px #000; }
 
-        .stats-box {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
+        /* Chat 3D UI */
+        #chat-container { position: absolute; bottom: 20px; left: 20px; width: 320px; background: rgba(12, 10, 9, 0.88); border: 2px solid #5c4326; border-radius: 6px; display: flex; flex-direction: column; padding: 8px; z-index: 10; display: none; }
+        #chat-messages { height: 100px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; color: #ddd; }
+        #chat-input { background: #1c1613; border: 1px solid #6e4f2c; color: #fff; padding: 6px; border-radius: 4px; font-size: 11px; outline: none; pointer-events: auto; }
 
-        .player-name {
-            font-size: 13px;
-            font-weight: bold;
-            color: #ffd700;
-            text-shadow: 1px 1px #000;
-        }
-
-        .bar-container {
-            width: 100%;
-            height: 11px;
-            background: #1a1512;
-            border-radius: 3px;
-            overflow: hidden;
-            position: relative;
-            border: 1px solid #4a3520;
-        }
-
-        .hp-fill {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #8b0000, #ff2a2a);
-        }
-
-        .mp-fill {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #003366, #1e90ff);
-        }
-
-        .bar-text {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            font-size: 8px;
-            text-align: center;
-            line-height: 11px;
-            color: white;
-            font-weight: bold;
-            text-shadow: 1px 1px #000;
-        }
-
-        #quest-panel {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 230px;
-            background: rgba(16, 13, 11, 0.9);
-            border: 2px solid #6e4f2c;
-            border-radius: 6px;
-            padding: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.8);
-            z-index: 10;
-            pointer-events: none;
-            display: none;
-        }
-
-        #quest-panel h4 {
-            margin: 0 0 8px 0;
-            font-size: 12px;
-            color: #f39c12;
-            border-bottom: 1px solid #4a3520;
-            padding-bottom: 4px;
-            text-transform: uppercase;
-        }
-
-        .quest-item {
-            margin-bottom: 8px;
-            font-size: 11px;
-        }
-
-        .quest-title {
-            display: flex;
-            justify-content: space-between;
-            color: #dcd0c0;
-            margin-bottom: 2px;
-        }
-
-        .quest-bar {
-            width: 100%;
-            height: 6px;
-            background: #222;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .quest-progress {
-            height: 100%;
-            background: #27ae60;
-            width: 20%;
-            transition: width 0.3s;
-        }
-
-        .map-level-badge {
-            background: #2b1d16;
-            border: 1px solid #d4af37;
-            color: #ffd700;
-            text-align: center;
-            padding: 5px;
-            font-weight: bold;
-            font-size: 12px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-            text-shadow: 1px 1px #000;
-        }
-
-        #chat-container {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 320px;
-            background: rgba(12, 10, 9, 0.88);
-            border: 2px solid #5c4326;
-            border-radius: 6px;
-            display: none;
-            flex-direction: column;
-            padding: 8px;
-            z-index: 10;
-        }
-
-        #chat-messages {
-            height: 100px;
-            overflow-y: auto;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            margin-bottom: 6px;
-            color: #ddd;
-        }
-
-        #chat-input {
-            background: #1c1613;
-            border: 1px solid #6e4f2c;
-            color: #fff;
-            padding: 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            outline: none;
-            pointer-events: auto;
-        }
-
-        #action-bar {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            display: none;
-            gap: 10px;
-            background: rgba(20, 15, 12, 0.92);
-            padding: 8px 12px;
-            border: 2px solid #8c6239;
-            border-radius: 8px;
-            z-index: 10;
-        }
-
-        .skill-slot {
-            width: 46px;
-            height: 46px;
-            background: radial-gradient(circle, #2b1d16 0%, #120c09 100%);
-            border: 2px solid #5c4326;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            cursor: pointer;
-            position: relative;
-            transition: 0.2s;
-        }
-
-        .skill-slot:hover {
-            border-color: #ff6600;
-            box-shadow: 0 0 12px #ff4500;
-            transform: scale(1.08);
-        }
-
-        .skill-key {
-            position: absolute;
-            bottom: -2px;
-            right: 0px;
-            background: #000;
-            border: 1px solid #8c6239;
-            border-radius: 3px;
-            padding: 0 3px;
-            font-size: 9px;
-            color: #ffd700;
-            font-weight: bold;
-        }
+        /* Bară Abilități 3D */
+        #action-bar { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; background: rgba(20, 15, 12, 0.92); padding: 8px 12px; border: 2px solid #8c6239; border-radius: 8px; z-index: 10; display: none; }
+        .skill-slot { width: 46px; height: 46px; background: radial-gradient(circle, #2b1d16 0%, #120c09 100%); border: 2px solid #5c4326; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; }
+        .skill-slot:hover { border-color: #ff6600; box-shadow: 0 0 12px #ff4500; transform: scale(1.08); }
+        .skill-key { position: absolute; bottom: -2px; right: 0px; background: #000; border: 1px solid #8c6239; border-radius: 3px; padding: 0 3px; font-size: 9px; color: #ffd700; font-weight: bold; }
     </style>
 
+    <!-- Import Three.js și GLTFLoader -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
-
 <body>
 
+    <!-- Ecranul de Selecție Caracter -->
     <div id="char-select-screen">
         <h1>Alege-ți Eroul</h1>
-
         <div class="char-cards-container">
-            <div class="char-card selected"
-                 onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
+            <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
                 <p>Modelul 3D Knight.glb</p>
             </div>
         </div>
-
-        <button id="start-game-btn" onclick="startGame()">
-            Intră în Lumea 3D
-        </button>
+        <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
     </div>
 
     <div id="game-container">
-
+        <!-- HUD Profil -->
         <div id="player-hud">
             <div class="avatar-box">🔥</div>
             <div class="stats-box">
                 <span class="player-name" id="ui-name">Dark Knight</span>
-
                 <div class="bar-container">
                     <div class="hp-fill" style="width: 100%;"></div>
                     <div class="bar-text">HP: 1500 / 1500</div>
                 </div>
-
                 <div class="bar-container">
                     <div class="mp-fill" style="width: 100%;"></div>
                     <div class="bar-text">MP: 700 / 700</div>
@@ -386,64 +105,40 @@
             </div>
         </div>
 
+        <!-- Panou Niveluri și Quests -->
         <div id="quest-panel">
-            <div class="map-level-badge" id="map-level-display">
-                🏰 Etaj / Nivel: 1 / 10
-            </div>
-
+            <div class="map-level-badge" id="map-level-display">🏰 Etaj / Nivel: 1 / 10</div>
             <h4>📜 Daily Quests 3D</h4>
-
             <div class="quest-item">
-                <div class="quest-title">
-                    <span>Slay Demon Bull</span>
-                    <span id="q1-count">0/5</span>
-                </div>
-                <div class="quest-bar">
-                    <div class="quest-progress" id="q1-bar" style="width: 0%;"></div>
-                </div>
+                <div class="quest-title"><span>Slay Demon Bull</span><span id="q1-count">0/5</span></div>
+                <div class="quest-bar"><div class="quest-progress" id="q1-bar" style="width: 0%;"></div></div>
             </div>
         </div>
 
+        <!-- Chat -->
         <div id="chat-container">
             <div id="chat-messages">
-                <div style="color: #ff9900;" id="sys-msg">
-                    <b>[System]:</b> Click pe ecran pentru activare cameră 3D!
-                </div>
+                <div style="color: #ff9900;" id="sys-msg"><b>[System]:</b> Click pe ecran pentru activare cameră 3D!</div>
             </div>
-
-            <input type="text"
-                   id="chat-input"
-                   placeholder="Scrie un mesaj..."
-                   autocomplete="off">
+            <input type="text" id="chat-input" placeholder="Scrie un mesaj..." autocomplete="off">
         </div>
 
+        <!-- Bară Abilități -->
         <div id="action-bar">
-            <div class="skill-slot" onclick="triggerAttack3D()" title="Sword Attack">
-                ⚔️<span class="skill-key">1</span>
-            </div>
-
-            <div class="skill-slot" onclick="triggerAttack3D()" title="Fireball">
-                🔥<span class="skill-key">2</span>
-            </div>
-
-            <div class="skill-slot" onclick="triggerAttack3D()" title="Heal">
-                🧪<span class="skill-key">3</span>
-            </div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Sword Attack">⚔️<span class="skill-key">1</span></div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Fireball">🔥<span class="skill-key">2</span></div>
+            <div class="skill-slot" onclick="triggerAttack3D()" title="Heal">🧪<span class="skill-key">3</span></div>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"
-            onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
-
+    <!-- Script Socket.io opțional/sigur -->
+    <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
     <script>
         let selectedCharacterFile = './Knight.glb';
         let selectedCharacterName = 'Dark Knight';
 
         function selectCharacter(type, file, name, element) {
-            document.querySelectorAll('.char-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-
+            document.querySelectorAll('.char-card').forEach(card => card.classList.remove('selected'));
             element.classList.add('selected');
             selectedCharacterFile = file;
             selectedCharacterName = name;
@@ -460,129 +155,51 @@
             initGame();
         }
 
-        // =========================================================
-        // VARIABILE JOC
-        // =========================================================
-
         let socket = null;
         let scene, camera, renderer;
-
-        let players = {};
-        let monstersMeshes = {};
-        let attackRings = [];
-
+        let players = {}, monstersMeshes = {}, attackRings = [];
         let localPlayerMesh = null;
-
-        // SISTEM ANIMATII
-        let mixer = null;
-        let animationsMap = {};
-
-        let activeAction = null;
-        let idleAction = null;
-        let walkAction = null;
-        let runAction = null;
-        let attackAction = null;
-        let defenseAction = null;
-
-        let combatActionActive = false;
-        let movementIntent = false;
-        let currentAnimationName = '';
-
-        const ANIMATION_FADE_TIME = 0.18;
-
+        let mixer = null, animationsMap = {};
+        let activeAction = null, idleAction = null, walkAction = null;
         let clock = new THREE.Clock();
 
-        let myPos = {
-            x: 0,
-            y: 4.3,
-            z: 0,
-            velocityX: 0,
-            velocityZ: 0,
-            walkSpeed: 0.11,
-            runSpeed: 0.22,
-            rotY: 0
-        };
-
-        let cameraAngle = 0;
-        let cameraPitch = 0.45;
-        let cameraDistance = 10;
-        let isPointerLocked = false;
-
+        let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.22, rotY: 0 };
+        let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
         let mapMeshes = [];
-        let playerPositionLight = null;
-
+        let playerPointLight;
+        
         const keys = {};
-
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
-        // =========================================================
-        // TEREN
-        // =========================================================
-
         function getGroundHeight(x, z, fallbackY = 4.3) {
-            if (mapMeshes.length === 0) {
-                return fallbackY;
-            }
-
-            groundRaycaster.set(
-                new THREE.Vector3(x, 6.5, z),
-                downVector
-            );
-
+            if (mapMeshes.length === 0) return fallbackY;
+            groundRaycaster.set(new THREE.Vector3(x, 6.5, z), downVector);
             const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
-
-            if (intersects.length > 0) {
-                return intersects[0].point.y;
-            }
-
+            if (intersects.length > 0) return intersects[0].point.y;
             return fallbackY;
         }
 
-        // =========================================================
-        // MONSTRU
-        // =========================================================
-
         function createDetailedMonster3D() {
             const demon = new THREE.Group();
-
-            const skinMat = new THREE.MeshStandardMaterial({
-                color: 0xbf616a,
-                roughness: 0.5
-            });
-
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xbf616a, roughness: 0.5 });
             const bodyGeo = new THREE.SphereGeometry(1.2, 16, 16);
             const body = new THREE.Mesh(bodyGeo, skinMat);
-
             body.position.y = 1.2;
             demon.add(body);
-
             return demon;
         }
-
-        // =========================================================
-        // INITIALIZARE JOC
-        // =========================================================
 
         function initGame() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0d0908);
             scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
-            camera = new THREE.PerspectiveCamera(
-                48,
-                window.innerWidth / window.innerHeight,
-                0.1,
-                1000
-            );
+            camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            renderer = new THREE.WebGLRenderer({
-                antialias: true
-            });
-
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
-
             document.getElementById('game-container').appendChild(renderer.domElement);
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.8);
@@ -593,378 +210,153 @@
             dirLight.castShadow = true;
             scene.add(dirLight);
 
-            playerPositionLight = new THREE.PointLight(
-                0xffaa44,
-                3.0,
-                40
-            );
-
+            playerPositionLight = new THREE.PointLight(0xffaa44, 3.0, 40);
             scene.add(playerPositionLight);
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // =====================================================
-            // INCARCARE KNIGHT.GL B
-            // =====================================================
-
+            // Încărcare model Knight.glb cu protecție totală anti-blocare
             const loader = new THREE.GLTFLoader();
+            loader.load(selectedCharacterFile, (gltf) => {
+                const model = gltf.scene;
+                model.updateMatrixWorld(true);
+                
+                const box = new THREE.Box3().setFromObject(model);
+                const size = box.getSize(new THREE.Vector3());
+                let scaleFactor = 0.0121;
+                if (size.y > 0.1) {
+                    scaleFactor = 2.4 / size.y;
+                }
+                model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                model.updateMatrixWorld(true);
 
-            loader.load(
-                selectedCharacterFile,
+                const scaledBox = new THREE.Box3().setFromObject(model);
+                localPlayerMesh = new THREE.Group();
+                model.position.y -= scaledBox.min.y;
+                localPlayerMesh.add(model);
 
-                (gltf) => {
-                    const model = gltf.scene;
-
-                    model.updateMatrixWorld(true);
-
-                    const box = new THREE.Box3().setFromObject(model);
-                    const size = box.getSize(new THREE.Vector3());
-
-                    let scaleFactor = 0.0121;
-
-                    if (size.y > 0.1) {
-                        scaleFactor = 2.4 / size.y;
+                localPlayerMesh.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                        node.frustumCulled = false;
+                        if (node.material) {
+                            node.material.roughness = 0.4;
+                            node.material.metalness = 0.3;
+                        }
                     }
+                });
 
-                    model.scale.set(
-                        scaleFactor,
-                        scaleFactor,
-                        scaleFactor
-                    );
+                scene.add(localPlayerMesh);
 
-                    model.updateMatrixWorld(true);
+                // Configurare Animații în siguranță
+                try {
+                    if (gltf.animations && gltf.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(model);
+                        gltf.animations.forEach((clip) => {
+                            const action = mixer.clipAction(clip);
+                            animationsMap[clip.name.toLowerCase()] = action;
+                        });
 
-                    const scaledBox = new THREE.Box3().setFromObject(model);
+                        walkAction = animationsMap['walk'] || animationsMap['run'] || animationsMap['move'] || mixer.clipAction(gltf.animations[0]);
+                        idleAction = animationsMap['idle'] || animationsMap['stand'] || walkAction;
 
-                    localPlayerMesh = new THREE.Group();
-
-                    model.position.y -= scaledBox.min.y;
-                    localPlayerMesh.add(model);
-
-                    localPlayerMesh.traverse((node) => {
-                        if (node.isMesh) {
-                            node.castShadow = true;
-                            node.receiveShadow = true;
-                            node.frustumCulled = false;
-
-                            if (node.material) {
-                                node.material.roughness = 0.4;
-                                node.material.metalness = 0.3;
-                            }
+                        if (idleAction) {
+                            idleAction.play();
+                            activeAction = idleAction;
                         }
-                    });
-
-                    scene.add(localPlayerMesh);
-
-                    // =============================================
-                    // CONFIGURARE ANIMATII
-                    // =============================================
-
-                    try {
-                        if (gltf.animations && gltf.animations.length > 0) {
-                            mixer = new THREE.AnimationMixer(model);
-                            animationsMap = {};
-
-                            console.log("====== ANIMATII KNIGHT ======");
-
-                            gltf.animations.forEach((clip, index) => {
-                                console.log(
-                                    index,
-                                    clip.name,
-                                    "Durata:",
-                                    clip.duration
-                                );
-
-                                animationsMap[clip.name.toLowerCase().trim()] =
-                                    mixer.clipAction(clip);
-                            });
-
-                            function findAnimation(patterns) {
-                                const foundClip = gltf.animations.find((clip) => {
-                                    const name = clip.name.toLowerCase().trim();
-
-                                    return patterns.some(pattern => pattern.test(name));
-                                });
-
-                                return foundClip
-                                    ? mixer.clipAction(foundClip)
-                                    : null;
-                            }
-
-                            // IDLE
-                            idleAction = findAnimation([
-                                /^idle$/i,
-                                /idle/,
-                                /stand/,
-                                /standing/,
-                                /breath/
-                            ]);
-
-                            // WALK
-                            walkAction = findAnimation([
-                                /^walk$/i,
-                                /walking/,
-                                /walk/,
-                                /locomotion/
-                            ]);
-
-                            // RUN
-                            runAction = findAnimation([
-                                /^run$/i,
-                                /running/,
-                                /run_/
-                            ]);
-
-                            // ATTACK
-                            attackAction = findAnimation([
-                                /attack/,
-                                /attacking/,
-                                /atk/,
-                                /slash/,
-                                /sword/,
-                                /combo/
-                            ]);
-
-                            // DEFENSE
-                            defenseAction = findAnimation([
-                                /defen/,
-                                /defend/,
-                                /block/,
-                                /guard/
-                            ]);
-
-                            console.log("IDLE:", !!idleAction);
-                            console.log("WALK:", !!walkAction);
-                            console.log("RUN:", !!runAction);
-                            console.log("ATTACK:", !!attackAction);
-                            console.log("DEFENSE:", !!defenseAction);
-                            console.log("============================");
-
-                            // Pornim IDLE la incarcarea personajului.
-                            stopAllCharacterAnimations();
-
-                            if (idleAction) {
-                                playCharacterAction(
-                                    idleAction,
-                                    'idle',
-                                    true
-                                );
-                            }
-
-                            chatDiv.innerHTML += `
-                                <div style="color:#2ecc71;">
-                                    <b>[System]:</b>
-                                    Sistem animații încărcat
-                                    (${gltf.animations.length} animații).
-                                </div>`;
-                        } else {
-                            console.warn("Knight.glb nu conține animații.");
-
-                            chatDiv.innerHTML += `
-                                <div style="color:#e67e22;">
-                                    <b>[System]:</b>
-                                    Modelul nu conține animații.
-                                </div>`;
-                        }
-                    } catch (animErr) {
-                        console.warn(
-                            "Eroare la configurarea animațiilor:",
-                            animErr
-                        );
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animații încărcate (${gltf.animations.length} găsite).</div>`;
                     }
-                },
-
-                undefined,
-
-                (error) => {
-                    console.error(
-                        "Eroare la încărcarea Knight.glb:",
-                        error
-                    );
-
-                    chatDiv.innerHTML += `
-                        <div style="color:#e74c3c;">
-                            <b>[System Error]:</b>
-                            Nu s-a putut încărca ${selectedCharacterFile}.
-                        </div>`;
-                }
-            );
-
-            // =====================================================
-            // INCARCARE HARTA
-            // =====================================================
-
-            const mapLoader = new THREE.GLTFLoader();
-
-            mapLoader.load(
-                './map.glb',
-
-                (gltf) => {
-                    const mapModel = gltf.scene;
-
-                    mapModel.scale.set(3, 1, 3);
-
-                    const box = new THREE.Box3().setFromObject(mapModel);
-                    const center = box.getCenter(new THREE.Vector3());
-
-                    mapModel.position.x = -center.x;
-                    mapModel.position.z = -center.z;
-                    mapModel.position.y = -box.min.y;
-
-                    mapModel.traverse((node) => {
-                        if (node.isMesh) {
-                            node.castShadow = true;
-                            node.receiveShadow = true;
-
-                            if (node.material) {
-                                node.material.side = THREE.DoubleSide;
-                            }
-
-                            mapMeshes.push(node);
-                        }
-                    });
-
-                    mapModel.updateMatrixWorld(true);
-
-                    scene.add(mapModel);
-
-                    myPos.y = getGroundHeight(
-                        myPos.x,
-                        myPos.z,
-                        4.3
-                    );
-
-                    chatDiv.innerHTML += `
-                        <div style="color:#2ecc71;">
-                            <b>[System]:</b> Harta 3D încărcată!
-                        </div>`;
-                },
-
-                undefined,
-
-                (err) => {
-                    console.warn(
-                        "map.glb negăsit, se folosește podea standard."
-                    );
-
-                    const planeGeo = new THREE.PlaneGeometry(150, 150);
-
-                    const planeMat = new THREE.MeshStandardMaterial({
-                        color: 0x2e3440,
-                        roughness: 0.8
-                    });
-
-                    const plane = new THREE.Mesh(planeGeo, planeMat);
-
-                    plane.rotation.x = -Math.PI / 2;
-
-                    scene.add(plane);
-                    mapMeshes.push(plane);
-                }
-            );
-
-            // =====================================================
-            // TASTE
-            // =====================================================
-
-            window.addEventListener('keydown', (e) => {
-                if (
-                    document.activeElement ===
-                    document.getElementById('chat-input')
-                ) {
-                    return;
+                } catch (animErr) {
+                    console.warn("Modelul nu are animații compatibile, rulează static:", animErr);
                 }
 
-                keys[e.code] = true;
-                keys[e.key.toLowerCase()] = true;
-
-                if (
-                    !e.repeat &&
-                    (
-                        e.code === 'Space' ||
-                        e.code === 'Digit1' ||
-                        e.code === 'Digit2' ||
-                        e.code === 'Digit3'
-                    )
-                ) {
-                    triggerAttack3D();
-                }
+            }, undefined, (error) => {
+                console.error("Eroare la încărcarea Knight.glb:", error);
+                chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System Error]:</b> Nu s-a putut încărca ${selectedCharacterFile}.</div>`;
             });
 
+            // Încărcare hartă 3D
+            const mapLoader = new THREE.GLTFLoader();
+            mapLoader.load('./map.glb', (gltf) => {
+                const mapModel = gltf.scene;
+                mapModel.scale.set(3, 1, 3);
+
+                const box = new THREE.Box3().setFromObject(mapModel);
+                const center = box.getCenter(new THREE.Vector3());
+                
+                mapModel.position.x = -center.x;
+                mapModel.position.z = -center.z;
+                mapModel.position.y = -box.min.y;
+
+                mapModel.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                        if (node.material) node.material.side = THREE.DoubleSide;
+                        mapMeshes.push(node);
+                    }
+                });
+
+                mapModel.updateMatrixWorld(true);
+                scene.add(mapModel);
+                myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
+
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta 3D încărcată!</div>`;
+            }, undefined, (err) => {
+                console.warn("map.glb negăsit, se folosește podea standard.");
+                const planeGeo = new THREE.PlaneGeometry(150, 150);
+                const planeMat = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.8 });
+                const plane = new THREE.Mesh(planeGeo, planeMat);
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+                mapMeshes.push(plane);
+            });
+
+            // Ascultători taste
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement === document.getElementById('chat-input')) return;
+                keys[e.code] = true;
+                keys[e.key.toLowerCase()] = true;
+                if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
+            });
             window.addEventListener('keyup', (e) => {
                 keys[e.code] = false;
                 keys[e.key.toLowerCase()] = false;
             });
 
-            // Evitam taste blocate daca utilizatorul schimba fereastra.
-            window.addEventListener('blur', () => {
-                Object.keys(keys).forEach(key => {
-                    keys[key] = false;
-                });
-            });
-
-            // =====================================================
-            // SOCKET.IO
-            // =====================================================
-
+            // Conexiune Socket.io sigură
             try {
                 if (typeof io !== 'undefined') {
                     socket = io();
-
                     socket.on('currentMonsters', (serverMonsters) => {
                         for (const id in serverMonsters) {
                             const m = serverMonsters[id];
-
                             if (!monstersMeshes[id]) {
                                 const demon = createDetailedMonster3D();
-
                                 const mx = (m.x - 300) / 20;
                                 const mz = (m.y - 200) / 20;
-
-                                const my = getGroundHeight(
-                                    mx,
-                                    mz,
-                                    myPos.y
-                                );
-
+                                const my = getGroundHeight(mx, mz, myPos.y);
                                 demon.position.set(mx, my, mz);
-
                                 scene.add(demon);
                                 monstersMeshes[id] = demon;
                             }
                         }
                     });
-
                     socket.on('monstersMoved', (serverMonsters) => {
                         for (const id in serverMonsters) {
                             const m = serverMonsters[id];
-
                             if (monstersMeshes[id]) {
                                 const mx = (m.x - 300) / 20;
                                 const mz = (m.y - 200) / 20;
-
                                 monstersMeshes[id].position.x = mx;
                                 monstersMeshes[id].position.z = mz;
-
-                                monstersMeshes[id].position.y =
-                                    getGroundHeight(mx, mz, myPos.y);
+                                monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
                             }
                         }
                     });
-
                     socket.on('chatMessage', (data) => {
-                        const message = document.createElement('div');
-                        const name = document.createElement('b');
-
-                        name.style.color = '#ffd700';
-                        name.textContent = '[' + data.name + ']: ';
-
-                        message.appendChild(name);
-                        message.appendChild(
-                            document.createTextNode(data.message)
-                        );
-
-                        chatDiv.appendChild(message);
+                        chatDiv.innerHTML += `<div><b style="color:#ffd700;">[${data.name}]:</b> ${data.message}</div>`;
                         chatDiv.scrollTop = chatDiv.scrollHeight;
                     });
                 }
@@ -972,537 +364,149 @@
                 console.log("Rulare în mod offline complet.");
             }
 
-            // =====================================================
-            // CAMERA
-            // =====================================================
-
-            const gameContainer =
-                document.getElementById('game-container');
-
+            const gameContainer = document.getElementById('game-container');
             gameContainer.addEventListener('click', () => {
-                if (
-                    document.activeElement ===
-                    document.getElementById('chat-input')
-                ) {
-                    return;
-                }
-
+                if (document.activeElement === document.getElementById('chat-input')) return;
                 gameContainer.requestPointerLock();
             });
 
             document.addEventListener('pointerlockchange', () => {
-                isPointerLocked =
-                    document.pointerLockElement === gameContainer;
+                isPointerLocked = (document.pointerLockElement === gameContainer);
             });
 
             window.addEventListener('mousemove', (e) => {
                 if (isPointerLocked) {
                     cameraAngle += e.movementX * 0.005;
                     cameraPitch += e.movementY * 0.005;
-
-                    cameraPitch = Math.max(
-                        0.15,
-                        Math.min(1.4, cameraPitch)
-                    );
+                    cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
                 }
             });
 
             window.addEventListener('wheel', (e) => {
                 cameraDistance += e.deltaY * 0.05;
-
-                cameraDistance = Math.max(
-                    3,
-                    Math.min(25, cameraDistance)
-                );
+                cameraDistance = Math.max(3, Math.min(25, cameraDistance));
             });
 
-            // =====================================================
-            // CHAT
-            // =====================================================
-
             const chatInput = document.getElementById('chat-input');
-
             chatInput.addEventListener('keydown', (e) => {
-                if (
-                    e.key === 'Enter' &&
-                    chatInput.value.trim() !== ''
-                ) {
-                    const messageText = chatInput.value.trim();
-
+                if (e.key === 'Enter' && chatInput.value.trim() !== '') {
                     if (socket && socket.connected) {
-                        socket.emit('chatMessage', messageText);
+                        socket.emit('chatMessage', chatInput.value);
                     } else {
-                        const message = document.createElement('div');
-                        const name = document.createElement('b');
-
-                        name.style.color = '#ffd700';
-                        name.textContent = '[Local]: ';
-
-                        message.appendChild(name);
-                        message.appendChild(
-                            document.createTextNode(messageText)
-                        );
-
-                        chatDiv.appendChild(message);
-                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                        chatDiv.innerHTML += `<div><b style="color:#ffd700;">[Local]:</b> ${chatInput.value}</div>`;
                     }
-
                     chatInput.value = '';
                 }
             });
 
-            // =====================================================
-            // MOUSE
-            // =====================================================
-
             window.addEventListener('mousedown', (e) => {
-                if (document.activeElement === chatInput) {
-                    return;
-                }
-
-                // Nu declansam atacul cand apasam pe interfata.
-                if (e.target.closest('#action-bar')) {
-                    return;
-                }
-
-                if (e.button === 0) {
-                    triggerAttack3D();
-                } else if (e.button === 2) {
-                    e.preventDefault();
-                    triggerDefense3D();
-                }
+                if (document.activeElement === chatInput) return;
+                if (e.button === 0) triggerAttack3D();
+                else if (e.button === 2) { e.preventDefault(); triggerDefense3D(); }
             });
 
-            window.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
+            window.addEventListener('contextmenu', e => e.preventDefault());
 
             animateGame();
         }
 
-        // =========================================================
-        // SISTEM CENTRAL ANIMATII
-        // =========================================================
-
-        function stopAllCharacterAnimations() {
-            if (mixer) {
-                mixer.stopAllAction();
-            }
-
-            activeAction = null;
-            currentAnimationName = '';
-        }
-
-        function playCharacterAction(action, animationName, loop = true) {
-            if (!mixer || !action) {
-                return false;
-            }
-
-            // Daca actiunea corecta ruleaza deja, nu o repornim.
-            if (
-                activeAction === action &&
-                action.isRunning() &&
-                currentAnimationName === animationName
-            ) {
-                return true;
-            }
-
-            const previousAction = activeAction;
-
-            // Pregatim noua animatie.
-            action.reset();
-            action.enabled = true;
-            action.setEffectiveWeight(1);
-            action.setEffectiveTimeScale(1);
-
-            if (loop) {
-                action.setLoop(THREE.LoopRepeat, Infinity);
-                action.clampWhenFinished = false;
-            } else {
-                action.setLoop(THREE.LoopOnce, 1);
-                action.clampWhenFinished = true;
-            }
-
-            // Pornim actiunea noua.
-            action.play();
-
-            // Tranzitie intre animatii.
-            if (
-                previousAction &&
-                previousAction !== action &&
-                previousAction.isRunning()
-            ) {
-                previousAction.crossFadeTo(
-                    action,
-                    ANIMATION_FADE_TIME,
-                    false
-                );
-            } else {
-                action.fadeIn(ANIMATION_FADE_TIME);
-            }
-
-            activeAction = action;
-            currentAnimationName = animationName;
-
-            return true;
-        }
-
-        function updateCharacterMovementAnimation() {
-            if (!mixer || combatActionActive) {
-                return;
-            }
-
-            const running =
-                keys['ShiftLeft'] ||
-                keys['ShiftRight'] ||
-                keys['shift'];
-
-            // PERSONAJUL STA PE LOC.
-            if (!movementIntent) {
-                if (idleAction) {
-                    playCharacterAction(
-                        idleAction,
-                        'idle',
-                        true
-                    );
-                }
-
-                return;
-            }
-
-            // SHIFT + W/A/S/D = RUN.
-            if (running && runAction) {
-                playCharacterAction(
-                    runAction,
-                    'run',
-                    true
-                );
-
-                return;
-            }
-
-            // W/A/S/D = WALK.
-            if (walkAction) {
-                playCharacterAction(
-                    walkAction,
-                    'walk',
-                    true
-                );
-
-                return;
-            }
-
-            // Fallback.
-            if (idleAction) {
-                playCharacterAction(
-                    idleAction,
-                    'idle',
-                    true
-                );
-            }
-        }
-
-        // =========================================================
-        // ATAC
-        // =========================================================
-
         function triggerAttack3D() {
-            if (!scene || combatActionActive) {
-                return;
-            }
-
-            if (attackAction && mixer) {
-                combatActionActive = true;
-
-                playCharacterAction(
-                    attackAction,
-                    'attack',
-                    false
-                );
-
-                const actionToWatch = attackAction;
-
-                const onAttackFinished = (event) => {
-                    if (event.action !== actionToWatch) {
-                        return;
-                    }
-
-                    mixer.removeEventListener(
-                        'finished',
-                        onAttackFinished
-                    );
-
-                    combatActionActive = false;
-                    updateCharacterMovementAnimation();
-                };
-
-                mixer.addEventListener(
-                    'finished',
-                    onAttackFinished
-                );
-            }
-
-            // Efect vizual atac.
-            const ringGeo = new THREE.RingGeometry(
-                0.5,
-                1.2,
-                32
-            );
-
-            const ringMat = new THREE.MeshBasicMaterial({
-                color: 0xff4500,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.9
-            });
-
+            const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
-
             ring.rotation.x = -Math.PI / 2;
-
-            ring.position.set(
-                myPos.x,
-                myPos.y + 0.05,
-                myPos.z
-            );
-
+            ring.position.set(myPos.x, myPos.y + 0.05, myPos.z);
             scene.add(ring);
-
-            attackRings.push({
-                mesh: ring,
-                scale: 1,
-                opacity: 0.9
-            });
+            attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
-
-        // =========================================================
-        // APARARE
-        // =========================================================
 
         function triggerDefense3D() {
-            if (!scene || combatActionActive) {
-                return;
-            }
-
-            if (defenseAction && mixer) {
-                combatActionActive = true;
-
-                playCharacterAction(
-                    defenseAction,
-                    'defense',
-                    false
-                );
-
-                const actionToWatch = defenseAction;
-
-                const onDefenseFinished = (event) => {
-                    if (event.action !== actionToWatch) {
-                        return;
-                    }
-
-                    mixer.removeEventListener(
-                        'finished',
-                        onDefenseFinished
-                    );
-
-                    combatActionActive = false;
-                    updateCharacterMovementAnimation();
-                };
-
-                mixer.addEventListener(
-                    'finished',
-                    onDefenseFinished
-                );
-            }
-
-            const chatDiv =
-                document.getElementById('chat-messages');
-
-            chatDiv.innerHTML += `
-                <div style="color:#3498db;">
-                    <b>[Luptă]:</b>
-                    Te-ai pus în gardă!
-                </div>`;
-
+            const chatDiv = document.getElementById('chat-messages');
+            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
-            // Efect vizual scut.
-            const shieldGeo = new THREE.RingGeometry(
-                1.0,
-                1.4,
-                32
-            );
-
-            const shieldMat = new THREE.MeshBasicMaterial({
-                color: 0x3498db,
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: 0.7
-            });
-
-            const shieldMesh = new THREE.Mesh(
-                shieldGeo,
-                shieldMat
-            );
-
+            const shieldGeo = new THREE.RingGeometry(1.0, 1.4, 32);
+            const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+            const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
             shieldMesh.rotation.x = -Math.PI / 2;
-
-            shieldMesh.position.set(
-                myPos.x,
-                myPos.y + 0.06,
-                myPos.z
-            );
-
+            shieldMesh.position.set(myPos.x, myPos.y + 0.06, myPos.z);
             scene.add(shieldMesh);
-
-            setTimeout(() => {
-                if (scene) {
-                    scene.remove(shieldMesh);
-                    shieldGeo.dispose();
-                    shieldMat.dispose();
-                }
-            }, 1000);
+            setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
-        // =========================================================
-        // UPDATE JOC
-        // =========================================================
+        function fadeToAction(newAction, duration) {
+            if (!newAction || activeAction === newAction) return;
+            newAction.reset();
+            newAction.setEffectiveTimeScale(1);
+            newAction.setEffectiveWeight(1);
+            newAction.play();
+            if (activeAction) {
+                activeAction.crossFadeTo(newAction, duration, true);
+            }
+            activeAction = newAction;
+        }
 
         function update() {
-            const delta = Math.min(clock.getDelta(), 0.05);
+            const delta = clock.getDelta();
+            if (mixer) mixer.update(delta);
 
-            let moveForward =
-                (keys['KeyW'] || keys['w'] || keys['ArrowUp'])
-                    ? 1 : 0;
+            let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
+            let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
+            let moveLeft = (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) ? 1 : 0;
+            let moveRight = (keys['KeyD'] || keys['d'] || keys['ArrowRight']) ? 1 : 0;
 
-            let moveBackward =
-                (keys['KeyS'] || keys['s'] || keys['ArrowDown'])
-                    ? 1 : 0;
+            let isRunning = keys['ShiftLeft'] || keys['ShiftRight'] || keys['shift'];
+            let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
-            let moveLeft =
-                (keys['KeyA'] || keys['a'] || keys['ArrowLeft'])
-                    ? 1 : 0;
-
-            let moveRight =
-                (keys['KeyD'] || keys['d'] || keys['ArrowRight'])
-                    ? 1 : 0;
-
-            let isRunning =
-                keys['ShiftLeft'] ||
-                keys['ShiftRight'] ||
-                keys['shift'];
-
-            let targetSpeed = isRunning
-                ? myPos.runSpeed
-                : myPos.walkSpeed;
-
-            let inputX = 0;
-            let inputZ = 0;
-
+            let inputX = 0, inputZ = 0;
             const forwardX = -Math.sin(cameraAngle);
             const forwardZ = -Math.cos(cameraAngle);
-
             const rightX = Math.cos(cameraAngle);
             const rightZ = -Math.sin(cameraAngle);
 
-            if (moveForward) {
-                inputX += forwardX;
-                inputZ += forwardZ;
-            }
+            if (moveForward) { inputX += forwardX; inputZ += forwardZ; }
+            if (moveBackward) { inputX -= forwardX; inputZ -= forwardZ; }
+            if (moveLeft) { inputX -= rightX; inputZ -= rightZ; }
+            if (moveRight) { inputX += rightX; inputZ += rightZ; }
 
-            if (moveBackward) {
-                inputX -= forwardX;
-                inputZ -= forwardZ;
-            }
-
-            if (moveLeft) {
-                inputX -= rightX;
-                inputZ -= rightZ;
-            }
-
-            if (moveRight) {
-                inputX += rightX;
-                inputZ += rightZ;
-            }
-
-            let targetVx = 0;
-            let targetVz = 0;
-
+            let targetVx = 0, targetVz = 0;
             const len = Math.hypot(inputX, inputZ);
-
             if (len > 0) {
                 targetVx = (inputX / len) * targetSpeed;
                 targetVz = (inputZ / len) * targetSpeed;
             }
 
-            // Miscare fluida.
-            myPos.velocityX +=
-                (targetVx - myPos.velocityX) * 0.5;
-
-            myPos.velocityZ +=
-                (targetVz - myPos.velocityZ) * 0.5;
-
+            myPos.velocityX += (targetVx - myPos.velocityX) * 0.5;
+            myPos.velocityZ += (targetVz - myPos.velocityZ) * 0.5;
             myPos.x += myPos.velocityX;
             myPos.z += myPos.velocityZ;
 
-            const targetGroundY = getGroundHeight(
-                myPos.x,
-                myPos.z,
-                myPos.y
-            );
+            const targetGroundY = getGroundHeight(myPos.x, myPos.z, myPos.y);
+            myPos.y += (targetGroundY - myPos.y) * 0.4;
 
-            myPos.y +=
-                (targetGroundY - myPos.y) * 0.4;
+            let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
+            let isMoving = currentSpeed > 0.005;
 
-            const currentSpeed = Math.hypot(
-                myPos.velocityX,
-                myPos.velocityZ
-            );
-
-            // Intentia vine din taste, nu din inertie.
-            movementIntent = len > 0.001;
-
-            // Alegem animatia inainte de actualizarea mixerului.
-            updateCharacterMovementAnimation();
-
-            // Actualizam animatiile o singura data pe cadru.
-            if (mixer) {
-                mixer.update(delta);
+            if (walkAction && idleAction) {
+                if (isMoving) {
+                    fadeToAction(walkAction, 0.15);
+                    walkAction.setEffectiveTimeScale(isRunning ? 1.4 : 1.0);
+                } else {
+                    fadeToAction(idleAction, 0.15);
+                }
             }
 
-            // =====================================================
-            // ORIENTARE PERSONAJ
-            // =====================================================
-
-            if (currentSpeed > 0.005) {
-                let targetRotY = Math.atan2(
-                    myPos.velocityX,
-                    myPos.velocityZ
-                );
-
+            if (isMoving) {
+                let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
                 let diff = targetRotY - myPos.rotY;
-
-                while (diff < -Math.PI) {
-                    diff += Math.PI * 2;
-                }
-
-                while (diff > Math.PI) {
-                    diff -= Math.PI * 2;
-                }
-
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                while (diff > Math.PI) diff -= Math.PI * 2;
                 myPos.rotY += diff * 0.3;
 
                 if (socket && socket.connected) {
-                    socket.emit('playerMovement', {
-                        x: myPos.x * 20,
-                        y: myPos.z * 20
-                    });
+                    socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
                 }
             }
-
-            // =====================================================
-            // PERSONAJ SI CAMERA
-            // =====================================================
 
             if (localPlayerMesh) {
                 localPlayerMesh.position.x = myPos.x;
@@ -1511,110 +515,49 @@
                 localPlayerMesh.position.y = myPos.y;
 
                 if (playerPositionLight) {
-                    playerPositionLight.position.set(
-                        myPos.x,
-                        myPos.y + 3,
-                        myPos.z
-                    );
+                    playerPositionLight.position.set(myPos.x, myPos.y + 3, myPos.z);
                 }
 
-                const targetY = myPos.y + 1.8;
+                const targetY = myPos.y + 1.8; 
+                const camHeight = cameraDistance * Math.sin(cameraPitch);
+                const camRadius = cameraDistance * Math.cos(cameraPitch);
 
-                const camHeight =
-                    cameraDistance * Math.sin(cameraPitch);
-
-                const camRadius =
-                    cameraDistance * Math.cos(cameraPitch);
-
-                camera.position.x =
-                    myPos.x + Math.sin(cameraAngle) * camRadius;
-
-                camera.position.z =
-                    myPos.z + Math.cos(cameraAngle) * camRadius;
-
+                camera.position.x = myPos.x + Math.sin(cameraAngle) * camRadius;
+                camera.position.z = myPos.z + Math.cos(cameraAngle) * camRadius;
                 camera.position.y = targetY + camHeight;
+                camera.lookAt(myPos.x, targetY, myPos.z);
 
-                camera.lookAt(
-                    myPos.x,
-                    targetY,
-                    myPos.z
-                );
-
-                const distanceTraveled = Math.abs(myPos.z);
-
-                const calculatedLevel = Math.min(
-                    10,
-                    Math.floor(distanceTraveled / 8) + 1
-                );
-
-                document.getElementById(
-                    'map-level-display'
-                ).innerText =
-                    `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
+                let distanceTraveled = Math.abs(myPos.z);
+                let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 8) + 1);
+                document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
-            // =====================================================
-            // EFECTE ATAC
-            // =====================================================
-
-            for (
-                let i = attackRings.length - 1;
-                i >= 0;
-                i--
-            ) {
+            for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
-
                 r.scale += 0.35;
                 r.opacity -= 0.04;
-
-                r.mesh.scale.set(
-                    r.scale,
-                    r.scale,
-                    1
-                );
-
+                r.mesh.scale.set(r.scale, r.scale, 1);
                 r.mesh.material.opacity = r.opacity;
-
                 if (r.opacity <= 0) {
                     scene.remove(r.mesh);
-
-                    r.mesh.geometry.dispose();
-                    r.mesh.material.dispose();
-
                     attackRings.splice(i, 1);
                 }
             }
         }
 
-        // =========================================================
-        // LOOP GRAFIC
-        // =========================================================
-
         function animateGame() {
             requestAnimationFrame(animateGame);
-
             update();
-
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
             }
         }
 
-        // =========================================================
-        // REDIMENSIONARE FEREASTRA
-        // =========================================================
-
         window.addEventListener('resize', () => {
             if (camera && renderer) {
-                camera.aspect =
-                    window.innerWidth / window.innerHeight;
-
+                camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
-
-                renderer.setSize(
-                    window.innerWidth,
-                    window.innerHeight
-                );
+                renderer.setSize(window.innerWidth, window.innerHeight);
             }
         });
     </script>
