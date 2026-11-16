@@ -125,7 +125,6 @@
         renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        // Lumină ambientală și direcțională puternică + lumină care urmărește jucătorul
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
         scene.add(ambientLight);
 
@@ -134,7 +133,7 @@
         dirLight.castShadow = true;
         scene.add(dirLight);
 
-        const playerPointLight = new THREE.PointLight(0xffaa44, 1.5, 25);
+        const playerPointLight = new THREE.PointLight(0xffaa44, 1.8, 30);
         scene.add(playerPointLight);
 
         let players = {};
@@ -184,9 +183,6 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // ==========================================
-        // RAYCASTER CALIBRAT LA NIVELUL PODELEI (PORNEȘTE DE LA Y = 6.5 CA SĂ EVITE ACOPERIȘURILE)
-        // ==========================================
         let mapMeshes = [];
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
@@ -194,7 +190,6 @@
         function getGroundHeight(x, z, fallbackY = 4.3) {
             if (mapMeshes.length === 0) return fallbackY;
             
-            // Tragem raza de la 6.5 în jos ca să lovim direct podeaua, ignorând acoperișurile/arcadele de sus
             groundRaycaster.set(new THREE.Vector3(x, 6.5, z), downVector);
             const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
             
@@ -226,12 +221,14 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scară 0.025 (vizibil clar pe platformă)
+        // ==========================================
+        // SCARA CAVALERULUI MĂRITĂ LA 0.8 PENTRU A FI VIZIBIL PERFECT
+        // ==========================================
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
             sharedKnightAnimations = gltf.animations || [];
             
-            sharedKnightModel.scale.set(0.025, 0.025, 0.025);
+            sharedKnightModel.scale.set(0.8, 0.8, 0.8);
             sharedKnightModel.updateMatrixWorld(true);
 
             sharedKnightModel.traverse((node) => {
@@ -242,7 +239,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat și scalat!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb redimensionat la scară 0.8!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -287,7 +284,6 @@
             });
         }
 
-        // 2. Încărcare map.glb
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -316,7 +312,7 @@
             myPos.y = getGroundHeight(myPos.x, myPos.z, 4.3);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Podeaua platformei este la Y = ${myPos.y.toFixed(1)}!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta încărcată și pregătită de luptă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -568,10 +564,9 @@
                 players[myId].mesh.rotation.y = myPos.rotY;
                 players[myId].mesh.position.y = myPos.y;
 
-                // Lumina îl urmărește mereu pe cavaler
                 playerPointLight.position.set(myPos.x, myPos.y + 3, myPos.z);
 
-                const targetY = myPos.y + 1.5; 
+                const targetY = myPos.y + 1.8; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -629,7 +624,7 @@
             activeBubbles.forEach(b => {
                 if (!b.mesh) return;
                 tempVector.copy(b.mesh.position);
-                tempVector.y += 2.5; 
+                tempVector.y += 2.8; 
                 tempVector.project(camera);
 
                 const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
