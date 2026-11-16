@@ -165,12 +165,16 @@
         let socket = null;
         let scene, camera, renderer;
         let players = {}, monstersMeshes = {}, attackRings = [];
-        let localPlayerMesh = null; // Referință directă garantată pentru jucătorul local
+        let localPlayerMesh = null;
         let myPos = { x: 0, y: 4.3, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.16, runSpeed: 0.32, rotY: 0 };
         let cameraAngle = 0, cameraPitch = 0.45, cameraDistance = 10, isPointerLocked = false;
         let sharedPlayerContainer = null, activeBubbles = [];
         let mapMeshes = [];
         let playerPointLight;
+        
+        // Declararea corectă a obiectului pentru taste
+        const keys = {};
+
         const groundRaycaster = new THREE.Raycaster();
         const downVector = new THREE.Vector3(0, -1, 0);
 
@@ -310,7 +314,19 @@
                 mapMeshes.push(plane);
             });
 
-            // Încercare conexiune Socket.io sigură
+            // Ascultători pentru taste
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement === document.getElementById('chat-input')) return;
+                keys[e.code] = true;
+                keys[e.key.toLowerCase()] = true;
+                if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+                keys[e.key.toLowerCase()] = false;
+            });
+
+            // Conexiune Socket.io sigură
             try {
                 if (typeof io !== 'undefined') {
                     socket = io();
@@ -382,18 +398,6 @@
                     }
                     chatInput.value = '';
                 }
-            });
-
-            const keys = {};
-            window.addEventListener('keydown', (e) => {
-                if (document.activeElement === chatInput) return;
-                keys[e.code] = true;
-                keys[e.key.toLowerCase()] = true;
-                if (e.code === 'Space' || e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') triggerAttack3D();
-            });
-            window.addEventListener('keyup', (e) => {
-                keys[e.code] = false;
-                keys[e.key.toLowerCase()] = false;
             });
 
             window.addEventListener('mousedown', (e) => {
@@ -481,7 +485,6 @@
                 }
             }
 
-            // Actualizare poziție jucător local și cameră garantată
             if (localPlayerMesh) {
                 localPlayerMesh.position.x = myPos.x;
                 localPlayerMesh.position.z = myPos.z;
