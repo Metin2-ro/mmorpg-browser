@@ -177,7 +177,7 @@
             cameraDistance = Math.max(3, Math.min(25, cameraDistance));
         });
 
-        let sharedKnightModel = null;
+        let sharedKnightContainer = null; // Containerul care va asigura poziționarea corectă a tălpilor
         let sharedKnightAnimations = [];
         let animationMixers = [];
         let clock = new THREE.Clock();
@@ -222,27 +222,36 @@
         const loader = new THREE.GLTFLoader();
 
         // ==========================================
-        // ÎNCĂRCARE SIGURĂ CU MATRICE ACTUALIZATĂ ȘI FALLBACK DE SIGURANȚĂ
+        // ÎNCĂRCARE ȘI ALINIERE AUTOMATĂ A TĂLPILOR (PIVOT FIX)
         // ==========================================
         loader.load('./Knight.glb', (gltf) => {
-            sharedKnightModel = gltf.scene;
+            const model = gltf.scene;
             sharedKnightAnimations = gltf.animations || [];
             
-            // Actualizăm matricea înainte de a calcula dimensiunea
-            sharedKnightModel.updateMatrixWorld(true);
-            const box = new THREE.Box3().setFromObject(sharedKnightModel);
+            model.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3());
             
-            let scaleFactor = 0.02; // Valoare de siguranță garantată dacă dimensiunea e 0
+            let scaleFactor = 0.0121;
             if (size.y > 0.1) {
-                const targetHeight = 2.4; // Înălțimea monstrului
+                const targetHeight = 2.4; // Înălțimea monștrilor
                 scaleFactor = targetHeight / size.y;
             }
 
-            sharedKnightModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
-            sharedKnightModel.updateMatrixWorld(true);
+            model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            model.updateMatrixWorld(true);
 
-            sharedKnightModel.traverse((node) => {
+            // Recalculăm bounding box-ul după scalare pentru a pune tălpile exact la baza containerului (Y = 0)
+            const scaledBox = new THREE.Box3().setFromObject(model);
+            
+            // Cream un container (Group) care va servi drept pivot exact la picioarele cavalerului
+            sharedKnightContainer = new THREE.Group();
+            
+            // Mutăm modelul în jos în interiorul containerului cu exact valoarea minimă pe Y
+            model.position.y -= scaledBox.min.y;
+            sharedKnightContainer.add(model);
+
+            sharedKnightContainer.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
@@ -250,7 +259,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight încărcat! Înălțime originală: ${size.y.toFixed(1)} | Scală aplicată: ${scaleFactor.toFixed(4)}</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight scalat (${scaleFactor.toFixed(4)}) și aliniat pe tălpi!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -264,7 +273,7 @@
         });
 
         function setupPlayerAnimations(id) {
-            const clone = sharedKnightModel.clone();
+            const clone = sharedKnightContainer.clone();
             const mixer = new THREE.AnimationMixer(clone);
             
             let walkAction = null;
@@ -334,7 +343,7 @@
             myId = socket.id;
             for (const id in players) {
                 if (!players[id].mesh) {
-                    if (sharedKnightModel) {
+                    if (sharedKnightContainer) {
                         setupPlayerAnimations(id);
                     } else {
                         let mesh = createFallbackMesh();
@@ -375,7 +384,7 @@
 
         socket.on('newPlayer', (data) => {
             players[data.id] = data.player;
-            if (sharedKnightModel) {
+            if (sharedKnightContainer) {
                 setupPlayerAnimations(data.id);
             } else {
                 const mesh = createFallbackMesh();
