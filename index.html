@@ -179,11 +179,8 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // ==========================================
-        // CONTROLUL ÎNĂLȚIMII PENTRU JUCĂTOR, MONȘTRI ȘI HARTĂ
-        // ==========================================
-        let GROUND_Y = 0.0;     // Înălțimea la care calcă cavalerul și monștrii
-        let MAP_OFFSET_Y = 0.0; // Ajustează această valoare dacă harta trebuie coborâtă sau urcată
+        // SOLUL FIX ALINIAT LA 0
+        const GROUND_Y = 0.0;
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -267,33 +264,31 @@
             });
         }
 
-        let mapGlobalModel = null;
-
-        // 2. Încărcare map.glb cu poziționare controlată manual prin MAP_OFFSET_Y
+        // 2. Încărcare map.glb corectată prin coborârea automată cu exact min.y (-box.min.y)
         loader.load('./map.glb', (gltf) => {
-            mapGlobalModel = gltf.scene;
-            mapGlobalModel.scale.set(3, 1, 3);
+            const mapModel = gltf.scene;
+            mapModel.scale.set(3, 1, 3);
 
-            const box = new THREE.Box3().setFromObject(mapGlobalModel);
+            const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
             
-            mapGlobalModel.position.x = -center.x;
-            mapGlobalModel.position.z = -center.z;
+            mapModel.position.x = -center.x;
+            mapModel.position.z = -center.z;
             
-            // Folosim offset-ul manual pentru a aduce exact harta peste jucător
-            mapGlobalModel.position.y = MAP_OFFSET_Y;
+            // COBORÂRE EXACTĂ: Aducem baza hărții (min.y) direct la nivelul 0!
+            mapModel.position.y = -box.min.y;
 
-            mapGlobalModel.traverse((node) => {
+            mapModel.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
                 }
             });
 
-            scene.add(mapGlobalModel);
+            scene.add(mapModel);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Map Debug]:</b> min.y=${box.min.y.toFixed(1)}, max.y=${box.max.y.toFixed(1)}</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost aliniată perfect la sol!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
