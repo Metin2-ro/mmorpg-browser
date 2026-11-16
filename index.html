@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D cu caractermiscare.glb</p>
+                <p>Modelul 3D optimizat</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // ÎNCĂRCARE SEPARATĂ CU DIAGNOSTIC EXPLICIT ÎN CHAT
+            // ÎNCĂRCARE MODEL CU CORECȚIE DE ROTAȚIE PENTRU ANIMAȚIE
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -227,6 +227,11 @@
                     scaleFactor = 1.2 / size.y;
                 }
                 model.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                
+                // CORECȚIE ORIENTARE: Dacă modelul e culcat pe o parte sau întors greșit, 
+                // poți ajusta rotația de mai jos (de ex. Math.PI / 2 sau Math.PI)
+                model.rotation.y = 0; // Schimbă în Math.PI / 2 sau -Math.PI / 2 dacă e întors lateral
+
                 model.updateMatrixWorld(true);
 
                 const scaledBox = new THREE.Box3().setFromObject(model);
@@ -247,21 +252,21 @@
                 });
 
                 scene.add(localPlayerMesh);
-                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se caută caractermiscare.glb...</div>`;
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se încarcă caractermiscare.glb...</div>`;
 
-                // Încărcăm fișierul separat de animație pentru mers
+                // Încărcăm animația separată de mers
                 loader.load('./caractermiscare.glb', (animGltf) => {
                     if (animGltf.animations && animGltf.animations.length > 0) {
                         mixer = new THREE.AnimationMixer(localPlayerMesh);
                         walkAction = mixer.clipAction(animGltf.animations[0]);
                         walkAction.setLoop(THREE.LoopRepeat);
-                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[SUCCES]:</b> caractermiscare.glb încărcat și cuplat cu succes!</div>`;
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[SUCCES]:</b> Animația de mișcare cuplată!</div>`;
                     } else {
-                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[Atenție]:</b> caractermiscare.glb s-a încărcat, dar nu conține nicio animație!</div>`;
+                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[Atentie]:</b> caractermiscare.glb nu are animații!</div>`;
                     }
                 }, undefined, (animErr) => {
-                    console.error("Eroare caractermiscare.glb:", animErr);
-                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[EROARE]:</b> Nu s-a găsit fișierul caractermiscare.glb în folder!</div>`;
+                    console.error(animErr);
+                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[EROARE]:</b> Nu s-a găsit caractermiscare.glb!</div>`;
                 });
 
             }, undefined, (error) => {
