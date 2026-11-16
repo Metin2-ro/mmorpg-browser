@@ -82,7 +82,7 @@
             <div class="char-card selected" onclick="selectCharacter('knight', './Knight.glb', 'Dark Knight', this)">
                 <div style="font-size: 40px;">⚔️</div>
                 <h3>Dark Knight</h3>
-                <p>Modelul 3D</p>
+                <p>Modelul 3D cu animație separată</p>
             </div>
         </div>
         <button id="start-game-btn" onclick="startGame()">Intră în Lumea 3D</button>
@@ -214,7 +214,7 @@
 
             const chatDiv = document.getElementById('chat-messages');
 
-            // ÎNCĂRCARE DIRECTĂ: Folosim clipul integral 'allanimations' fără tăieri, să vedem cum reacționează oasele
+            // ÎNCĂRCARE SEPARATĂ: Mai întâi modelul 3D, apoi încărcăm caractermiscare.glb
             const loader = new THREE.GLTFLoader();
             loader.load(selectedCharacterFile, (gltf) => {
                 const model = gltf.scene;
@@ -224,7 +224,7 @@
                 const size = box.getSize(new THREE.Vector3());
                 let scaleFactor = 0.0121;
                 if (size.y > 0.1) {
-                    scaleFactor = 2.4 / size.y;
+                    scaleFactor = 1.2 / size.y; // Dimensiune optimizată
                 }
                 model.scale.set(scaleFactor, scaleFactor, scaleFactor);
                 model.updateMatrixWorld(true);
@@ -247,15 +247,22 @@
                 });
 
                 scene.add(localPlayerMesh);
+                chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat. Se încarcă caractermiscare.glb...</div>`;
 
-                if (gltf.animations && gltf.animations.length > 0) {
-                    mixer = new THREE.AnimationMixer(model);
-                    let fullClip = gltf.animations[0]; // Preluăm "allanimations" direct
-                    
-                    walkAction = mixer.clipAction(fullClip);
-                    walkAction.setLoop(THREE.LoopRepeat);
-                    chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Animația completă încărcată direct pe model.</div>`;
-                }
+                // Încărcăm fișierul separat de animație pentru mers
+                loader.load('./caractermiscare.glb', (animGltf) => {
+                    if (animGltf.animations && animGltf.animations.length > 0) {
+                        mixer = new THREE.AnimationMixer(localPlayerMesh);
+                        walkAction = mixer.clipAction(animGltf.animations[0]);
+                        walkAction.setLoop(THREE.LoopRepeat);
+                        chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> caractermiscare.glb sincronizat cu succes!</div>`;
+                    } else {
+                        chatDiv.innerHTML += `<div style="color: #f39c12;"><b>[System]:</b> caractermiscare.glb nu conține animații.</div>`;
+                    }
+                }, undefined, (animErr) => {
+                    console.warn("caractermiscare.glb negăsit.");
+                    chatDiv.innerHTML += `<div style="color: #e74c3c;"><b>[System Warning]:</b> Pune fișierul caractermiscare.glb în folder.</div>`;
+                });
 
             }, undefined, (error) => {
                 console.error("Eroare la încărcarea Knight.glb:", error);
@@ -461,12 +468,12 @@
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
-            // Rulăm animația integrală când te miști și o oprim când stai
+            // Controlul animației separate din caractermiscare.glb
             if (walkAction) {
                 if (isMoving) {
                     if (!walkAction.isRunning()) walkAction.play();
-                    let ratio = currentSpeed / myPos.walkSpeed;
-                    walkAction.setEffectiveTimeScale(ratio);
+                    let speedRatio = currentSpeed / myPos.walkSpeed;
+                    walkAction.setEffectiveTimeScale(speedRatio);
                 } else {
                     if (walkAction.isRunning()) walkAction.stop();
                 }
