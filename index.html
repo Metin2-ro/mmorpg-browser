@@ -463,66 +463,73 @@ function initGame() {
 function loadCharacter() {
     const loader = new THREE.GLTFLoader();
 
-    addChat("Se încarcă Dark Knight...","#ffd700");
+    addChat("Se încarcă Dark Knight...", "#ffd700");
 
     loader.load(
         selectedCharacterFile,
 
         function(gltf) {
             characterModel = gltf.scene;
-
-            // Actualizăm matricile înainte de calculul dimensiunilor.
             characterModel.updateMatrixWorld(true);
 
-            let initialBox = new THREE.Box3().setFromObject(characterModel);
-            let initialSize = initialBox.getSize(new THREE.Vector3());
+            // Măsurăm modelul ORIGINAL înainte de orice scalare.
+            const originalBox = new THREE.Box3().setFromObject(characterModel);
+            const originalSize = originalBox.getSize(new THREE.Vector3());
 
-            if (!isFinite(initialSize.y) || initialSize.y < 0.001) {
-                addChat("Modelul nu are dimensiuni valide.","#e74c3c");
+            if (!Number.isFinite(originalSize.y) || originalSize.y < 0.001) {
+                addChat("Modelul nu are dimensiuni valide.", "#e74c3c");
+                console.error("Dimensiuni Knight.glb invalide:", originalSize);
                 return;
             }
 
-            // Scalare automată la aproximativ 2.4 unități.
-            const scaleFactor = TARGET_CHARACTER_HEIGHT / initialSize.y;
+            // IMPORTANT:
+            // Nu scalăm direct gltf.scene. Animațiile GLB pot rescrie
+            // transformarea rădăcinii și pot anula scalarea.
+            // Aplicăm scalarea pe un grup exterior, pe care animațiile
+            // din fișier nu îl pot modifica.
+            const visualScale = TARGET_CHARACTER_HEIGHT / originalSize.y;
 
-            characterModel.scale.multiplyScalar(scaleFactor);
-            characterModel.updateMatrixWorld(true);
+            // Așezăm modelul cu baza la Y=0 înainte să-l introducem
+            // în grupul exterior scalat.
+            characterModel.position.y -= originalBox.min.y;
 
-            // Calculăm din nou bounding box după scalare.
-            const scaledBox = new THREE.Box3().setFromObject(characterModel);
+            const characterVisual = new THREE.Group();
+            characterVisual.name = "CharacterVisual_ScaleWrapper";
+            characterVisual.add(characterModel);
+            characterVisual.scale.setScalar(visualScale);
 
-            // Grupul exterior reprezintă poziția personajului pe hartă.
+            // Grupul acesta reprezintă poziția personajului pe hartă.
             localPlayerMesh = new THREE.Group();
+            localPlayerMesh.name = "LocalPlayer";
 
-            // Ridicăm modelul în interiorul grupului astfel încât
-            // punctul cel mai jos al modelului să fie la Y = 0.
-            characterModel.position.y -= scaledBox.min.y;
+            localPlayerMesh.add(characterVisual);
+            scene.add(localPlayerMesh);
 
-            localPlayerMesh.add(characterModel);
+            localPlayerMesh.updateMatrixWorld(true);
 
-            localPlayerMesh.traverse(function(node) {
+            // Verificăm dimensiunea FINALĂ reală după aplicarea wrapper-ului.
+            const finalBox = new THREE.Box3().setFromObject(characterVisual);
+            const finalSize = finalBox.getSize(new THREE.Vector3());
+
+            characterVisual.traverse(function(node) {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
                     node.frustumCulled = false;
 
                     if (node.material) {
-                        if (Array.isArray(node.material)) {
-                            node.material.forEach(mat => {
-                                mat.roughness = 0.4;
-                                mat.metalness = 0.3;
-                                mat.needsUpdate = true;
-                            });
-                        } else {
-                            node.material.roughness = 0.4;
-                            node.material.metalness = 0.3;
-                            node.material.needsUpdate = true;
-                        }
+                        const materials = Array.isArray(node.material)
+                            ? node.material
+                            : [node.material];
+
+                        materials.forEach(function(mat) {
+                            mat.roughness = 0.4;
+                            mat.metalness = 0.3;
+                            mat.needsUpdate = true;
+                        });
                     }
                 }
             });
-
-            scene.add(localPlayerMesh);
 
             characterLoaded = true;
 
@@ -530,18 +537,22 @@ function loadCharacter() {
             placePlayerOnGround();
 
             addChat(
-                "Dark Knight încărcat! Înălțime: " +
-                initialSize.y.toFixed(2) + " / scalare: " +
-                scaleFactor.toFixed(4),
+                "Dark Knight încărcat! Înălțime finală: " +
+                finalSize.y.toFixed(3) +
+                " | factor scalare: " + visualScale.toFixed(6),
                 "#2ecc71"
             );
+
+            console.log("Knight.glb - înălțime originală:", originalSize.y);
+            console.log("Knight.glb - factor scalare:", visualScale);
+            console.log("Knight.glb - înălțime finală:", finalSize.y);
         },
 
         undefined,
 
         function(error) {
-            console.error("Eroare Knight.glb:",error);
-            addChat("Nu s-a putut încărca Knight.glb. Verifică fișierul și calea.","#e74c3c");
+            console.error("Eroare Knight.glb:", error);
+            addChat("Nu s-a putut încărca Knight.glb. Verifică fișierul și calea.", "#e74c3c");
         }
     );
 }
@@ -982,7 +993,7 @@ function update() {
             playerPointLight.position.set(myPos.x,myPos.y+3,myPos.z);
         }
 
-        const targetY = myPos.y+1.8;
+        const targetY = myPos.y + Math.max(TARGET_CHARACTER_HEIGHT * 0.75, 0.15);
         const camHeight = cameraDistance*Math.sin(cameraPitch);
         const camRadius = cameraDistance*Math.cos(cameraPitch);
 
