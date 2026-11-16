@@ -116,7 +116,7 @@
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0d0908);
-        scene.fog = new THREE.FogExp2(0x0d0908, 0.012);
+        scene.fog = new THREE.FogExp2(0x0d0908, 0.01);
 
         const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
 
@@ -125,11 +125,12 @@
         renderer.shadowMap.enabled = true;
         document.getElementById('game-container').appendChild(renderer.domElement);
 
-        const ambientLight = new THREE.AmbientLight(0xffd2a6, 0.7);
+        // Lumină mai puternică pentru a vedea clar cavalerul și detaliile hărții
+        const ambientLight = new THREE.AmbientLight(0xffe6cc, 1.3);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffaa55, 1.2);
-        dirLight.position.set(15, 30, 15);
+        const dirLight = new THREE.DirectionalLight(0xffbb77, 1.5);
+        dirLight.position.set(20, 50, 20);
         dirLight.castShadow = true;
         scene.add(dirLight);
 
@@ -139,7 +140,7 @@
         let myId = null;
         
         let myPos = { 
-            x: 0, z: 0, 
+            x: 0, y: 12, z: 0, 
             velocityX: 0, velocityZ: 0, 
             walkSpeed: 0.14, runSpeed: 0.30, 
             rotY: 0 
@@ -175,14 +176,31 @@
         });
 
         let sharedKnightModel = null;
+        let sharedKnightAnimations = [];
         let animationMixers = [];
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
         // ==========================================
-        // SOLUL CORECT ALINIAT LA NIVELUL PODELEI HĂRȚII (Y = 0.0)
+        // RAYCASTER PENTRU DETECTAREA AUTOMATĂ A PODELEI HĂRȚII
         // ==========================================
-        let GROUND_Y = 0.0;
+        let mapMeshes = [];
+        const groundRaycaster = new THREE.Raycaster();
+        const downVector = new THREE.Vector3(0, -1, 0);
+
+        function getGroundHeight(x, z, fallbackY = 12) {
+            if (mapMeshes.length === 0) return fallbackY;
+            
+            // Tragem o rază din cer (Y = 100) direct în jos la coordonatele (x, z)
+            groundRaycaster.set(new THREE.Vector3(x, 100, z), downVector);
+            const intersects = groundRaycaster.intersectObjects(mapMeshes, true);
+            
+            if (intersects.length > 0) {
+                // Returnează înălțimea exactă a primului punct lovit de sus în jos (suprafața pe care mergi)
+                return intersects[0].point.y;
+            }
+            return fallbackY;
+        }
 
         function createFallbackMesh() {
             const group = new THREE.Group();
@@ -206,9 +224,10 @@
 
         const loader = new THREE.GLTFLoader();
 
-        // 1. Încărcare Knight.glb cu scară fixă 0.01
+        // 1. Încărcare Knight.glb
         loader.load('./Knight.glb', (gltf) => {
             sharedKnightModel = gltf.scene;
+            sharedKnightAnimations = gltf.animations || [];
             
             sharedKnightModel.scale.set(0.01, 0.01, 0.01);
             sharedKnightModel.updateMatrixWorld(true);
@@ -228,25 +247,25 @@
                 if (players[id].mesh) {
                     scene.remove(players[id].mesh);
                 }
-                setupPlayerAnimations(id, gltf);
+                setupPlayerAnimations(id);
             }
         }, undefined, (error) => {
             console.error("Eroare la încărcarea modelului 3D:", error);
         });
 
-        function setupPlayerAnimations(id, gltf) {
+        function setupPlayerAnimations(id) {
             const clone = sharedKnightModel.clone();
             const mixer = new THREE.AnimationMixer(clone);
             
             let walkAction = null;
             let runAction = null;
 
-            if (gltf.animations && gltf.animations.length > 0) {
-                walkAction = mixer.clipAction(gltf.animations[0]);
+            if (sharedKnightAnimations.length > 0) {
+                walkAction = mixer.clipAction(sharedKnightAnimations[0]);
                 walkAction.play();
                 
-                if (gltf.animations.length > 1) {
-                    runAction = mixer.clipAction(gltf.animations[1]);
+                if (sharedKnightAnimations.length > 1) {
+                    runAction = mixer.clipAction(sharedKnightAnimations[1]);
                     runAction.play();
                 } else {
                     runAction = walkAction;
@@ -266,7 +285,7 @@
             });
         }
 
-        // 2. Încărcare map.glb cu baza adusă la Y = 0
+        // 2. Încărcare map.glb și activarea detecției de teren
         loader.load('./map.glb', (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
@@ -276,19 +295,28 @@
             
             mapModel.position.x = -center.x;
             mapModel.position.z = -center.z;
-            mapModel.position.y = -box.min.y; // Aduce podeaua hărții exact la Y = 0
+            mapModel.position.y = -box.min.y;
 
             mapModel.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = true;
                     node.receiveShadow = true;
+                    // Asigurăm că ambele fețe ale poligoanelor sunt detectabile
+                    if (node.material) {
+                        node.material.side = THREE.DoubleSide;
+                    }
+                    mapMeshes.push(node);
                 }
             });
 
+            mapModel.updateMatrixWorld(true);
             scene.add(mapModel);
 
+            // Calculăm imediat înălțimea exactă a platformei sub cavaler
+            myPos.y = getGroundHeight(myPos.x, myPos.z, 12);
+
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta și cavalerul sunt pe podea (Y = 0)!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Suprafața hărții detectată la înălțimea Y = ${myPos.y.toFixed(1)}!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -300,7 +328,7 @@
             for (const id in players) {
                 if (!players[id].mesh) {
                     if (sharedKnightModel) {
-                        setupPlayerAnimations(id, { animations: [] });
+                        setupPlayerAnimations(id);
                     } else {
                         let mesh = createFallbackMesh();
                         scene.add(mesh);
@@ -315,7 +343,10 @@
                 const m = serverMonsters[id];
                 if (!monstersMeshes[id]) {
                     const demon = createDetailedMonster3D();
-                    demon.position.set((m.x - 300) / 20, GROUND_Y, (m.y - 200) / 20);
+                    const mx = (m.x - 300) / 20;
+                    const mz = (m.y - 200) / 20;
+                    const my = getGroundHeight(mx, mz, myPos.y);
+                    demon.position.set(mx, my, mz);
                     scene.add(demon);
                     monstersMeshes[id] = demon;
                 }
@@ -326,8 +357,11 @@
             for (const id in serverMonsters) {
                 const m = serverMonsters[id];
                 if (monstersMeshes[id]) {
-                    monstersMeshes[id].position.x = (m.x - 300) / 20;
-                    monstersMeshes[id].position.z = (m.y - 200) / 20;
+                    const mx = (m.x - 300) / 20;
+                    const mz = (m.y - 200) / 20;
+                    monstersMeshes[id].position.x = mx;
+                    monstersMeshes[id].position.z = mz;
+                    monstersMeshes[id].position.y = getGroundHeight(mx, mz, myPos.y);
                 }
             }
         });
@@ -335,7 +369,7 @@
         socket.on('newPlayer', (data) => {
             players[data.id] = data.player;
             if (sharedKnightModel) {
-                setupPlayerAnimations(data.id, { animations: [] });
+                setupPlayerAnimations(data.id);
             } else {
                 const mesh = createFallbackMesh();
                 scene.add(mesh);
@@ -356,7 +390,7 @@
                 }
                 players[data.id].mesh.position.x = targetX;
                 players[data.id].mesh.position.z = targetZ;
-                players[data.id].mesh.position.y = GROUND_Y;
+                players[data.id].mesh.position.y = getGroundHeight(targetX, targetZ, myPos.y);
             }
         });
 
@@ -453,7 +487,7 @@
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
             ring.rotation.x = -Math.PI / 2;
-            ring.position.set(myPos.x, GROUND_Y + 0.05, myPos.z);
+            ring.position.set(myPos.x, myPos.y + 0.05, myPos.z);
             scene.add(ring);
             attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
         }
@@ -468,7 +502,7 @@
             const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
             const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
             shieldMesh.rotation.x = -Math.PI / 2;
-            shieldMesh.position.set(myPos.x, GROUND_Y + 0.06, myPos.z);
+            shieldMesh.position.set(myPos.x, myPos.y + 0.06, myPos.z);
             scene.add(shieldMesh);
             
             setTimeout(() => { scene.remove(shieldMesh); }, 1000);
@@ -510,6 +544,10 @@
             myPos.x += myPos.velocityX;
             myPos.z += myPos.velocityZ;
 
+            // Actualizăm continuu înălțimea cavalerului ca să urce/coboare scările și relieful hărții!
+            const targetGroundY = getGroundHeight(myPos.x, myPos.z, myPos.y);
+            myPos.y += (targetGroundY - myPos.y) * 0.4;
+
             let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
             let isMoving = currentSpeed > 0.005;
 
@@ -529,9 +567,9 @@
                 players[myId].mesh.position.x = myPos.x;
                 players[myId].mesh.position.z = myPos.z;
                 players[myId].mesh.rotation.y = myPos.rotY;
-                players[myId].mesh.position.y = GROUND_Y;
+                players[myId].mesh.position.y = myPos.y;
 
-                const targetY = GROUND_Y + 1.2; 
+                const targetY = myPos.y + 1.2; 
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -576,7 +614,7 @@
                         } else {
                             item.walkAction.paused = false;
                             item.walkAction.timeScale = isRunning ? 1.8 : 1.0;
-                            if (item.runAction !== item.walkAction) item.walkAction.paused = true;
+                            if (item.runAction !== item.walkAction) item.runAction.paused = true;
                         }
                     }
                 }
