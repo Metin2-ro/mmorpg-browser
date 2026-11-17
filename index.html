@@ -241,6 +241,7 @@ canvas { display: block; width: 100%; height: 100%; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 </head>
 
 <body>
@@ -429,20 +430,43 @@ function initGame() {
     animateGame();
 }
 
+// Măsoară înălțimea reală a modelului (după oase dacă are schelet) și cota tălpilor
+function measureModel(root) {
+    root.updateMatrixWorld(true);
+
+    let hasSkin = false;
+    root.traverse(function(n) { if (n.isSkinnedMesh) hasSkin = true; });
+
+    if (hasSkin) {
+        const boneBox = new THREE.Box3();
+        const p = new THREE.Vector3();
+        root.traverse(function(n) {
+            if (n.isBone) { n.getWorldPosition(p); boneBox.expandByPoint(p); }
+        });
+        if (!boneBox.isEmpty()) {
+            const h = boneBox.getSize(new THREE.Vector3()).y;
+            if (h > 0) return { height: h * 1.1, minY: boneBox.min.y }; // 1.1 = capul depășește oasele
+        }
+    }
+
+    const box = new THREE.Box3().setFromObject(root);
+    return { height: box.getSize(new THREE.Vector3()).y, minY: box.min.y };
+}
+
 function buildScaledCharacterGroup(gltfScene, tintHex = null) {
-    const clone = gltfScene.clone();
+    // SkeletonUtils.clone copiază corect scheletul (clone() simplu nu merge la modele animate)
+    const clone = THREE.SkeletonUtils.clone(gltfScene);
 
-    // Măsoară modelul la scara lui originală și îl aduce automat la PLAYER_HEIGHT
+    clone.position.set(0, 0, 0);
     clone.scale.set(1, 1, 1);
-    clone.updateMatrixWorld(true);
-    const size = new THREE.Box3().setFromObject(clone).getSize(new THREE.Vector3());
-    const factor = size.y > 0 ? PLAYER_HEIGHT / size.y : 1;
-    clone.scale.setScalar(factor);
-    clone.updateMatrixWorld(true);
+    clone.rotation.set(0, 0, 0);
 
-    // Pune tălpile exact pe sol
-    const fitted = new THREE.Box3().setFromObject(clone);
-    clone.position.y -= fitted.min.y;
+    const m = measureModel(clone);
+    const factor = m.height > 0 ? PLAYER_HEIGHT / m.height : 1;
+    console.log("Model original: înălțime =", m.height, "→ factor scară =", factor);
+
+    clone.scale.setScalar(factor);
+    clone.position.y = -m.minY * factor; // tălpile pe sol
     clone.updateMatrixWorld(true);
 
     const rootGroup = new THREE.Group();
@@ -452,6 +476,7 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
         if (node.isMesh) {
             node.castShadow = true;
             node.receiveShadow = true;
+            node.frustumCulled = false; // modelele animate dispăreau uneori din cadru
             if (node.material) {
                 node.material = node.material.clone();
                 node.material.roughness = 0.4;
@@ -604,6 +629,12 @@ function setupControls() {
         if (e.key === "Enter") {
             document.getElementById("chat-input").focus();
             e.preventDefault();
+            return;
+        }
+        if ((e.key === "[" || e.key === "]") && localPlayerMesh) {
+            const k = e.key === "[" ? 0.85 : 1 / 0.85;
+            localPlayerMesh.scale.multiplyScalar(k);
+            addChat("Mărime personaj: x" + localPlayerMesh.scale.x.toFixed(2) + "  (PLAYER_HEIGHT ≈ " + (PLAYER_HEIGHT * localPlayerMesh.scale.x).toFixed(2) + ")", "#9ad");
             return;
         }
         keys[e.code] = true;
