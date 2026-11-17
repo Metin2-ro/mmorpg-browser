@@ -307,9 +307,6 @@ canvas { display: block; width: 100%; height: 100%; }
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
 
-// SCALARE MANUALĂ DIRECTĂ: Modifică valoarea asta dacă îl vrei și mai mic (de ex. 0.002) sau mai mare (0.008)
-const MANUAL_CHARACTER_SCALE = 0.002;
-
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
 
@@ -428,20 +425,15 @@ function initGame() {
 
 function buildScaledCharacterGroup(gltfScene, tintHex = null) {
     const clone = gltfScene.clone();
+    
+    // SCALĂ MICĂ FORȚATĂ DIRECT PE MODEL PENTRU A ANULA FIȘIERUL GIGANTIC
+    clone.scale.set(0.0001, 0.0001, 0.0001);
     clone.updateMatrixWorld(true);
 
-    const originalBox = new THREE.Box3().setFromObject(clone);
-    clone.position.y -= originalBox.min.y;
-
-    const characterVisual = new THREE.Group();
-    characterVisual.add(clone);
-    // Aplicăm direct scala manuală fixă
-    characterVisual.scale.setScalar(MANUAL_CHARACTER_SCALE);
-
     const rootGroup = new THREE.Group();
-    rootGroup.add(characterVisual);
+    rootGroup.add(clone);
 
-    characterVisual.traverse(function(node) {
+    clone.traverse(function(node) {
         if (node.isMesh) {
             node.castShadow = true;
             node.receiveShadow = true;
