@@ -19,7 +19,7 @@ body {
     position: relative;
     width: 100vw;
     height: 100vh;
-    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewport="0 0 24 24" style="fill:gold;"><polygon points="0,0 0,18 5,13 10,22 13,20 8,11 16,11"/></svg>'), auto;
+    cursor: crosshair;
 }
 canvas { display: block; width: 100%; height: 100%; }
 
@@ -257,7 +257,7 @@ canvas { display: block; width: 100%; height: 100%; }
         <div class="char-card selected">
             <div style="font-size:45px">⚔️</div>
             <h3>Dark Knight</h3>
-            <p>Clasă PC Optimistă • PvP & PvE</p>
+            <p>Clasă PC Optimizată • PvP & PvE</p>
         </div>
     </div>
     <button id="start-game-btn" onclick="startGame()">Conectare în Joc (PC)</button>
@@ -315,7 +315,8 @@ canvas { display: block; width: 100%; height: 100%; }
 
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
-const TARGET_CHARACTER_HEIGHT = 0.02;
+// Înălțime corectată pentru a se potrivi perfect pe hartă (2.0 unități Three.js)
+const TARGET_CHARACTER_HEIGHT = 2.0;
 
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
@@ -364,7 +365,7 @@ const myPos = {
 
 let cameraAngle = 0;
 let cameraPitch = 0.45;
-let cameraDistance = 1.2;
+let cameraDistance = 8.0;
 let isPointerLocked = false;
 
 const groundRaycaster = new THREE.Raycaster();
@@ -780,7 +781,7 @@ function setupCamera() {
 
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
-        cameraDistance = Math.max(1.0, Math.min(10, cameraDistance));
+        cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
     });
 }
 
