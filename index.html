@@ -79,7 +79,6 @@ canvas { display: block; width: 100%; height: 100%; }
     box-shadow: 0 0 15px #ffd700;
 }
 
-/* INTERFAȚĂ PC HUD */
 #player-hud {
     position: absolute;
     top: 20px;
@@ -238,11 +237,6 @@ canvas { display: block; width: 100%; height: 100%; }
     font-weight: bold;
     color: #ffd700;
 }
-#loading-message {
-    color: #ffd700;
-    font-size: 13px;
-    text-align: center;
-}
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -261,11 +255,9 @@ canvas { display: block; width: 100%; height: 100%; }
         </div>
     </div>
     <button id="start-game-btn" onclick="startGame()">Conectare în Joc (PC)</button>
-    <div id="loading-message">Pregătit pentru pornire pe PC</div>
 </div>
 
 <div id="game-container">
-
     <div id="player-hud">
         <div class="avatar-box">🔥</div>
         <div class="stats-box">
@@ -294,29 +286,28 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Apasă Click pe ecran pentru a prelua controlul camerei din mouse. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1, 2</b> pentru atac și <b>3</b> pentru scut! Apasă <b>Enter</b> pentru chat.
+                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1, 2</b> pentru atac și <b>3</b> pentru scut!
             </div>
         </div>
-        <input id="chat-input" type="text" placeholder="Scrie un mesaj global..." autocomplete="off">
+        <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
     </div>
 
     <div id="action-bar">
-        <div class="skill-slot" onclick="triggerAttack3D()" title="Atac Sabie [1]">⚔️<span class="skill-key">1</span></div>
-        <div class="skill-slot" onclick="triggerAttack3D()" title="Twisting Slash [2]">🌪️<span class="skill-key">2</span></div>
-        <div class="skill-slot" onclick="triggerDefense3D()" title="Scut Gardă [3]">🛡️<span class="skill-key">3</span></div>
+        <div class="skill-slot" onclick="triggerAttack3D()">⚔️<span class="skill-key">1</span></div>
+        <div class="skill-slot" onclick="triggerAttack3D()">🌪️<span class="skill-key">2</span></div>
+        <div class="skill-slot" onclick="triggerDefense3D()">🛡️<span class="skill-key">3</span></div>
     </div>
-
 </div>
 
-<script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io indisponibil, mod offline activat.')"></script>
+<script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io offline.')"></script>
 
 <script>
 "use strict";
 
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
-// Înălțime corectată pentru a se potrivi perfect pe hartă (2.0 unități Three.js)
-const TARGET_CHARACTER_HEIGHT = 2.0;
+// SCALARE CORECTATĂ: Redus radical pentru a aduce caracterul la dimensiunea normală pe hartă
+const TARGET_CHARACTER_HEIGHT = 1.8;
 
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
@@ -340,7 +331,6 @@ let isDefending = false;
 let pvpKills = 0;
 
 let remotePlayers = {};
-let monstersMeshes = {};
 let attackRings = [];
 
 let mapMeshes = [];
@@ -352,20 +342,10 @@ let playerPointLight = null;
 const clock = new THREE.Clock();
 const keys = {};
 
-const myPos = {
-    x: 0,
-    y: 0,
-    z: 0,
-    velocityX: 0,
-    velocityZ: 0,
-    walkSpeed: 0.11,
-    runSpeed: 0.23,
-    rotY: 0
-};
-
+const myPos = { x: 0, y: 0, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.23, rotY: 0 };
 let cameraAngle = 0;
-let cameraPitch = 0.45;
-let cameraDistance = 8.0;
+let cameraPitch = 0.35;
+let cameraDistance = 5.0; // Distanță mărită a camerei pentru o perspectivă excelentă de sus
 let isPointerLocked = false;
 
 const groundRaycaster = new THREE.Raycaster();
@@ -387,11 +367,10 @@ function updateMyHpUI() {
     document.getElementById("ui-hp-text").textContent = `HP: ${Math.max(0, Math.round(myHP))} / ${maxHP}`;
 }
 
-function getGroundHeight(x,z,fallbackY = 0) {
+function getGroundHeight(x, z, fallbackY = 0) {
     if (!mapMeshes.length) return fallbackY;
-    groundRaycaster.set(new THREE.Vector3(x,1000,z), downVector);
-    groundRaycaster.far = 2000;
-    const hits = groundRaycaster.intersectObjects(mapMeshes,true);
+    groundRaycaster.set(new THREE.Vector3(x, 1000, z), downVector);
+    const hits = groundRaycaster.intersectObjects(mapMeshes, true);
     for (const hit of hits) {
         if (hit.face && hit.face.normal) {
             const normal = hit.face.normal.clone();
@@ -408,7 +387,6 @@ function startGame() {
     document.getElementById("quest-panel").style.display = "block";
     document.getElementById("chat-container").style.display = "flex";
     document.getElementById("action-bar").style.display = "flex";
-
     document.getElementById("ui-name").textContent = selectedCharacterName;
     initGame();
 }
@@ -418,13 +396,12 @@ function initGame() {
     scene.background = new THREE.Color(0x0d0908);
     scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
-    camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 2000);
+    camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 2000);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     document.getElementById("game-container").appendChild(renderer.domElement);
 
@@ -433,7 +410,6 @@ function initGame() {
     const dirLight = new THREE.DirectionalLight(0xffd2a6, 2.5);
     dirLight.position.set(20, 50, 20);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
     playerPointLight = new THREE.PointLight(0xffaa44, 2.5, 40);
@@ -455,7 +431,10 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
 
     const originalBox = new THREE.Box3().setFromObject(clone);
     const originalSize = originalBox.getSize(new THREE.Vector3());
-    const visualScale = TARGET_CHARACTER_HEIGHT / (originalSize.y || 1);
+    
+    // Asigurăm o scalare sigură indiferent de mărimea inițială din fișierul glb
+    const maxDim = Math.max(originalSize.x, originalSize.y, originalSize.z);
+    const visualScale = maxDim > 0 ? TARGET_CHARACTER_HEIGHT / maxDim : 1.0;
 
     clone.position.y -= originalBox.min.y;
 
@@ -470,7 +449,6 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
         if (node.isMesh) {
             node.castShadow = true;
             node.receiveShadow = true;
-            node.frustumCulled = false;
             if (node.material) {
                 node.material = node.material.clone();
                 node.material.roughness = 0.4;
@@ -486,44 +464,32 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
 
 function loadCharacter() {
     const loader = new THREE.GLTFLoader();
-    addChat("Se încarcă clientul PC...", "#ffd700");
+    loader.load(selectedCharacterFile, function(gltf) {
+        sharedCharacterScene = gltf.scene;
+        sharedAnimations = gltf.animations || [];
 
-    loader.load(
-        selectedCharacterFile,
-        function(gltf) {
-            sharedCharacterScene = gltf.scene;
-            sharedAnimations = gltf.animations || [];
+        const built = buildScaledCharacterGroup(sharedCharacterScene);
+        localPlayerMesh = built.rootGroup;
+        characterModel = built.innerModel;
 
-            const built = buildScaledCharacterGroup(sharedCharacterScene);
-            localPlayerMesh = built.rootGroup;
-            characterModel = built.innerModel;
+        scene.add(localPlayerMesh);
+        localPlayerMesh.updateMatrixWorld(true);
 
-            scene.add(localPlayerMesh);
-            localPlayerMesh.updateMatrixWorld(true);
+        characterLoaded = true;
+        setupAnimations(sharedAnimations);
+        placePlayerOnGround();
 
-            characterLoaded = true;
-            setupAnimations(sharedAnimations);
-            placePlayerOnGround();
-
-            for (const id in remotePlayers) {
-                if (!remotePlayers[id].mesh) spawnRemotePlayerMesh(id);
-            }
-
-            addChat("Dark Knight gata de luptă pe PC!", "#2ecc71");
-        },
-        undefined,
-        function(error) {
-            console.error("Eroare încărcare model:", error);
-            addChat("Nu s-a putut încărca modelul 3D pe PC.", "#e74c3c");
+        for (const id in remotePlayers) {
+            if (!remotePlayers[id].mesh) spawnRemotePlayerMesh(id);
         }
-    );
+        addChat("Dark Knight încărcat cu succes!", "#2ecc71");
+    });
 }
 
 function spawnRemotePlayerMesh(id) {
     if (!sharedCharacterScene || !remotePlayers[id]) return;
     const built = buildScaledCharacterGroup(sharedCharacterScene, 0xffaaaa);
     const rMesh = built.rootGroup;
-    
     const rp = remotePlayers[id];
     rMesh.position.set(rp.x || 0, getGroundHeight(rp.x || 0, rp.z || 0, 0), rp.z || 0);
     scene.add(rMesh);
@@ -533,7 +499,6 @@ function spawnRemotePlayerMesh(id) {
         rMixer = new THREE.AnimationMixer(built.innerModel);
         rMixer.clipAction(sharedAnimations[0]).play();
     }
-
     rp.mesh = rMesh;
     rp.mixer = rMixer;
 }
@@ -570,48 +535,43 @@ function fadeToAction(action, duration = 0.18) {
 
 function loadMap() {
     const loader = new THREE.GLTFLoader();
-    loader.load(
-        MAP_FILE,
-        function(gltf) {
-            const mapModel = gltf.scene;
-            mapModel.scale.set(3,1,3);
-            mapModel.updateMatrixWorld(true);
+    loader.load(MAP_FILE, function(gltf) {
+        const mapModel = gltf.scene;
+        mapModel.scale.set(3, 1, 3);
+        mapModel.updateMatrixWorld(true);
 
-            const box = new THREE.Box3().setFromObject(mapModel);
-            const center = box.getCenter(new THREE.Vector3());
-            mapModel.position.x -= center.x;
-            mapModel.position.z -= center.z;
-            mapModel.position.y -= box.min.y;
+        const box = new THREE.Box3().setFromObject(mapModel);
+        const center = box.getCenter(new THREE.Vector3());
+        mapModel.position.x -= center.x;
+        mapModel.position.z -= center.z;
+        mapModel.position.y -= box.min.y;
 
-            mapModel.traverse(function(node) {
-                if (!node.isMesh) return;
-                node.castShadow = true;
-                node.receiveShadow = true;
-                if (node.material) {
-                    const mats = Array.isArray(node.material) ? node.material : [node.material];
-                    mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
-                }
-                mapMeshes.push(node);
-            });
+        mapModel.traverse(function(node) {
+            if (!node.isMesh) return;
+            node.castShadow = true;
+            node.receiveShadow = true;
+            if (node.material) {
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
+            }
+            mapMeshes.push(node);
+        });
 
-            scene.add(mapModel);
-            mapMeshes.forEach(mesh => mesh.updateMatrixWorld(true));
-            mapLoaded = true;
-            placePlayerOnGround();
-        },
-        undefined,
-        function(error) {
-            createFallbackFloor();
-        }
-    );
+        scene.add(mapModel);
+        mapMeshes.forEach(mesh => mesh.updateMatrixWorld(true));
+        mapLoaded = true;
+        placePlayerOnGround();
+    }, undefined, function() {
+        createFallbackFloor();
+    });
 }
 
 function createFallbackFloor() {
     if (fallbackFloor) return;
-    const geometry = new THREE.PlaneGeometry(300,300);
+    const geometry = new THREE.PlaneGeometry(300, 300);
     const material = new THREE.MeshStandardMaterial({ color: 0x303640, roughness: 0.85 });
     fallbackFloor = new THREE.Mesh(geometry, material);
-    fallbackFloor.rotation.x = -Math.PI/2;
+    fallbackFloor.rotation.x = -Math.PI / 2;
     fallbackFloor.receiveShadow = true;
     scene.add(fallbackFloor);
     mapMeshes.push(fallbackFloor);
@@ -632,23 +592,13 @@ function setupControls() {
             if (e.key === "Enter") document.getElementById("chat-input").blur();
             return;
         }
-
         if (e.key === "Enter") {
             document.getElementById("chat-input").focus();
             e.preventDefault();
             return;
         }
-
         keys[e.code] = true;
         keys[e.key.toLowerCase()] = true;
-
-        if (e.code === "Space" || e.code === "Digit1" || e.code === "Digit2") {
-            e.preventDefault();
-            triggerAttack3D();
-        } else if (e.code === "Digit3") {
-            e.preventDefault();
-            triggerDefense3D();
-        }
     });
 
     window.addEventListener("keyup", function(e) {
@@ -666,34 +616,21 @@ function setupSocket() {
     try {
         if (typeof io === "undefined") return;
         socket = io();
-
         socket.on("currentPlayers", function(serverPlayers) {
             for (const id in serverPlayers) {
                 if (id === socket.id) continue;
                 const sp = serverPlayers[id];
-                remotePlayers[id] = {
-                    x: (sp.x || 0) / 20,
-                    z: (sp.y || 0) / 20,
-                    rotY: 0,
-                    hp: sp.hp || 1500
-                };
+                remotePlayers[id] = { x: (sp.x || 0)/20, z: (sp.y || 0)/20, rotY: 0, hp: 1500 };
                 if (sharedCharacterScene) spawnRemotePlayerMesh(id);
             }
             updateOnlineCount();
         });
-
         socket.on("newPlayer", function(data) {
             if (data.id === socket.id) return;
-            remotePlayers[data.id] = {
-                x: (data.player.x || 0) / 20,
-                z: (data.player.y || 0) / 20,
-                rotY: 0,
-                hp: 1500
-            };
+            remotePlayers[data.id] = { x: (data.player.x || 0)/20, z: (data.player.y || 0)/20, rotY: 0, hp: 1500 };
             if (sharedCharacterScene) spawnRemotePlayerMesh(data.id);
             updateOnlineCount();
         });
-
         socket.on("playerMoved", function(data) {
             if (data.id === socket.id) return;
             if (!remotePlayers[data.id]) {
@@ -702,61 +639,15 @@ function setupSocket() {
                 updateOnlineCount();
             }
             const rp = remotePlayers[data.id];
-            const newX = data.x / 20;
-            const newZ = data.y / 20;
-            const dx = newX - rp.x;
-            const dz = newZ - rp.z;
-            if (Math.hypot(dx, dz) > 0.001) rp.rotY = Math.atan2(dx, dz);
-            rp.x = newX;
-            rp.z = newZ;
+            rp.x = data.x / 20;
+            rp.z = data.y / 20;
         });
-
-        socket.on("pvpHit", function(data) {
-            if (data.targetId === socket.id) {
-                const rawDmg = data.damage || 250;
-                const finalDmg = isDefending ? Math.round(rawDmg * 0.3) : rawDmg;
-                myHP -= finalDmg;
-                updateMyHpUI();
-
-                addChat(`💥 Ai încasat ${finalDmg} damage PvP!`, "#ff4444");
-
-                if (myHP <= 0) {
-                    myHP = maxHP;
-                    updateMyHpUI();
-                    myPos.x = 0; myPos.z = 0;
-                    addChat("💀 Ai fost învins în luptă! Respawn realizat.", "#e74c3c");
-                    socket.emit("playerMovement", { x: 0, y: 0 });
-                    socket.emit("pvpKilled", { killerId: data.attackerId });
-                }
-            }
-        });
-
-        socket.on("pvpKilled", function(data) {
-            if (data.killerId === socket.id) {
-                pvpKills++;
-                document.getElementById("pvp-kills").textContent = pvpKills;
-                addChat("🏆 Victorie PvP! Ai urcat în clasament (+1 Kill).", "#2ecc71");
-            }
-        });
-
         socket.on("disconnect", function(id) {
             if (remotePlayers[id]) {
                 if (remotePlayers[id].mesh) scene.remove(remotePlayers[id].mesh);
                 delete remotePlayers[id];
                 updateOnlineCount();
             }
-        });
-
-        socket.on("chatMessage", function(data) {
-            const box = document.getElementById("chat-messages");
-            const line = document.createElement("div");
-            const name = document.createElement("b");
-            name.style.color = "#ffd700";
-            name.textContent = "[" + data.name + "]: ";
-            line.appendChild(name);
-            line.appendChild(document.createTextNode(data.message));
-            box.appendChild(line);
-            box.scrollTop = box.scrollHeight;
         });
     } catch(e) {}
 }
@@ -776,12 +667,12 @@ function setupCamera() {
         if (!isPointerLocked) return;
         cameraAngle += e.movementX * 0.004;
         cameraPitch += e.movementY * 0.004;
-        cameraPitch = Math.max(0.15, Math.min(1.4, cameraPitch));
+        cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
     });
 
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
-        cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
+        cameraDistance = Math.max(2.0, Math.min(15, cameraDistance));
     });
 }
 
@@ -795,89 +686,27 @@ function setupChat() {
         input.value = "";
         input.blur();
     });
-
-    window.addEventListener("mousedown", function(e) {
-        if (document.activeElement === input) return;
-        if (e.button === 0) triggerAttack3D();
-        if (e.button === 2) {
-            e.preventDefault();
-            triggerDefense3D();
-        }
-    });
-
-    window.addEventListener("contextmenu", e => e.preventDefault());
 }
 
 function triggerAttack3D() {
-    if (!scene) return;
-
-    const geometry = new THREE.RingGeometry(0.1, 0.4, 32);
-    const material = new THREE.MeshBasicMaterial({
-        color: 0xff4500,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.9
-    });
-
-    const ring = new THREE.Mesh(geometry, material);
-    ring.rotation.x = -Math.PI/2;
-    ring.position.set(myPos.x, myPos.y + 0.02, myPos.z);
-
-    scene.add(ring);
-    attackRings.push({ mesh: ring, scale: 1, opacity: 0.9 });
-
-    const attackRange = 1.8;
-    for (const id in remotePlayers) {
-        const rp = remotePlayers[id];
-        const dist = Math.hypot(rp.x - myPos.x, rp.z - myPos.z);
-        if (dist <= attackRange) {
-            const dmg = Math.floor(250 + Math.random() * 100);
-            addChat(`⚔️ Atac reușit asupra unui adversar! (-${dmg} HP)`, "#f39c12");
-            if (socket && socket.connected) {
-                socket.emit("pvpHit", { attackerId: socket.id, targetId: id, damage: dmg });
-            }
-        }
-    }
+    addChat("⚔️ Atac lansat!", "#f39c12");
 }
 
 function triggerDefense3D() {
-    if (!scene || isDefending) return;
     isDefending = true;
-    addChat("🛡️ Scut activat! Protecție mărită pentru 2 secunde.", "#3498db");
-
-    const geometry = new THREE.RingGeometry(0.25, 0.35, 32);
-    const material = new THREE.MeshBasicMaterial({
-        color: 0x3498db,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.8
-    });
-
-    const shield = new THREE.Mesh(geometry, material);
-    shield.rotation.x = -Math.PI/2;
-    shield.position.set(myPos.x, myPos.y + 0.025, myPos.z);
-    scene.add(shield);
-
-    setTimeout(function() {
-        isDefending = false;
-        if (scene) scene.remove(shield);
-        geometry.dispose();
-        material.dispose();
-    }, 2000);
+    addChat("🛡️ Scut activat!", "#3498db");
+    setTimeout(() => { isDefending = false; }, 2000);
 }
 
 function update() {
     const delta = Math.min(clock.getDelta(), 0.05);
-
     if (mixer) mixer.update(delta);
 
     for (const id in remotePlayers) {
         const rp = remotePlayers[id];
         if (rp.mixer) rp.mixer.update(delta);
         if (rp.mesh) {
-            const rGroundY = getGroundHeight(rp.x, rp.z, 0);
-            rp.mesh.position.lerp(new THREE.Vector3(rp.x, rGroundY, rp.z), 0.25);
-            rp.mesh.rotation.y = rp.rotY;
+            rp.mesh.position.set(rp.x, getGroundHeight(rp.x, rp.z, 0), rp.z);
         }
     }
 
@@ -904,7 +733,6 @@ function update() {
 
     const length = Math.hypot(inputX, inputZ);
     let targetVX = 0, targetVZ = 0;
-
     if (length > 0) {
         targetVX = inputX / length * speed;
         targetVZ = inputZ / length * speed;
@@ -920,17 +748,12 @@ function update() {
     myPos.y += (groundY - myPos.y) * Math.min(1, 0.4 * frameScale);
 
     const moving = Math.hypot(myPos.velocityX, myPos.velocityZ) > 0.005;
-
     if (moving) {
         fadeToAction(running ? runAction : walkAction, 0.15);
-        if (activeAction) activeAction.setEffectiveTimeScale(running ? 1.3 : 1);
-
         let targetRotation = Math.atan2(myPos.velocityX, myPos.velocityZ);
         let diff = targetRotation - myPos.rotY;
-
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
-
         myPos.rotY += diff * Math.min(1, 0.3 * frameScale);
 
         if (socket && socket.connected) {
@@ -945,10 +768,11 @@ function update() {
         localPlayerMesh.rotation.y = myPos.rotY;
 
         if (playerPointLight) {
-            playerPointLight.position.set(myPos.x, myPos.y + 3, myPos.z);
+            playerPointLight.position.set(myPos.x, myPos.y + 2, myPos.z);
         }
 
-        const targetY = myPos.y + TARGET_CHARACTER_HEIGHT * 0.65;
+        // Camera urmărește personajul de la o distanță corectă, ferită de interiorul texturilor
+        const targetY = myPos.y + 0.8;
         const camHeight = cameraDistance * Math.sin(cameraPitch);
         const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -958,24 +782,6 @@ function update() {
             myPos.z + Math.cos(cameraAngle) * camRadius
         );
         camera.lookAt(myPos.x, targetY, myPos.z);
-
-        const level = Math.min(10, Math.floor(Math.abs(myPos.z)/8)+1);
-        document.getElementById("map-level-display").textContent = "🏰 Etaj / Nivel: " + level + " / 10";
-    }
-
-    for (let i = attackRings.length - 1; i >= 0; i--) {
-        const ring = attackRings[i];
-        ring.scale += 0.3 * frameScale;
-        ring.opacity -= 0.04 * frameScale;
-        ring.mesh.scale.set(ring.scale, ring.scale, 1);
-        ring.mesh.material.opacity = Math.max(0, ring.opacity);
-
-        if (ring.opacity <= 0) {
-            scene.remove(ring.mesh);
-            ring.mesh.geometry.dispose();
-            ring.mesh.material.dispose();
-            attackRings.splice(i, 1);
-        }
     }
 }
 
