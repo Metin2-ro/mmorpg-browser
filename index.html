@@ -305,8 +305,10 @@
         }
         function updatePreviewCamera() { previewCamera.position.set(Math.sin(previewAngle)*previewDistance,1.5,Math.cos(previewAngle)*previewDistance); previewCamera.lookAt(0,1,0); }
         function loadPreviewModel() {
-            document.getElementById('preview-status').textContent = 'Se încarcă modelul Knight.glb pentru previzualizare...';
-            loader.load('./Knight.glb', gltf => {
+            document.getElementById('preview-status').textContent = 'Se încarcă modelul Knight.glb...';
+            
+            // Folosim calea absolută sau relativă corectă și adăugăm timestamp pentru a evita cache-ul vechi
+            loader.load('./Knight.glb?v=' + Date.now(), gltf => {
                 if(previewModel) previewScene.remove(previewModel);
                 previewModel=gltf.scene;
                 previewModel.scale.set(0.01,0.01,0.01);
@@ -318,8 +320,11 @@
                 previewModel.position.x-=center.x; previewModel.position.z-=center.z; previewModel.position.y-=bounds.min.y;
                 if(gltf.animations && gltf.animations.length){ previewMixer=new THREE.AnimationMixer(previewModel); let idle=gltf.animations.find(a=>/idle|stand/i.test(a.name)) || gltf.animations[0]; previewMixer.clipAction(idle).play(); }
                 updatePreviewCamera();
-                document.getElementById('preview-status').textContent = selectedHero==='knight' ? 'Dark Knight: model 3D încărcat. Culorile se aplică materialelor modelului.' : heroNames[selectedHero]+': modelul dedicat nu este încă disponibil; se folosește temporar Knight.glb ca previzualizare.';
-            }, undefined, err=>{ console.error(err); document.getElementById('preview-status').textContent='Nu am putut încărca Knight.glb. Verifică dacă fișierul este lângă index.html.'; });
+                document.getElementById('preview-status').textContent = 'Dark Knight: model 3D încărcat cu succes!';
+            }, undefined, err=>{ 
+                console.error("Eroare GLTF Preview:", err); 
+                document.getElementById('preview-status').innerHTML = '<span style="color:#ff4444;">Eroare: Nu s-a putut încărca ./Knight.glb. Asigură-te că fișierul este urcat pe GitHub/Render!</span>'; 
+            });
         }
         function applyPreviewColor() {
             if(!previewModel) return;
@@ -330,7 +335,6 @@
             selectedHero=hero;
             document.querySelectorAll('.class-card').forEach(b=>b.classList.toggle('active',b.dataset.class===hero));
             if(previewModel) applyPreviewColor();
-            document.getElementById('preview-status').textContent = hero==='knight' ? 'Dark Knight selectat.' : heroNames[hero]+' selectat. Pentru modelul și animațiile sale reale va trebui adăugat fișierul GLB dedicat.';
         }
         function chooseColor(color,button) {
             selectedHeroColor=color;
@@ -347,10 +351,9 @@
         window.chooseHero=chooseHero; window.chooseColor=chooseColor; window.enterGameWorld=enterGameWorld;
         initCharacterPreview();
 
-        // 1. Încărcare Knight.glb cu scară fixă 0.01
-        loader.load('./Knight.glb', (gltf) => {
+        // 1. Încărcare Knight.glb principal pentru joc
+        loader.load('./Knight.glb?v=' + Date.now(), (gltf) => {
             sharedKnightModel = gltf.scene;
-            
             sharedKnightModel.scale.set(0.01, 0.01, 0.01);
             sharedKnightModel.traverse(n => { if(n.isMesh && n.material && n.material.color){ n.material=n.material.clone(); n.material.color.set(selectedHeroColor); } });
             sharedKnightModel.updateMatrixWorld(true);
@@ -363,7 +366,7 @@
             });
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Knight.glb încărcat cu succes în joc!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
 
             for (const id in players) {
@@ -373,7 +376,7 @@
                 setupPlayerAnimations(id, gltf);
             }
         }, undefined, (error) => {
-            console.error("Eroare la încărcarea modelului 3D:", error);
+            console.error("Eroare la încărcarea modelului principal:", error);
         });
 
         function setupPlayerAnimations(id, gltf) {
@@ -384,14 +387,12 @@
             clone.userData.footOffset = -knightBounds.min.y;
 
             const mixer = new THREE.AnimationMixer(clone);
-            
             let walkAction = null;
             let runAction = null;
 
             if (gltf.animations && gltf.animations.length > 0) {
                 walkAction = mixer.clipAction(gltf.animations[0]);
                 walkAction.play();
-                
                 if (gltf.animations.length > 1) {
                     runAction = mixer.clipAction(gltf.animations[1]);
                     runAction.play();
@@ -413,11 +414,10 @@
             });
         }
 
-        // 2. Încărcare map.glb poziționată corect peste nivelul cavalerului
-        loader.load('./map.glb', (gltf) => {
+        // 2. Încărcare map.glb
+        loader.load('./map.glb?v=' + Date.now(), (gltf) => {
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
-
             mapModel.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -440,7 +440,7 @@
             mapBounds3D = new THREE.Box3().setFromObject(mapModel3D);
 
             const chatDiv = document.getElementById('chat-messages');
-            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta a fost coborâtă peste cavaler!</div>`;
+            chatDiv.innerHTML += `<div style="color: #2ecc71;"><b>[System]:</b> Harta 3D încărcată cu succes!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
         }, undefined, (error) => {
             console.error("Eroare la încărcarea hărții:", error);
@@ -617,13 +617,10 @@
 
         function update() {
             const delta = clock.getDelta();
-            
-            // Actualizare animatori 3D
             for (let item of animationMixers) {
                 item.mixer.update(delta);
             }
 
-            // Mișcare jucător local
             if (myId && players[myId] && players[myId].mesh) {
                 let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
                 let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
@@ -676,7 +673,6 @@
                 myMesh.position.y = groundY + (myMesh.userData.footOffset || 0);
                 myMesh.rotation.y = myPos.rotY;
 
-                // Urmărire cameră
                 const targetY = myMesh.position.y + 1.2;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
@@ -686,13 +682,11 @@
                 camera.position.y = targetY + camHeight;
                 camera.lookAt(myPos.x, targetY, myPos.z);
 
-                // Calcul nivel/distanță
                 let distanceTraveled = Math.hypot(myPos.x, myPos.z);
                 let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 15) + 1);
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
-            // Inele de atac
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
                 r.scale += 0.35;
@@ -705,7 +699,6 @@
                 }
             }
 
-            // Poziționare bule de dialog 2D pe ecran
             const tempV = new THREE.Vector3();
             for (let b of activeBubbles) {
                 b.mesh.getWorldPosition(tempV);
