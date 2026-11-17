@@ -117,7 +117,6 @@
       </div>
     </div>
 
-
     <div id="game-container">
         <!-- HUD Profil -->
         <div id="player-hud">
@@ -230,7 +229,6 @@
         let clock = new THREE.Clock();
         let activeBubbles = [];
 
-        // Solul este detectat direct din geometria hartii.
         const GROUND_Y = 0.0;
         let mapModel3D = null;
         let mapBounds3D = null;
@@ -239,16 +237,9 @@
 
         function getGroundHeight(x, z) {
             if (!mapModel3D || !mapBounds3D) return GROUND_Y;
-
-            // Pornim raza de deasupra hartii si cautam prima suprafata de sub personaj.
-            const origin = new THREE.Vector3(
-                x,
-                mapBounds3D.max.y + 100,
-                z
-            );
+            const origin = new THREE.Vector3(x, mapBounds3D.max.y + 100, z);
             groundRaycaster.set(origin, new THREE.Vector3(0, -1, 0));
             const hits = groundRaycaster.intersectObject(mapModel3D, true);
-
             return hits.length ? hits[0].point.y : GROUND_Y;
         }
 
@@ -280,6 +271,7 @@
         let previewScene, previewCamera, previewRenderer, previewModel, previewMixer;
         let previewAngle = 0, previewDistance = 5.2, previewDragging = false, previewLastX = 0;
         const heroNames = { knight: 'Dark Knight', wizard: 'Dark Wizard', elf: 'Elf' };
+        
         function initCharacterPreview() {
             const host = document.getElementById('character-preview');
             previewScene = new THREE.Scene();
@@ -426,7 +418,6 @@
             const mapModel = gltf.scene;
             mapModel.scale.set(3, 1, 3);
 
-            // Calculam limitele dupa scalare, apoi asezam baza modelului la Y=0.
             mapModel.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(mapModel);
             const center = box.getCenter(new THREE.Vector3());
@@ -606,11 +597,9 @@
             if (e.button === 0) triggerAttack3D();
             else if (e.button === 2) { e.preventDefault(); triggerDefense3D(); }
         });
-
         window.addEventListener('contextmenu', e => e.preventDefault());
 
         function triggerAttack3D() {
-            if (!myId || !players[myId] || !players[myId].mesh) return;
             const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
             const ringMat = new THREE.MeshBasicMaterial({ color: 0xff4500, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
             const ring = new THREE.Mesh(ringGeo, ringMat);
@@ -621,80 +610,74 @@
         }
 
         function triggerDefense3D() {
-            if (!myId || !players[myId] || !players[myId].mesh) return;
             const chatDiv = document.getElementById('chat-messages');
             chatDiv.innerHTML += `<div style="color: #3498db;"><b>[Luptă]:</b> Te-ai pus în gardă!</div>`;
             chatDiv.scrollTop = chatDiv.scrollHeight;
-
-            const shieldGeo = new THREE.RingGeometry(1.0, 1.4, 32);
-            const shieldMat = new THREE.MeshBasicMaterial({ color: 0x3498db, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
-            const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
-            shieldMesh.rotation.x = -Math.PI / 2;
-            shieldMesh.position.set(myPos.x, GROUND_Y + 0.06, myPos.z);
-            scene.add(shieldMesh);
-            
-            setTimeout(() => { scene.remove(shieldMesh); }, 1000);
         }
 
         function update() {
-            let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
-            let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
-            let moveLeft = (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) ? 1 : 0;
-            let moveRight = (keys['KeyD'] || keys['d'] || keys['ArrowRight']) ? 1 : 0;
-
-            let isRunning = keys['ShiftLeft'] || keys['ShiftRight'] || keys['shift'];
-            let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
-
-            let inputX = 0;
-            let inputZ = 0;
-
-            const forwardX = -Math.sin(cameraAngle);
-            const forwardZ = -Math.cos(cameraAngle);
-            const rightX = Math.cos(cameraAngle);
-            const rightZ = -Math.sin(cameraAngle);
-
-            if (moveForward) { inputX += forwardX; inputZ += forwardZ; }
-            if (moveBackward) { inputX -= forwardX; inputZ -= forwardZ; }
-            if (moveLeft) { inputX -= rightX; inputZ -= rightZ; }
-            if (moveRight) { inputX += rightX; inputZ += rightZ; }
-
-            let targetVx = 0;
-            let targetVz = 0;
-            const len = Math.hypot(inputX, inputZ);
-            if (len > 0) {
-                targetVx = (inputX / len) * targetSpeed;
-                targetVz = (inputZ / len) * targetSpeed;
+            const delta = clock.getDelta();
+            
+            // Actualizare animatori 3D
+            for (let item of animationMixers) {
+                item.mixer.update(delta);
             }
 
-            myPos.velocityX += (targetVx - myPos.velocityX) * 0.5;
-            myPos.velocityZ += (targetVz - myPos.velocityZ) * 0.5;
+            // Mișcare jucător local
+            if (myId && players[myId] && players[myId].mesh) {
+                let moveForward = (keys['KeyW'] || keys['w'] || keys['ArrowUp']) ? 1 : 0;
+                let moveBackward = (keys['KeyS'] || keys['s'] || keys['ArrowDown']) ? 1 : 0;
+                let moveLeft = (keys['KeyA'] || keys['a'] || keys['ArrowLeft']) ? 1 : 0;
+                let moveRight = (keys['KeyD'] || keys['d'] || keys['ArrowRight']) ? 1 : 0;
 
-            myPos.x += myPos.velocityX;
-            myPos.z += myPos.velocityZ;
+                let isRunning = keys['ShiftLeft'] || keys['ShiftRight'] || keys['shift'];
+                let targetSpeed = isRunning ? myPos.runSpeed : myPos.walkSpeed;
 
-            let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
-            let isMoving = currentSpeed > 0.005;
+                let inputX = 0, inputZ = 0;
+                const forwardX = -Math.sin(cameraAngle);
+                const forwardZ = -Math.cos(cameraAngle);
+                const rightX = Math.cos(cameraAngle);
+                const rightZ = -Math.sin(cameraAngle);
 
-            if (isMoving) {
-                let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
-                let diff = targetRotY - myPos.rotY;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                myPos.rotY += diff * 0.3;
+                if (moveForward) { inputX += forwardX; inputZ += forwardZ; }
+                if (moveBackward) { inputX -= forwardX; inputZ -= forwardZ; }
+                if (moveLeft) { inputX -= rightX; inputZ -= rightZ; }
+                if (moveRight) { inputX += rightX; inputZ += rightZ; }
 
-                if (socket.connected) {
+                let targetVx = 0, targetVz = 0;
+                const len = Math.hypot(inputX, inputZ);
+                if (len > 0) {
+                    targetVx = (inputX / len) * targetSpeed;
+                    targetVz = (inputZ / len) * targetSpeed;
+                }
+
+                myPos.velocityX += (targetVx - myPos.velocityX) * 0.5;
+                myPos.velocityZ += (targetVz - myPos.velocityZ) * 0.5;
+                myPos.x += myPos.velocityX;
+                myPos.z += myPos.velocityZ;
+
+                let currentSpeed = Math.hypot(myPos.velocityX, myPos.velocityZ);
+                let isMoving = currentSpeed > 0.005;
+
+                if (isMoving) {
+                    let targetRotY = Math.atan2(myPos.velocityX, myPos.velocityZ);
+                    let diff = targetRotY - myPos.rotY;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    myPos.rotY += diff * 0.3;
+
                     socket.emit('playerMovement', { x: myPos.x * 20, y: myPos.z * 20 });
                 }
-            }
 
-            if (myId && players[myId] && players[myId].mesh) {
-                players[myId].mesh.position.x = myPos.x;
-                players[myId].mesh.position.z = myPos.z;
-                players[myId].mesh.rotation.y = myPos.rotY;
-                const localGroundY = getGroundHeight(myPos.x, myPos.z);
-                players[myId].mesh.position.y = localGroundY + (players[myId].mesh.userData.footOffset || 0);
+                const myMesh = players[myId].mesh;
+                myMesh.position.x = myPos.x;
+                myMesh.position.z = myPos.z;
+                const groundY = getGroundHeight(myPos.x, myPos.z);
+                myMesh.position.y = groundY + (myMesh.userData.footOffset || 0);
+                myMesh.rotation.y = myPos.rotY;
 
-                const targetY = GROUND_Y + 1.2; 
+                // Urmărire cameră
+                const targetY = myMesh.position.y + 1.2;
                 const camHeight = cameraDistance * Math.sin(cameraPitch);
                 const camRadius = cameraDistance * Math.cos(cameraPitch);
 
@@ -703,13 +686,13 @@
                 camera.position.y = targetY + camHeight;
                 camera.lookAt(myPos.x, targetY, myPos.z);
 
-                let distanceTraveled = Math.abs(myPos.z);
-                let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 8) + 1);
+                // Calcul nivel/distanță
+                let distanceTraveled = Math.hypot(myPos.x, myPos.z);
+                let calculatedLevel = Math.min(10, Math.floor(distanceTraveled / 15) + 1);
                 document.getElementById('map-level-display').innerText = `🏰 Etaj / Nivel: ${calculatedLevel} / 10`;
             }
 
-            updateSpeechBubbles();
-
+            // Inele de atac
             for (let i = attackRings.length - 1; i >= 0; i--) {
                 const r = attackRings[i];
                 r.scale += 0.35;
@@ -722,57 +705,24 @@
                 }
             }
 
-            const delta = clock.getDelta();
-            animationMixers.forEach(item => {
-                const isLocalPlayer = (item.id === myId);
-                let activeMoving = isLocalPlayer ? isMoving : true;
-
-                if (item.walkAction && item.runAction) {
-                    if (!activeMoving) {
-                        item.walkAction.paused = true;
-                        item.runAction.paused = true;
-                    } else {
-                        if (isRunning && isLocalPlayer) {
-                            item.runAction.paused = false;
-                            item.runAction.timeScale = 1.2;
-                            if (item.walkAction !== item.runAction) item.walkAction.paused = true;
-                        } else {
-                            item.walkAction.paused = false;
-                            item.walkAction.timeScale = isRunning ? 1.8 : 1.0;
-                            if (item.runAction !== item.walkAction) item.runAction.paused = true;
-                        }
-                    }
-                }
-                item.mixer.update(delta);
-            });
+            // Poziționare bule de dialog 2D pe ecran
+            const tempV = new THREE.Vector3();
+            for (let b of activeBubbles) {
+                b.mesh.getWorldPosition(tempV);
+                tempV.y += 2.2;
+                tempV.project(camera);
+                const x = (tempV.x * .5 + .5) * window.innerWidth;
+                const y = (-(tempV.y * .5) + .5) * window.innerHeight;
+                b.element.style.transform = `translate(-50%, -100%) translate(${x}px,${y}px)`;
+            }
         }
 
-        const tempVector = new THREE.Vector3();
-        function updateSpeechBubbles() {
-            activeBubbles.forEach(b => {
-                if (!b.mesh) return;
-                tempVector.copy(b.mesh.position);
-                tempVector.y += 2.2; 
-                tempVector.project(camera);
-
-                const x = (tempVector.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-(tempVector.y * 0.5) + 0.5) * window.innerHeight;
-
-                if (tempVector.z > 1) {
-                    b.element.style.display = 'none';
-                } else {
-                    b.element.style.display = 'block';
-                    b.element.style.left = `${x}px`;
-                    b.element.style.top = `${y}px`;
-                }
-            });
-        }
-
-        (function animate() {
-            requestAnimationFrame(animate);
+        function animateGame() {
+            requestAnimationFrame(animateGame);
             update();
             renderer.render(scene, camera);
-        })();
+        }
+        animateGame();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
