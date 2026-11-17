@@ -607,7 +607,7 @@ function startAttackAnim(n) {
         attackUntil = now + Math.min(clip.duration / speed, 1.0);
         attackProcedural = false;
     } else {
-        attackUntil = now + (n === 2 ? 0.55 : 0.35);
+        attackUntil = now + (n === 2 ? 0.6 : 0.45);
         attackProcedural = true;
     }
     attackStart = now;
@@ -1497,16 +1497,42 @@ function update() {
 
     if (localPlayerMesh) {
         localPlayerMesh.position.set(myPos.x, myPos.y, myPos.z);
-        let lean = 0, spin = 0;
+        let lean = 0, spin = 0, lunge = 0, hop = 0;
         if (playerDead) {
             lean = -1.4;
         } else if (attackProcedural && now < attackUntil) {
-            const t = (now - attackStart) / (attackUntil - attackStart);
-            lean = Math.sin(t * Math.PI) * 0.4;
-            if (attackType === 2) spin = t * Math.PI * 2;
+            const t = Math.min(1, (now - attackStart) / (attackUntil - attackStart));
+            if (attackType === 2) {
+                // învârtire completă cu săritură
+                spin = t * t * (3 - 2 * t) * Math.PI * 2;
+                hop = Math.sin(t * Math.PI) * 0.5;
+                lean = Math.sin(t * Math.PI) * 0.15;
+            } else if (t < 0.3) {
+                // pregătire: se trage înapoi și se răsucește
+                const p = t / 0.3;
+                spin = -0.9 * (1 - (1 - p) * (1 - p));
+                lean = -0.25 * p;
+            } else if (t < 0.6) {
+                // lovitura: tăietură rapidă înainte
+                const p = (t - 0.3) / 0.3;
+                spin = -0.9 + 1.9 * p * p;
+                lean = -0.25 + 0.7 * p;
+                lunge = 0.9 * p;
+            } else {
+                // revenire
+                const p = (t - 0.6) / 0.4;
+                spin = 1.0 * (1 - p);
+                lean = 0.45 * (1 - p);
+                lunge = 0.9 * (1 - p);
+            }
         }
-        localPlayerMesh.rotation.x += (lean - localPlayerMesh.rotation.x) * Math.min(1, 20 * delta);
+        localPlayerMesh.rotation.x += (lean - localPlayerMesh.rotation.x) * Math.min(1, 25 * delta);
         localPlayerMesh.rotation.y = myPos.rotY + spin;
+        if (lunge || hop) {
+            localPlayerMesh.position.x += Math.sin(myPos.rotY) * lunge;
+            localPlayerMesh.position.z += Math.cos(myPos.rotY) * lunge;
+            localPlayerMesh.position.y += hop;
+        }
 
         if (playerPointLight) {
             playerPointLight.position.set(myPos.x, myPos.y + 2, myPos.z);
