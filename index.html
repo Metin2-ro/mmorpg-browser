@@ -307,6 +307,12 @@ canvas { display: block; width: 100%; height: 100%; }
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
 
+/* ================= SETĂRI DE MĂRIME (modifică aici) ================= */
+const PLAYER_HEIGHT = 1.8;    // înălțimea personajului; mai mic = personaj mai mic
+const MAP_TARGET_SIZE = 200;  // lățimea hărții în aceleași unități; mai mare = hartă mai mare
+const CAMERA_TARGET_OFFSET = 1.2; // la ce înălțime privește camera (aprox. nivelul pieptului)
+/* ==================================================================== */
+
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
 
@@ -343,7 +349,7 @@ const keys = {};
 const myPos = { x: 0, y: 0, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, runSpeed: 0.23, rotY: 0 };
 let cameraAngle = 0;
 let cameraPitch = 0.35;
-let cameraDistance = 6.0;
+let cameraDistance = 7.0;
 let isPointerLocked = false;
 
 const groundRaycaster = new THREE.Raycaster();
@@ -394,7 +400,7 @@ function initGame() {
     scene.background = new THREE.Color(0x0d0908);
     scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
-    camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -425,9 +431,18 @@ function initGame() {
 
 function buildScaledCharacterGroup(gltfScene, tintHex = null) {
     const clone = gltfScene.clone();
-    
-    // SCALĂ MICĂ FORȚATĂ DIRECT PE MODEL PENTRU A ANULA FIȘIERUL GIGANTIC
-    clone.scale.set(0.0001, 0.0001, 0.0001);
+
+    // Măsoară modelul la scara lui originală și îl aduce automat la PLAYER_HEIGHT
+    clone.scale.set(1, 1, 1);
+    clone.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(clone).getSize(new THREE.Vector3());
+    const factor = size.y > 0 ? PLAYER_HEIGHT / size.y : 1;
+    clone.scale.setScalar(factor);
+    clone.updateMatrixWorld(true);
+
+    // Pune tălpile exact pe sol
+    const fitted = new THREE.Box3().setFromObject(clone);
+    clone.position.y -= fitted.min.y;
     clone.updateMatrixWorld(true);
 
     const rootGroup = new THREE.Group();
@@ -525,7 +540,12 @@ function loadMap() {
     const loader = new THREE.GLTFLoader();
     loader.load(MAP_FILE, function(gltf) {
         const mapModel = gltf.scene;
-        mapModel.scale.set(3, 1, 3);
+
+        // Scalare uniformă, calculată automat, ca harta să aibă MAP_TARGET_SIZE
+        mapModel.updateMatrixWorld(true);
+        const rawSize = new THREE.Box3().setFromObject(mapModel).getSize(new THREE.Vector3());
+        const largestSide = Math.max(rawSize.x, rawSize.z);
+        if (largestSide > 0) mapModel.scale.setScalar(MAP_TARGET_SIZE / largestSide);
         mapModel.updateMatrixWorld(true);
 
         const box = new THREE.Box3().setFromObject(mapModel);
@@ -546,6 +566,7 @@ function loadMap() {
         });
 
         scene.add(mapModel);
+        mapModel.updateMatrixWorld(true);
         mapMeshes.forEach(mesh => mesh.updateMatrixWorld(true));
         mapLoaded = true;
         placePlayerOnGround();
@@ -660,7 +681,7 @@ function setupCamera() {
 
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
-        cameraDistance = Math.max(2.0, Math.min(15, cameraDistance));
+        cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
     });
 }
 
@@ -759,7 +780,7 @@ function update() {
             playerPointLight.position.set(myPos.x, myPos.y + 2, myPos.z);
         }
 
-        const targetY = myPos.y + 0.5;
+        const targetY = myPos.y + CAMERA_TARGET_OFFSET;
         const camHeight = cameraDistance * Math.sin(cameraPitch);
         const camRadius = cameraDistance * Math.cos(cameraPitch);
 
