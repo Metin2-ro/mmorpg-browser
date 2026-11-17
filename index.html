@@ -237,6 +237,32 @@ canvas { display: block; width: 100%; height: 100%; }
     font-weight: bold;
     color: #ffd700;
 }
+
+.cd-overlay {
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 100%; height: 0;
+    background: rgba(0,0,0,0.68);
+    pointer-events: none;
+}
+#death-overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    background: radial-gradient(circle, rgba(90,0,0,0.25), rgba(40,0,0,0.75));
+    z-index: 60;
+    pointer-events: none;
+    color: #ff6b6b;
+    font-size: 34px;
+    font-weight: bold;
+    text-shadow: 0 0 18px #000;
+    letter-spacing: 3px;
+}
+#death-overlay small { font-size: 16px; color: #ddd; letter-spacing: 1px; }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -268,8 +294,8 @@ canvas { display: block; width: 100%; height: 100%; }
                 <div class="bar-text" id="ui-hp-text">HP: 1500 / 1500</div>
             </div>
             <div class="bar-container">
-                <div class="mp-fill" style="width:100%"></div>
-                <div class="bar-text">MP: 700 / 700</div>
+                <div class="mp-fill" id="ui-mp-bar" style="width:100%"></div>
+                <div class="bar-text" id="ui-mp-text">MP: 700 / 700</div>
             </div>
         </div>
     </div>
@@ -281,24 +307,27 @@ canvas { display: block; width: 100%; height: 100%; }
         <div class="quest-item">
             <div class="quest-title"><span>Jucători Online:</span> <span id="online-count" style="color:#ffd700">1</span></div>
             <div class="quest-title" style="margin-top:4px;"><span>Kills PvP:</span> <span id="pvp-kills" style="color:#2ecc71">0</span></div>
+            <div class="quest-title" style="margin-top:4px;"><span>Monștri uciși:</span> <span id="monster-kills" style="color:#2ecc71">0</span></div>
         </div>
     </div>
 
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1, 2</b> pentru atac și <b>3</b> pentru scut!
+                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mana)!
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
     </div>
 
     <div id="action-bar">
-        <div class="skill-slot" onclick="triggerAttack3D()">⚔️<span class="skill-key">1</span></div>
-        <div class="skill-slot" onclick="triggerAttack3D()">🌪️<span class="skill-key">2</span></div>
-        <div class="skill-slot" onclick="triggerDefense3D()">🛡️<span class="skill-key">3</span></div>
+        <div class="skill-slot" onclick="useSkill(1)">⚔️<div class="cd-overlay" id="cd1"></div><span class="skill-key">1</span></div>
+        <div class="skill-slot" onclick="useSkill(2)">🌪️<div class="cd-overlay" id="cd2"></div><span class="skill-key">2</span></div>
+        <div class="skill-slot" onclick="triggerDefense3D()">🛡️<div class="cd-overlay" id="cd3"></div><span class="skill-key">3</span></div>
     </div>
 </div>
+
+<div id="death-overlay"><span>AI MURIT</span><small id="death-text">Revii în 4 secunde...</small></div>
 
 <script src="/socket.io/socket.io.js" onerror="console.warn('Socket.io offline.')"></script>
 
@@ -384,6 +413,602 @@ function getGroundHeight(x, z, fallbackY = 0) {
         }
     }
     return fallbackY;
+}
+
+/* ====================== COMBAT: ATAC, MONȘTRI, PvP ====================== */
+const MONSTER_COUNT = 14;
+const MONSTER_MAX_HP = 300;
+const MONSTER_AGGRO = 16;
+const MONSTER_LEASH = 38;
+const MONSTER_ATTACK_RANGE = 2.2;
+const MONSTER_SPEED = 4.5;          // unități/secundă (jucătorul merge cu ~6.6, aleargă cu ~13.8)
+const MONSTER_DAMAGE_MIN = 16;
+const MONSTER_DAMAGE_MAX = 26;
+const MONSTER_RESPAWN_SECONDS = 8;
+
+let myMP = 700;
+const maxMP = 700;
+let playerDead = false;
+let deadTimer = 0;
+let lastHitTime = -100;
+let attackUntil = 0, attackStart = 0, attackType = 1, attackProcedural = false;
+const attackActions = [];
+let shieldMesh = null;
+let monstersSpawned = false;
+let monsterKills = 0;
+const monsters = [];
+const floatingTexts = [];
+const effects = [];
+let hudTimer = 0, hpSendTimer = 0, lastHpSent = 1500;
+
+const SKILLS = {
+    1: { cd: 0.6, mp: 0,   range: 3.8, arc: Math.PI * 0.9, min: 90, max: 130, hitDelay: 0.22, readyAt: 0 },
+    2: { cd: 3.0, mp: 100, range: 6.0, arc: Math.PI * 2,   min: 70, max: 100, hitDelay: 0.30, readyAt: 0 }
+};
+const DEFENSE = { cd: 6, mp: 50, duration: 2.5, readyAt: 0 };
+
+function nowSec() { return performance.now() / 1000; }
+
+function updateMyMpUI() {
+    const pct = Math.max(0, Math.min(100, (myMP / maxMP) * 100));
+    document.getElementById("ui-mp-bar").style.width = pct + "%";
+    document.getElementById("ui-mp-text").textContent = "MP: " + Math.max(0, Math.round(myMP)) + " / " + maxMP;
+}
+
+function updateKillUI() {
+    document.getElementById("pvp-kills").textContent = pvpKills;
+    document.getElementById("monster-kills").textContent = monsterKills;
+}
+
+/* ---------- bară de viață (sprite) și text plutitor ---------- */
+function makeBarSprite(label) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(2.6, 0.65, 1);
+    sprite.renderOrder = 998;
+
+    function draw(ratio) {
+        ratio = Math.max(0, Math.min(1, ratio));
+        ctx.clearRect(0, 0, 256, 64);
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#000";
+        ctx.strokeText(label, 128, 24);
+        ctx.fillStyle = "#ffd966";
+        ctx.fillText(label, 128, 24);
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(8, 34, 240, 22);
+        const g = ctx.createLinearGradient(0, 34, 0, 56);
+        g.addColorStop(0, "#ff4d4d");
+        g.addColorStop(1, "#8b0000");
+        ctx.fillStyle = g;
+        ctx.fillRect(10, 36, 236 * ratio, 18);
+        ctx.strokeStyle = "#c9a24a";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(8, 34, 240, 22);
+        tex.needsUpdate = true;
+    }
+    draw(1);
+    return { sprite: sprite, draw: draw };
+}
+
+function spawnFloatingText(text, color, pos, big) {
+    if (!scene) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 256; canvas.height = 96;
+    const ctx = canvas.getContext("2d");
+    ctx.font = "bold " + (big ? 62 : 48) + "px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = "#000";
+    ctx.strokeText(text, 128, 48);
+    ctx.fillStyle = color;
+    ctx.fillText(text, 128, 48);
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(big ? 3.4 : 2.6, big ? 1.3 : 1.0, 1);
+    sprite.position.copy(pos);
+    sprite.position.x += (Math.random() - 0.5) * 0.6;
+    sprite.renderOrder = 999;
+    scene.add(sprite);
+    floatingTexts.push({ sprite: sprite, mat: mat, tex: tex, life: 0, max: 0.95 });
+}
+
+function updateFloatingTexts(delta) {
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const f = floatingTexts[i];
+        f.life += delta;
+        f.sprite.position.y += 2.2 * delta;
+        const t = f.life / f.max;
+        f.mat.opacity = Math.max(0, 1 - t * t);
+        if (f.life >= f.max) {
+            scene.remove(f.sprite);
+            f.mat.dispose();
+            f.tex.dispose();
+            floatingTexts.splice(i, 1);
+        }
+    }
+}
+
+/* ---------- efecte vizuale de atac ---------- */
+function spawnSlashEffect(x, y, z, rotY, skill) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    group.position.set(x, y + 0.9, z);
+
+    let geo;
+    if (skill === 2) geo = new THREE.RingGeometry(1.2, 5.2, 48);
+    else geo = new THREE.RingGeometry(1.0, 3.4, 28, 1, -Math.PI * 0.42, Math.PI * 0.84);
+
+    const mat = new THREE.MeshBasicMaterial({
+        color: skill === 2 ? 0x66ccff : 0xffaa33,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    group.add(mesh);
+    group.rotation.y = rotY - Math.PI / 2;
+    scene.add(group);
+
+    effects.push({ group: group, mat: mat, geo: geo, life: 0, max: skill === 2 ? 0.55 : 0.3, skill: skill });
+}
+
+function updateEffects(delta) {
+    for (let i = effects.length - 1; i >= 0; i--) {
+        const f = effects[i];
+        f.life += delta;
+        const t = Math.min(1, f.life / f.max);
+        if (f.skill === 2) {
+            f.group.scale.setScalar(0.5 + 0.8 * t);
+            f.group.rotation.y += delta * 10;
+        } else {
+            f.group.scale.setScalar(0.7 + 0.5 * t);
+        }
+        f.mat.opacity = 0.85 * (1 - t);
+        if (f.life >= f.max) {
+            scene.remove(f.group);
+            f.geo.dispose();
+            f.mat.dispose();
+            effects.splice(i, 1);
+        }
+    }
+}
+
+/* ---------- animația de atac a jucătorului ---------- */
+function playOneShot(action, speed) {
+    action.reset();
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.setEffectiveTimeScale(speed);
+    action.setEffectiveWeight(1);
+    action.play();
+    if (activeAction && activeAction !== action) activeAction.crossFadeTo(action, 0.1, false);
+    activeAction = action;
+}
+
+function startAttackAnim(n) {
+    const now = nowSec();
+    if (attackActions.length) {
+        const action = attackActions[(n - 1) % attackActions.length];
+        const clip = action.getClip();
+        const speed = Math.max(1, Math.min(2.5, clip.duration / 0.6));
+        playOneShot(action, speed);
+        attackUntil = now + Math.min(clip.duration / speed, 1.0);
+        attackProcedural = false;
+    } else {
+        attackUntil = now + (n === 2 ? 0.55 : 0.35);
+        attackProcedural = true;
+    }
+    attackStart = now;
+    attackType = n;
+}
+
+function autoFaceNearest(range) {
+    let best = null, bestD = range;
+    for (const m of monsters) {
+        if (!m.alive) continue;
+        const d = Math.hypot(m.x - myPos.x, m.z - myPos.z);
+        if (d < bestD) { bestD = d; best = { x: m.x, z: m.z }; }
+    }
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh || rp.hp <= 0) continue;
+        const x = rp.rx !== undefined ? rp.rx : rp.x;
+        const z = rp.rz !== undefined ? rp.rz : rp.z;
+        const d = Math.hypot(x - myPos.x, z - myPos.z);
+        if (d < bestD) { bestD = d; best = { x: x, z: z }; }
+    }
+    if (best) myPos.rotY = Math.atan2(best.x - myPos.x, best.z - myPos.z);
+}
+
+function useSkill(n) {
+    if (!characterLoaded || playerDead || !SKILLS[n]) return;
+    const cfg = SKILLS[n];
+    const now = nowSec();
+    if (now < cfg.readyAt) return;
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+
+    myMP -= cfg.mp;
+    cfg.readyAt = now + cfg.cd;
+
+    autoFaceNearest(cfg.range + 3);
+    startAttackAnim(n);
+    spawnSlashEffect(myPos.x, myPos.y, myPos.z, myPos.rotY, n);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: n });
+
+    setTimeout(function() { applyAttackDamage(n); }, cfg.hitDelay * 1000);
+}
+
+function rollDamage(cfg) {
+    const crit = Math.random() < 0.15;
+    let dmg = Math.round(cfg.min + Math.random() * (cfg.max - cfg.min));
+    if (crit) dmg = Math.round(dmg * 1.8);
+    return { dmg: dmg, crit: crit };
+}
+
+function applyAttackDamage(n) {
+    if (playerDead) return;
+    const cfg = SKILLS[n];
+    const fx = Math.sin(myPos.rotY), fz = Math.cos(myPos.rotY);
+    const cosHalf = Math.cos(cfg.arc / 2);
+    const fullCircle = cfg.arc >= Math.PI * 2 - 0.01;
+
+    function inCone(x, z) {
+        const dx = x - myPos.x, dz = z - myPos.z;
+        const d = Math.hypot(dx, dz);
+        if (d > cfg.range + 0.6) return false;
+        if (fullCircle || d < 0.5) return true;
+        return (dx * fx + dz * fz) / d >= cosHalf;
+    }
+
+    for (const m of monsters) {
+        if (!m.alive || !inCone(m.x, m.z)) continue;
+        const r = rollDamage(cfg);
+        damageMonster(m, r.dmg, r.crit);
+    }
+
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh || rp.hp <= 0) continue;
+        const x = rp.rx !== undefined ? rp.rx : rp.x;
+        const z = rp.rz !== undefined ? rp.rz : rp.z;
+        if (!inCone(x, z)) continue;
+        const r = rollDamage(cfg);
+        spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
+            new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
+        if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
+        setRemoteHp(id, rp.hp - r.dmg);
+    }
+}
+
+function triggerAttack3D() { useSkill(1); }
+function triggerSkill2() { useSkill(2); }
+
+function triggerDefense3D() {
+    if (!characterLoaded || playerDead) return;
+    const now = nowSec();
+    if (now < DEFENSE.readyAt) return;
+    if (myMP < DEFENSE.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    myMP -= DEFENSE.mp;
+    DEFENSE.readyAt = now + DEFENSE.cd;
+    isDefending = true;
+    addChat("🛡️ Scut activat! (-70% daune)", "#3498db");
+    setTimeout(function() { isDefending = false; }, DEFENSE.duration * 1000);
+}
+
+/* ---------- daune primite / moarte / respawn ---------- */
+function takeDamage(amount, attackerId) {
+    if (playerDead || amount <= 0) return;
+    amount = Math.min(300, Math.round(amount));
+    if (isDefending) amount = Math.max(1, Math.round(amount * 0.3));
+    myHP -= amount;
+    lastHitTime = nowSec();
+    spawnFloatingText("-" + amount, "#ff4444",
+        new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.4, myPos.z), false);
+    updateMyHpUI();
+    if (myHP <= 0) killPlayer(attackerId);
+}
+
+function killPlayer(attackerId) {
+    myHP = 0;
+    updateMyHpUI();
+    playerDead = true;
+    deadTimer = 4;
+    isDefending = false;
+    myPos.velocityX = 0;
+    myPos.velocityZ = 0;
+    addChat("☠️ Ai murit! Revii în 4 secunde.", "#e74c3c");
+    document.getElementById("death-overlay").style.display = "flex";
+    if (socket && socket.connected) {
+        if (attackerId) socket.emit("playerDied", { killerId: attackerId });
+        socket.emit("hpUpdate", 0);
+        lastHpSent = 0;
+    }
+}
+
+function respawnPlayer() {
+    myPos.x = 0; myPos.z = 0;
+    myPos.velocityX = 0; myPos.velocityZ = 0;
+    myPos.y = getGroundHeight(0, 0, 0);
+    myHP = maxHP;
+    myMP = maxMP;
+    playerDead = false;
+    lastHitTime = -100;
+    updateMyHpUI();
+    updateMyMpUI();
+    document.getElementById("death-overlay").style.display = "none";
+    addChat("Ai reînviat.", "#2ecc71");
+    if (socket && socket.connected) {
+        socket.emit("hpUpdate", maxHP);
+        lastHpSent = maxHP;
+    }
+}
+
+/* ---------- jucători la distanță: viață ---------- */
+function setRemoteHp(id, hp) {
+    const rp = remotePlayers[id];
+    if (!rp) return;
+    rp.hp = Math.max(0, Math.min(maxHP, hp));
+    if (rp.bar) rp.bar.draw(rp.hp / maxHP);
+    if (rp.mesh) rp.mesh.rotation.x = rp.hp <= 0 ? -1.4 : 0;
+    if (rp.hp <= 0) rp.reviveAt = nowSec() + 4;
+}
+
+function removeRemotePlayer(id) {
+    const rp = remotePlayers[id];
+    if (!rp) return;
+    if (rp.mesh) scene.remove(rp.mesh);
+    delete remotePlayers[id];
+    updateOnlineCount();
+}
+
+/* ---------- monștri ---------- */
+function createMonsterMesh(tint) {
+    const root = new THREE.Group();
+    const model = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.65, metalness: 0.15, emissive: 0x220000 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a0d0d, roughness: 0.8 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffee33 });
+
+    function add(geo, mat, x, y, z, rx, ry, rz) {
+        const m = new THREE.Mesh(geo, mat);
+        m.position.set(x, y, z);
+        m.rotation.set(rx || 0, ry || 0, rz || 0);
+        m.castShadow = true;
+        model.add(m);
+        return m;
+    }
+
+    const body = add(new THREE.SphereGeometry(0.75, 14, 12), bodyMat, 0, 1.0, 0);
+    body.scale.set(1, 1.15, 0.9);
+    add(new THREE.SphereGeometry(0.42, 12, 10), bodyMat, 0, 1.95, 0.1);
+    add(new THREE.ConeGeometry(0.12, 0.55, 8), darkMat, -0.26, 2.4, 0.05, 0, 0, 0.35);
+    add(new THREE.ConeGeometry(0.12, 0.55, 8), darkMat, 0.26, 2.4, 0.05, 0, 0, -0.35);
+    add(new THREE.SphereGeometry(0.07, 8, 8), eyeMat, -0.16, 2.0, 0.46);
+    add(new THREE.SphereGeometry(0.07, 8, 8), eyeMat, 0.16, 2.0, 0.46);
+    add(new THREE.CylinderGeometry(0.13, 0.1, 0.95, 8), bodyMat, -0.88, 1.1, 0.15, 0.4, 0, 0.5);
+    add(new THREE.CylinderGeometry(0.13, 0.1, 0.95, 8), bodyMat, 0.88, 1.1, 0.15, 0.4, 0, -0.5);
+    add(new THREE.CylinderGeometry(0.17, 0.14, 0.7, 8), darkMat, -0.32, 0.35, 0);
+    add(new THREE.CylinderGeometry(0.17, 0.14, 0.7, 8), darkMat, 0.32, 0.35, 0);
+
+    model.scale.setScalar(0.85);
+    root.add(model);
+    return { root: root, model: model, bodyMat: bodyMat };
+}
+
+function pickSpawnPoint() {
+    const baseY = getGroundHeight(0, 0, 0);
+    for (let i = 0; i < 40; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rad = 14 + Math.random() * (MAP_TARGET_SIZE * 0.32);
+        const x = Math.cos(ang) * rad, z = Math.sin(ang) * rad;
+        const y = getGroundHeight(x, z, NaN);
+        if (Number.isFinite(y) && Math.abs(y - baseY) < 10) return { x: x, y: y, z: z };
+    }
+    return null;
+}
+
+function spawnMonsters() {
+    const tints = [0x6b1f2a, 0x3c2a6b, 0x2a5a3a];
+    for (let i = 0; i < MONSTER_COUNT; i++) {
+        const p = pickSpawnPoint();
+        if (!p) continue;
+        const built = createMonsterMesh(tints[i % tints.length]);
+        const bar = makeBarSprite("Demon");
+        bar.sprite.position.set(0, 3.0, 0);
+        built.root.add(bar.sprite);
+        built.root.position.set(p.x, p.y, p.z);
+        scene.add(built.root);
+
+        monsters.push({
+            root: built.root, model: built.model, bodyMat: built.bodyMat, bar: bar,
+            x: p.x, y: p.y, z: p.z, gy: p.y, spawnX: p.x, spawnZ: p.z,
+            hp: MONSTER_MAX_HP, maxHp: MONSTER_MAX_HP, alive: true, aggro: false,
+            attackCd: 0.5, attackT: 0, hitDone: true, flash: 0, deathT: 0, respawnAt: 0,
+            groundTimer: Math.random() * 0.1, faceY: Math.random() * Math.PI * 2,
+            phase: Math.random() * 6
+        });
+    }
+    addChat("Au apărut " + monsters.length + " monștri pe hartă. Atacă-i cu 1 / 2!", "#e67e22");
+}
+
+function damageMonster(m, dmg, crit) {
+    if (!m.alive) return;
+    m.hp -= dmg;
+    m.flash = 0.15;
+    m.aggro = true;
+    spawnFloatingText((crit ? "CRIT " : "") + dmg, crit ? "#ffdd33" : "#ffffff",
+        new THREE.Vector3(m.x, m.y + 3.0, m.z), crit);
+    m.bar.draw(Math.max(0, m.hp) / m.maxHp);
+    if (m.hp <= 0) killMonster(m);
+}
+
+function killMonster(m) {
+    m.alive = false;
+    m.aggro = false;
+    m.deathT = 0;
+    m.respawnAt = nowSec() + MONSTER_RESPAWN_SECONDS;
+    m.bar.sprite.visible = false;
+    monsterKills++;
+    updateKillUI();
+    addChat("☠️ Ai ucis un Demon!", "#2ecc71");
+}
+
+function respawnMonster(m) {
+    const p = pickSpawnPoint() || { x: m.spawnX, y: m.y, z: m.spawnZ };
+    m.x = p.x; m.y = p.y; m.z = p.z; m.gy = p.y;
+    m.spawnX = p.x; m.spawnZ = p.z;
+    m.hp = m.maxHp;
+    m.alive = true;
+    m.aggro = false;
+    m.attackT = 0;
+    m.root.visible = true;
+    m.model.rotation.x = 0;
+    m.bar.sprite.visible = true;
+    m.bar.draw(1);
+    m.root.position.set(m.x, m.y, m.z);
+}
+
+function updateMonsters(delta, now) {
+    for (const m of monsters) {
+        if (!m.alive) {
+            if (m.deathT < 1.4) {
+                m.deathT += delta;
+                m.model.rotation.x = -Math.min(1.45, m.deathT * 3);
+                if (m.deathT >= 1.4) m.root.visible = false;
+            } else if (now >= m.respawnAt) {
+                respawnMonster(m);
+            }
+            continue;
+        }
+
+        const dxp = myPos.x - m.x, dzp = myPos.z - m.z;
+        const dist = Math.hypot(dxp, dzp);
+        m.bar.sprite.visible = dist < 45;
+        if (dist > 100) continue; // prea departe: monstrul "doarme"
+
+        m.attackCd -= delta;
+        let moving = false;
+
+        if (!playerDead && dist < MONSTER_AGGRO) m.aggro = true;
+        if (m.aggro && (playerDead || dist > MONSTER_LEASH)) m.aggro = false;
+
+        if (m.aggro) {
+            m.faceY = Math.atan2(dxp, dzp);
+            if (dist > MONSTER_ATTACK_RANGE) {
+                const step = MONSTER_SPEED * delta;
+                m.x += dxp / dist * step;
+                m.z += dzp / dist * step;
+                moving = true;
+            } else if (m.attackCd <= 0 && m.attackT === 0) {
+                m.attackCd = 1.3;
+                m.attackT = 0.0001;
+                m.hitDone = false;
+            }
+        } else {
+            const sx = m.spawnX - m.x, sz = m.spawnZ - m.z;
+            const sd = Math.hypot(sx, sz);
+            if (sd > 1.5) {
+                const step = MONSTER_SPEED * 0.7 * delta;
+                m.x += sx / sd * step;
+                m.z += sz / sd * step;
+                m.faceY = Math.atan2(sx, sz);
+                moving = true;
+            } else if (m.hp < m.maxHp) {
+                m.hp = m.maxHp;
+                m.bar.draw(1);
+            }
+        }
+
+        if (m.attackT > 0) {
+            m.attackT += delta / 0.5;
+            if (!m.hitDone && m.attackT >= 0.4) {
+                m.hitDone = true;
+                if (!playerDead && Math.hypot(myPos.x - m.x, myPos.z - m.z) <= MONSTER_ATTACK_RANGE + 1.0) {
+                    takeDamage(MONSTER_DAMAGE_MIN + Math.random() * (MONSTER_DAMAGE_MAX - MONSTER_DAMAGE_MIN), null);
+                }
+            }
+            if (m.attackT >= 1) m.attackT = 0;
+        }
+
+        // înălțimea terenului (interogare rară, ca să nu încetinească jocul)
+        m.groundTimer -= delta;
+        if (moving && m.groundTimer <= 0) {
+            m.groundTimer = 0.12;
+            m.gy = getGroundHeight(m.x, m.z, m.y);
+        }
+        m.y += (m.gy - m.y) * Math.min(1, 12 * delta);
+
+        // orientare lină
+        let diff = m.faceY - m.root.rotation.y;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        m.root.rotation.y += diff * Math.min(1, 10 * delta);
+
+        m.model.position.y = moving ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
+        m.model.position.z = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) * 0.6 : 0;
+
+        m.flash -= delta;
+        m.bodyMat.emissive.setHex(m.flash > 0 ? 0xff5522 : 0x220000);
+
+        m.root.position.set(m.x, m.y, m.z);
+    }
+}
+
+/* ---------- actualizare generală de combat (apelată din update) ---------- */
+function updateCombat(delta, now) {
+    if (!playerDead) {
+        myMP = Math.min(maxMP, myMP + 12 * delta);
+        if (now - lastHitTime > 5 && myHP < maxHP) myHP = Math.min(maxHP, myHP + 20 * delta);
+    } else {
+        deadTimer -= delta;
+        document.getElementById("death-text").textContent = "Revii în " + Math.max(0, Math.ceil(deadTimer)) + " secunde...";
+        if (deadTimer <= 0) respawnPlayer();
+    }
+
+    hudTimer += delta;
+    if (hudTimer > 0.15) {
+        hudTimer = 0;
+        updateMyHpUI();
+        updateMyMpUI();
+        const c1 = document.getElementById("cd1"), c2 = document.getElementById("cd2"), c3 = document.getElementById("cd3");
+        if (c1) c1.style.height = Math.max(0, (SKILLS[1].readyAt - now) / SKILLS[1].cd) * 100 + "%";
+        if (c2) c2.style.height = Math.max(0, (SKILLS[2].readyAt - now) / SKILLS[2].cd) * 100 + "%";
+        if (c3) c3.style.height = Math.max(0, (DEFENSE.readyAt - now) / DEFENSE.cd) * 100 + "%";
+    }
+
+    hpSendTimer += delta;
+    if (hpSendTimer > 0.5) {
+        hpSendTimer = 0;
+        const rounded = Math.round(myHP);
+        if (socket && socket.connected && rounded !== lastHpSent) {
+            socket.emit("hpUpdate", rounded);
+            lastHpSent = rounded;
+        }
+    }
+
+    if (shieldMesh) {
+        shieldMesh.visible = isDefending;
+        if (isDefending) {
+            shieldMesh.material.opacity = 0.25 + 0.1 * Math.sin(now * 12);
+            shieldMesh.rotation.y += delta * 2;
+        }
+    }
+
+    updateMonsters(delta, now);
+    updateEffects(delta);
+    updateFloatingTexts(delta);
 }
 
 function startGame() {
@@ -500,6 +1125,15 @@ function loadCharacter() {
         localPlayerMesh = built.rootGroup;
         characterModel = built.innerModel;
 
+        localPlayerMesh.rotation.order = "YXZ";
+        shieldMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(1.5, 24, 16),
+            new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending })
+        );
+        shieldMesh.position.y = PLAYER_HEIGHT * 0.5;
+        shieldMesh.visible = false;
+        localPlayerMesh.add(shieldMesh);
+
         scene.add(localPlayerMesh);
         localPlayerMesh.updateMatrixWorld(true);
 
@@ -529,19 +1163,34 @@ function spawnRemotePlayerMesh(id) {
     }
     rp.mesh = rMesh;
     rp.mixer = rMixer;
+
+    rMesh.rotation.order = "YXZ";
+    const bar = makeBarSprite("Jucător " + String(id).slice(0, 4));
+    bar.sprite.position.set(0, PLAYER_HEIGHT + 0.6, 0);
+    rMesh.add(bar.sprite);
+    rp.bar = bar;
+    if (rp.hp === undefined) rp.hp = maxHP;
+    bar.draw(rp.hp / maxHP);
 }
 
 function setupAnimations(clips) {
     if (!characterModel || !clips.length) return;
     mixer = new THREE.AnimationMixer(characterModel);
 
+    const attackWords = ["attack", "slash", "strike", "punch", "swing", "sword", "kick", "cast", "skill", "combat", "hit"];
+    const clipNames = [];
     clips.forEach(function(clip) {
         const action = mixer.clipAction(clip);
         const name = clip.name.toLowerCase();
+        clipNames.push(clip.name);
         if (name.includes("idle") || name.includes("stand")) idleAction = action;
         else if (name.includes("walk")) walkAction = action;
         else if (name.includes("run")) runAction = action;
+        else if (attackWords.some(function(w) { return name.includes(w); })) attackActions.push(action);
     });
+    console.log("Animații în model:", clipNames);
+    addChat("Animații găsite: " + clipNames.join(", "), "#9ad");
+    if (!attackActions.length) addChat("Modelul nu are animație de atac; folosesc o mișcare simplă + efect.", "#9ad");
 
     if (!idleAction) idleAction = mixer.clipAction(clips[0]);
     if (!walkAction) walkAction = idleAction;
@@ -553,6 +1202,7 @@ function setupAnimations(clips) {
 
 function fadeToAction(action, duration = 0.18) {
     if (!action || activeAction === action) return;
+    if (performance.now() / 1000 < attackUntil || playerDead) return;
     action.reset();
     action.setEffectiveTimeScale(1);
     action.setEffectiveWeight(1);
@@ -618,6 +1268,11 @@ function placePlayerOnGround() {
     myPos.y = getGroundHeight(myPos.x, myPos.z, 0);
     localPlayerMesh.position.set(myPos.x, myPos.y, myPos.z);
     localPlayerMesh.updateMatrixWorld(true);
+
+    if (!monstersSpawned) {
+        monstersSpawned = true;
+        spawnMonsters();
+    }
 }
 
 function setupControls() {
@@ -636,6 +1291,11 @@ function setupControls() {
             localPlayerMesh.scale.multiplyScalar(k);
             addChat("Mărime personaj: x" + localPlayerMesh.scale.x.toFixed(2) + "  (PLAYER_HEIGHT ≈ " + (PLAYER_HEIGHT * localPlayerMesh.scale.x).toFixed(2) + ")", "#9ad");
             return;
+        }
+        if (!e.repeat) {
+            if (e.code === "Digit1") useSkill(1);
+            else if (e.code === "Digit2") useSkill(2);
+            else if (e.code === "Digit3") triggerDefense3D();
         }
         keys[e.code] = true;
         keys[e.key.toLowerCase()] = true;
@@ -689,6 +1349,27 @@ function setupSocket() {
                 updateOnlineCount();
             }
         });
+        // ---- PvP ----
+        socket.on("playerHit", function(data) {
+            takeDamage(Number(data && data.damage) || 0, data && data.attackerId);
+        });
+        socket.on("playerAttacked", function(data) {
+            const rp = remotePlayers[data && data.id];
+            if (rp && rp.mesh) {
+                spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, rp.mesh.rotation.y, (data && data.skill) || 1);
+            }
+        });
+        socket.on("playerHp", function(data) {
+            if (data && remotePlayers[data.id]) setRemoteHp(data.id, Number(data.hp) || 0);
+        });
+        socket.on("pvpKill", function() {
+            pvpKills++;
+            updateKillUI();
+            addChat("⚔️ Ai învins un jucător!", "#2ecc71");
+        });
+        socket.on("playerDisconnected", function(data) {
+            removeRemotePlayer(typeof data === "object" && data ? data.id : data);
+        });
     } catch(e) {}
 }
 
@@ -710,6 +1391,10 @@ function setupCamera() {
         cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
     });
 
+    window.addEventListener("mousedown", function(e) {
+        if (isPointerLocked && e.button === 0) useSkill(1);
+    });
+
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
         cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
@@ -728,29 +1413,36 @@ function setupChat() {
     });
 }
 
-function triggerAttack3D() {
-    addChat("⚔️ Atac lansat!", "#f39c12");
-}
-
-function triggerDefense3D() {
-    isDefending = true;
-    addChat("🛡️ Scut activat!", "#3498db");
-    setTimeout(() => { isDefending = false; }, 2000);
-}
 
 function update() {
     const delta = Math.min(clock.getDelta(), 0.05);
+    const now = performance.now() / 1000;
     if (mixer) mixer.update(delta);
 
     for (const id in remotePlayers) {
         const rp = remotePlayers[id];
         if (rp.mixer) rp.mixer.update(delta);
         if (rp.mesh) {
-            rp.mesh.position.set(rp.x, getGroundHeight(rp.x, rp.z, 0), rp.z);
+            if (rp.rx === undefined) { rp.rx = rp.x; rp.rz = rp.z; }
+            const px = rp.rx, pz = rp.rz;
+            const k = Math.min(1, 12 * delta);
+            rp.rx += (rp.x - rp.rx) * k;
+            rp.rz += (rp.z - rp.rz) * k;
+            if (Math.hypot(rp.rx - px, rp.rz - pz) > 0.002) rp.faceY = Math.atan2(rp.rx - px, rp.rz - pz);
+            if (rp.faceY !== undefined) {
+                let d = rp.faceY - rp.mesh.rotation.y;
+                while (d < -Math.PI) d += Math.PI * 2;
+                while (d > Math.PI) d -= Math.PI * 2;
+                rp.mesh.rotation.y += d * Math.min(1, 10 * delta);
+            }
+            rp.mesh.position.set(rp.rx, getGroundHeight(rp.rx, rp.rz, rp.mesh.position.y), rp.rz);
         }
+        if (rp.hp <= 0 && rp.reviveAt && now > rp.reviveAt) setRemoteHp(id, maxHP);
     }
 
     if (!camera) return;
+
+    updateCombat(delta, now);
 
     const forward = (keys["KeyW"] || keys["w"] || keys["ArrowUp"]) ? 1 : 0;
     const backward = (keys["KeyS"] || keys["s"] || keys["ArrowDown"]) ? 1 : 0;
@@ -758,7 +1450,7 @@ function update() {
     const right = (keys["KeyD"] || keys["d"] || keys["ArrowRight"]) ? 1 : 0;
 
     const running = !!(keys["ShiftLeft"] || keys["ShiftRight"] || keys["shift"]);
-    const speed = running ? myPos.runSpeed : myPos.walkSpeed;
+    const speed = (running ? myPos.runSpeed : myPos.walkSpeed) * (now < attackUntil ? 0.4 : 1);
 
     const forwardX = -Math.sin(cameraAngle);
     const forwardZ = -Math.cos(cameraAngle);
@@ -771,7 +1463,7 @@ function update() {
     if (left) { inputX -= rightX; inputZ -= rightZ; }
     if (right) { inputX += rightX; inputZ += rightZ; }
 
-    const length = Math.hypot(inputX, inputZ);
+    const length = playerDead ? 0 : Math.hypot(inputX, inputZ);
     let targetVX = 0, targetVZ = 0;
     if (length > 0) {
         targetVX = inputX / length * speed;
@@ -805,7 +1497,16 @@ function update() {
 
     if (localPlayerMesh) {
         localPlayerMesh.position.set(myPos.x, myPos.y, myPos.z);
-        localPlayerMesh.rotation.y = myPos.rotY;
+        let lean = 0, spin = 0;
+        if (playerDead) {
+            lean = -1.4;
+        } else if (attackProcedural && now < attackUntil) {
+            const t = (now - attackStart) / (attackUntil - attackStart);
+            lean = Math.sin(t * Math.PI) * 0.4;
+            if (attackType === 2) spin = t * Math.PI * 2;
+        }
+        localPlayerMesh.rotation.x += (lean - localPlayerMesh.rotation.x) * Math.min(1, 20 * delta);
+        localPlayerMesh.rotation.y = myPos.rotY + spin;
 
         if (playerPointLight) {
             playerPointLight.position.set(myPos.x, myPos.y + 2, myPos.z);
