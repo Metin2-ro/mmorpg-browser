@@ -28,7 +28,7 @@ canvas { display: block; width: 100%; height: 100%; }
     position: absolute;
     inset: 0;
     z-index: 10;
-    pointer-events: auto; /* Permite rotirea 3D a eroului cu mouse-ul */
+    pointer-events: auto;
 }
 
 /* --- INTERFAȚĂ LOGIN 3D STYLING --- */
@@ -40,7 +40,7 @@ canvas { display: block; width: 100%; height: 100%; }
     align-items: center;
     justify-content: center;
     z-index: 20;
-    pointer-events: none; /* Lasă mouse-ul să treacă spre canvas-ul 3D din spate */
+    pointer-events: none;
 }
 .login-panel {
     width: 380px;
@@ -50,7 +50,7 @@ canvas { display: block; width: 100%; height: 100%; }
     border-radius: 10px;
     box-shadow: 0 0 35px rgba(0,0,0,0.9), inset 0 0 15px rgba(140,98,57,0.2);
     text-align: center;
-    pointer-events: auto; /* Activează interacțiunea cu inputurile */
+    pointer-events: auto;
     backdrop-filter: blur(4px);
 }
 .login-title {
@@ -431,7 +431,7 @@ let selectedCharacterName = "Dark Knight";
 
 /* MOTOR 3D PENTRU MENIU (PREVIZUALIZARE EROU) */
 let menuScene, menuCamera, menuRenderer, menuModel, menuMixer;
-let menuAngle = 0, menuDist = 5.0, menuDragging = false, menuLastX = 0;
+let menuAngle = 0, menuDist = 4.5, menuDragging = false, menuLastX = 0;
 let menuClock = new THREE.Clock();
 let inGameActive = false;
 
@@ -442,7 +442,7 @@ function initMenu3D() {
     menuScene.fog = new THREE.FogExp2(0x060404, 0.03);
 
     menuCamera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
-    menuCamera.position.set(0, 1.4, menuDist);
+    menuCamera.position.set(0, 1.2, menuDist);
 
     menuRenderer = new THREE.WebGLRenderer({ antialias: true });
     menuRenderer.setSize(window.innerWidth, window.innerHeight);
@@ -477,7 +477,7 @@ function initMenu3D() {
     window.addEventListener("mouseup", () => menuDragging = false);
     window.addEventListener("wheel", e => {
         if (inGameActive) return;
-        menuDist = Math.max(2.5, Math.min(8.0, menuDist + e.deltaY * 0.005));
+        menuDist = Math.max(2.0, Math.min(7.0, menuDist + e.deltaY * 0.005));
         menuCamera.position.z = menuDist;
     });
 
@@ -493,7 +493,9 @@ function loadMenuCharacter(file) {
         
         const box = new THREE.Box3().setFromObject(menuModel);
         const size = box.getSize(new THREE.Vector3());
-        const scale = 2.0 / size.y;
+        
+        // SCALARE REDUSĂ DOAR PENTRU MENIU (înălțime 1.2 unități, perfect centrat pe platformă)
+        const scale = 1.2 / size.y;
         
         menuModel.position.y -= box.min.y;
         
