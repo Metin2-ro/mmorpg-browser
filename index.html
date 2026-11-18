@@ -484,7 +484,7 @@ const myPos = { x: 0, y: 0, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, r
 let cameraAngle = 0;
 let cameraPitch = 0.35;
 let cameraDistance = 7.0;
-let isPointerLocked = false;
+let isPointerLocked = false; // păstrat doar pentru compatibilitate; camera nu mai folosește Pointer Lock
 
 const groundRaycaster = new THREE.Raycaster();
 groundRaycaster.far = 2000;
@@ -1616,9 +1616,9 @@ function drawMiniMap() {
     ctx.strokeStyle="rgba(210,180,120,.22)"; ctx.lineWidth=2;
     for(let r=45;r<=135;r+=45){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();}
     ctx.beginPath();ctx.moveTo(cx-radius,cy);ctx.lineTo(cx+radius,cy);ctx.moveTo(cx,cy-radius);ctx.lineTo(cx,cy+radius);ctx.stroke();
-    for(const m of monsters){if(!m.alive)continue;const dx=(m.x-myPos.x)*scale, dz=(m.z-myPos.z)*scale;if(Math.hypot(dx,dz)>radius)continue;ctx.fillStyle=(selectedTarget===m)?"#ff4545":"#e6b35a";ctx.beginPath();ctx.arc(cx+dx,cy+dz,selectedTarget===m?8:5,0,Math.PI*2);ctx.fill();}
-    for(const id in remotePlayers){const rp=remotePlayers[id];if(!rp.mesh)continue;const dx=(rp.x-myPos.x)*scale,dz=(rp.z-myPos.z)*scale;if(Math.hypot(dx,dz)<radius){ctx.fillStyle="#59c7ff";ctx.beginPath();ctx.arc(cx+dx,cy+dz,5,0,Math.PI*2);ctx.fill();}}
-    ctx.translate(cx,cy);ctx.rotate(-myPos.rotY);ctx.fillStyle="#ffffff";ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(-9,10);ctx.lineTo(0,6);ctx.lineTo(9,10);ctx.closePath();ctx.fill();
+    for(const m of monsters){if(!m.alive)continue;const dx=(m.x-myPos.x)*scale, dz=-(m.z-myPos.z)*scale;if(Math.hypot(dx,dz)>radius)continue;ctx.fillStyle=(selectedTarget===m)?"#ff4545":"#e6b35a";ctx.beginPath();ctx.arc(cx+dx,cy+dz,selectedTarget===m?8:5,0,Math.PI*2);ctx.fill();}
+    for(const id in remotePlayers){const rp=remotePlayers[id];if(!rp.mesh)continue;const dx=(rp.x-myPos.x)*scale,dz=-(rp.z-myPos.z)*scale;if(Math.hypot(dx,dz)<radius){ctx.fillStyle="#59c7ff";ctx.beginPath();ctx.arc(cx+dx,cy+dz,5,0,Math.PI*2);ctx.fill();}}
+    ctx.translate(cx,cy);ctx.rotate(myPos.rotY);ctx.fillStyle="#ffffff";ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(-9,10);ctx.lineTo(0,6);ctx.lineTo(9,10);ctx.closePath();ctx.fill();
     ctx.restore();
 }
 
@@ -2471,30 +2471,50 @@ function updateOnlineCount() {
 
 function setupCamera() {
     const container = document.getElementById("game-container");
-    container.addEventListener("click", function() {
-        if (document.activeElement === document.getElementById("chat-input")) return;
-        if (container.requestPointerLock) container.requestPointerLock();
+    let rightMouseDown = false;
+
+    // Nu capturăm cursorul: el rămâne vizibil pentru inventar și status.
+    container.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
     });
 
-    document.addEventListener("pointerlockchange", function() {
-        isPointerLocked = document.pointerLockElement === container;
+    window.addEventListener("mousedown", function(e) {
+        const ui = e.target && e.target.closest && e.target.closest(
+            ".game-window, button, input, textarea, .ui-toggle, #chat-container"
+        );
+        if (ui) return;
+
+        if (e.button === 2) {
+            rightMouseDown = true;
+            e.preventDefault();
+            return;
+        }
+
+        if (e.button === 0 && container.contains(e.target)) {
+            // Atacul cu click stânga rămâne disponibil fără Pointer Lock.
+            useSkill(1);
+        }
+    });
+
+    window.addEventListener("mouseup", function(e) {
+        if (e.button === 2) rightMouseDown = false;
+    });
+
+    window.addEventListener("blur", function() {
+        rightMouseDown = false;
     });
 
     window.addEventListener("mousemove", function(e) {
-        if (!isPointerLocked) return;
+        if (!rightMouseDown) return;
         cameraAngle += e.movementX * 0.004;
         cameraPitch += e.movementY * 0.004;
         cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
     });
 
-    window.addEventListener("mousedown", function(e) {
-        if (isPointerLocked && e.button === 0) useSkill(1);
-    });
-
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
         cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
-    });
+    }, { passive: true });
 }
 
 function setupChat() {
