@@ -1921,7 +1921,7 @@ function updateMinimap() {
 
     // Marcajele sunt raportate la centrul hărții încărcate în joc.
     function mapPoint(x, z) {
-        return { x: cx + x * scale, y: cy + z * scale };
+        return { x: cx + x * scale, y: cy - z * scale };
     }
     function dot(x, z, color, size) {
         const p = mapPoint(x, z);
