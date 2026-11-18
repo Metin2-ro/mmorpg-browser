@@ -24,59 +24,118 @@ body {
 canvas { display: block; width: 100%; height: 100%; }
 
 #char-select-screen {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    background: radial-gradient(circle, rgba(35,22,15,.98), rgba(5,5,7,1));
+    z-index: 1000;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 100;
-    gap: 20px;
+    overflow: hidden;
+    padding: 28px;
+    color: #f4ead8;
+    background:
+      radial-gradient(ellipse at 72% 48%, rgba(118,48,20,.30), transparent 38%),
+      radial-gradient(ellipse at 18% 80%, rgba(22,47,68,.34), transparent 42%),
+      linear-gradient(115deg, rgba(3,4,8,.97) 0%, rgba(10,8,10,.90) 48%, rgba(5,5,8,.96) 100%);
 }
-#char-select-screen h1 {
-    color: #ffd700;
-    text-shadow: 0 0 20px #ff6600;
-    font-size: 32px;
+#char-select-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: .34;
+    background: repeating-linear-gradient(115deg, transparent 0 78px, rgba(210,165,93,.10) 79px, transparent 81px 150px);
+}
+#char-select-screen::after {
+    content: "";
+    position: absolute;
+    width: min(68vw, 850px);
+    aspect-ratio: 1;
+    right: -12%;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid rgba(194,145,75,.16);
+    border-radius: 50%;
+    box-shadow: 0 0 0 28px rgba(194,145,75,.025), 0 0 0 70px rgba(194,145,75,.02), inset 0 0 90px rgba(176,86,35,.08);
+    pointer-events: none;
+}
+.start-layout {
+    position: relative;
+    z-index: 2;
+    width: min(1180px, 100%);
+    min-height: min(720px, calc(100vh - 56px));
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) minmax(320px, 430px);
+    align-items: center;
+    gap: clamp(28px, 6vw, 90px);
+}
+.start-brand { align-self: start; padding-top: 12px; }
+.start-kicker { color:#bd9861; font-size:11px; letter-spacing:5px; text-transform:uppercase; }
+.start-title {
+    margin: 12px 0 8px;
+    color: #f1d6a0;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(38px, 6vw, 76px);
+    line-height: .98;
     letter-spacing: 3px;
     text-transform: uppercase;
+    text-shadow: 0 3px 0 #26170e, 0 0 32px rgba(209,132,55,.45);
 }
-.char-cards-container { display: flex; gap: 20px; }
+.start-subtitle { color:#b9aa96; font-size:13px; letter-spacing:3px; text-transform:uppercase; }
+.start-divider { width: min(390px, 90%); height:1px; margin:28px 0; background:linear-gradient(90deg,#b98b4d,transparent); }
+.start-lore { max-width:440px; color:#c8bdad; font: 16px/1.8 Georgia,serif; }
+.start-lore strong { color:#e6c58d; font-weight:normal; }
+.start-controls-note { margin-top:34px; display:flex; flex-wrap:wrap; gap:9px; color:#9f9485; font-size:11px; letter-spacing:1px; }
+.start-controls-note span { border:1px solid rgba(183,139,76,.35); background:rgba(10,8,8,.45); padding:7px 10px; border-radius:3px; }
+.start-panel {
+    width:100%; padding:30px 28px 25px;
+    background:linear-gradient(145deg,rgba(26,20,17,.94),rgba(7,8,11,.96));
+    border:1px solid #80603a;
+    outline:1px solid rgba(218,176,107,.15);
+    outline-offset:6px;
+    box-shadow:0 22px 80px rgba(0,0,0,.72), inset 0 0 35px rgba(183,117,51,.06);
+    text-align:center;
+}
+.start-panel-heading { color:#d9b879; font:20px Georgia,serif; letter-spacing:3px; text-transform:uppercase; margin:0 0 6px; }
+.start-panel-caption { color:#82786d; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-bottom:22px; }
+.char-cards-container { display:flex; justify-content:center; }
 .char-card {
-    width: 240px;
-    background: linear-gradient(#261811,#0d0806);
-    border: 2px solid #8c6239;
-    border-radius: 6px;
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: .25s;
+    position:relative; width:100%; max-width:310px; padding:22px 18px 18px;
+    border:1px solid #a47b45; border-radius:3px;
+    background:radial-gradient(ellipse at 50% 0%,rgba(146,83,37,.24),transparent 68%),linear-gradient(#211913,#0c0b0c);
+    text-align:center; cursor:default; transition:.25s;
 }
-.char-card:hover, .char-card.selected {
-    border-color: #ffd700;
-    box-shadow: 0 0 30px #ff6600;
-    transform: translateY(-5px);
+.char-card.selected { border-color:#d4ae70; box-shadow:0 0 26px rgba(201,135,60,.17),inset 0 0 24px rgba(201,135,60,.07); }
+.char-emblem { width:92px; height:92px; margin:0 auto 12px; display:grid; place-items:center; border:1px solid #a77c48; border-radius:50%; background:radial-gradient(circle,#49301d,#100d0c 70%); box-shadow:0 0 25px rgba(190,115,48,.18); font-size:47px; }
+.char-card h3 { color:#e7c58b; font:22px Georgia,serif; letter-spacing:2px; margin:8px 0 5px; }
+.char-card p { color:#9e9282; font-size:11px; letter-spacing:1px; margin:0; }
+.char-class-line { color:#b67d42; font-size:10px; letter-spacing:2px; margin-top:15px; text-transform:uppercase; }
+#hero-name {
+    width:100%; max-width:310px; margin:20px auto 0; padding:13px 14px;
+    color:#f1dfc2; background:rgba(0,0,0,.48); border:1px solid #655039; border-radius:2px;
+    outline:none; text-align:center; font-size:14px; letter-spacing:2px;
 }
-.char-card h3 { color: #f39c12; margin-bottom: 5px; }
-.char-card p { color: #aaa; font-size: 11px; }
-
+#hero-name:focus { border-color:#d0a35e; box-shadow:0 0 14px rgba(208,163,94,.18); }
+#hero-name::placeholder { color:#766b5d; }
 #start-game-btn {
-    background: linear-gradient(#d4af37,#8c6239);
-    color: #111;
-    border: 2px solid #ffd700;
-    padding: 14px 45px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 15px;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    transition: 0.2s;
+    display:block; width:100%; max-width:310px; margin:14px auto 0; padding:16px 20px;
+    color:#1a1108; background:linear-gradient(180deg,#e5c17e,#a97839);
+    border:1px solid #f0d69b; border-radius:2px; cursor:pointer;
+    font: bold 14px Georgia,serif; letter-spacing:3px; text-transform:uppercase;
+    box-shadow:0 5px 20px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.35); transition:.2s;
 }
-#start-game-btn:hover {
-    filter: brightness(1.2);
-    box-shadow: 0 0 15px #ffd700;
+#start-game-btn:hover { filter:brightness(1.15); transform:translateY(-2px); box-shadow:0 8px 28px rgba(191,132,57,.25); }
+.start-footer { margin-top:18px; color:#71685e; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; }
+@media(max-width:760px) {
+    #char-select-screen { overflow-y:auto; padding:24px 16px; }
+    .start-layout { min-height:0; grid-template-columns:1fr; gap:26px; max-width:480px; }
+    .start-brand { text-align:center; padding-top:4px; }
+    .start-title { font-size:clamp(36px,11vw,58px); }
+    .start-divider { margin:16px auto; }
+    .start-lore { display:none; }
+    .start-controls-note { justify-content:center; margin-top:16px; }
+    .start-panel { padding:24px 18px 20px; }
+    #char-select-screen::after { width:120vw; right:-55%; }
 }
 
 #player-hud {
@@ -337,16 +396,33 @@ canvas { display: block; width: 100%; height: 100%; }
 <body>
 
 <div id="char-select-screen">
-    <h1>MU Online - PC Client Edition</h1>
-    <div class="char-cards-container">
-        <div class="char-card selected">
-            <div style="font-size:45px">⚔️</div>
-            <h3>Dark Knight</h3>
-            <p>Clasă PC Optimizată • PvP & PvE</p>
-        </div>
+    <div class="start-layout">
+        <section class="start-brand">
+            <div class="start-kicker">O lume învăluită în întuneric</div>
+            <h1 class="start-title">MU<br>Dark Fantasy</h1>
+            <div class="start-subtitle">Legendele se nasc în luptă</div>
+            <div class="start-divider"></div>
+            <p class="start-lore">Ridică-ți sabia, stăpânește magia și înfruntă creaturile care au cucerit acest tărâm. <strong>Aventura ta începe acum.</strong></p>
+            <div class="start-controls-note">
+                <span>W A S D · Mișcare</span><span>Click dreapta · Cameră</span><span>1–7 · Abilități</span>
+            </div>
+        </section>
+        <section class="start-panel">
+            <h2 class="start-panel-heading">Alege-ți eroul</h2>
+            <div class="start-panel-caption">Pregătește-te pentru aventură</div>
+            <div class="char-cards-container">
+                <div class="char-card selected">
+                    <div class="char-emblem">⚔</div>
+                    <h3>Dark Knight</h3>
+                    <p>Războinic · Luptă corp la corp</p>
+                    <div class="char-class-line">Putere · Curaj · Onoare</div>
+                </div>
+            </div>
+            <input id="hero-name" maxlength="14" placeholder="Introdu numele eroului" autocomplete="off">
+            <button id="start-game-btn" onclick="startGame()">⚔ &nbsp; Start joc</button>
+            <div class="start-footer">MU Dark Fantasy · PC Edition</div>
+        </section>
     </div>
-    <input id="hero-name" maxlength="14" placeholder="Numele eroului" autocomplete="off">
-    <button id="start-game-btn" onclick="startGame()">Conectare în Joc (PC)</button>
 </div>
 
 <div id="game-container">
