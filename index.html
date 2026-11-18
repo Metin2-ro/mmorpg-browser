@@ -311,6 +311,26 @@ canvas { display: block; width: 100%; height: 100%; }
     letter-spacing: 3px;
 }
 #death-overlay small { font-size: 16px; color: #ddd; letter-spacing: 1px; }
+
+/* Panouri inventar și status */
+#game-panels { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:40; pointer-events:none; }
+.game-panel { display:none; pointer-events:auto; width:min(560px,94vw); max-height:82vh; overflow:auto; flex-direction:column; gap:12px; padding:18px; color:#f4e5c5; background:linear-gradient(145deg,rgba(35,22,14,.98),rgba(8,6,5,.98)); border:2px solid #b58a45; border-radius:8px; box-shadow:0 0 35px #000; }
+.game-panel h2 { margin:0; color:#ffd700; text-align:center; letter-spacing:2px; }
+.panel-close { align-self:flex-end; background:#4b2118; color:#fff; border:1px solid #b58a45; padding:6px 12px; cursor:pointer; }
+#inventory-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+.inventory-slot { min-width:0; aspect-ratio:1; background:#17100b; border:1px solid #78562e; color:#ffd700; font-size:25px; cursor:pointer; }
+.inventory-slot.selected { border:2px solid #ffe27a; background:#392714; }
+#inventory-item-info { min-height:36px; padding:9px; background:#100b08; border:1px solid #513b22; font-size:13px; }
+.panel-action { background:linear-gradient(#d4af37,#8c6239); color:#160e08; border:1px solid #ffd700; padding:9px 16px; font-weight:bold; cursor:pointer; }
+.panel-action:disabled { opacity:.4; cursor:not-allowed; }
+.status-row { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:10px; padding:9px; background:#160f0a; border:1px solid #604525; }
+.status-row strong { color:#ffd700; }
+.status-row button { background:#67451e; color:#fff; border:1px solid #d4af37; padding:5px 11px; cursor:pointer; }
+.status-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:13px; }
+.status-summary div { padding:9px; background:#100b08; border:1px solid #513b22; }
+#game-menu-buttons { position:absolute; left:20px; bottom:190px; z-index:15; display:none; gap:8px; }
+#game-menu-buttons button { background:rgba(22,14,8,.94); color:#ffd700; border:1px solid #8c6239; padding:8px 13px; cursor:pointer; font-weight:bold; }
+
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -376,6 +396,38 @@ canvas { display: block; width: 100%; height: 100%; }
         </div>
     </div>
 
+
+    <div id="game-menu-buttons">
+        <button onclick="openGamePanel('inventory-panel')">🎒 Inventar (I)</button>
+        <button onclick="openGamePanel('status-panel')">📊 Status (C)</button>
+    </div>
+    <div id="game-panels">
+        <section class="game-panel" id="inventory-panel">
+            <button class="panel-close" onclick="openGamePanel('inventory-panel')">Închide ✕</button>
+            <h2>INVENTAR</h2>
+            <div id="inventory-grid"></div>
+            <div id="inventory-item-info">Selectează un obiect.</div>
+            <button class="panel-action" id="inventory-action" onclick="useSelectedInventoryItem()" disabled>Folosește / Echipează</button>
+            <div style="font-size:11px;color:#bca783">Obiectele și echipamentul sunt salvate local în browser.</div>
+        </section>
+        <section class="game-panel" id="status-panel">
+            <button class="panel-close" onclick="openGamePanel('status-panel')">Închide ✕</button>
+            <h2>STATUS PERSONAJ</h2>
+            <div style="text-align:center;color:#ffd700">Puncte disponibile: <strong id="stat-points">0</strong></div>
+            <div class="status-row"><strong>STR – Forță</strong><span id="stat-str">10</span><button data-stat="str" onclick="allocateStat('str')">+1</button></div>
+            <div class="status-row"><strong>AGI – Agilitate</strong><span id="stat-agi">10</span><button data-stat="agi" onclick="allocateStat('agi')">+1</button></div>
+            <div class="status-row"><strong>VIT – Vitalitate</strong><span id="stat-vit">10</span><button data-stat="vit" onclick="allocateStat('vit')">+1</button></div>
+            <div class="status-row"><strong>ENE – Energie</strong><span id="stat-ene">10</span><button data-stat="ene" onclick="allocateStat('ene')">+1</button></div>
+            <div class="status-summary">
+                <div>HP maxim: <strong id="status-hp">1500</strong></div>
+                <div>MP maxim: <strong id="status-mp">700</strong></div>
+                <div>Atac estimat: <strong id="status-atk">130</strong></div>
+                <div>Apărare estimată: <strong id="status-def">50</strong></div>
+            </div>
+            <div style="font-size:11px;color:#bca783">La fiecare nivel nou primești 5 puncte de status. Valorile sunt calculate de client în această etapă.</div>
+        </section>
+    </div>
+
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
@@ -427,7 +479,7 @@ let runAction = null;
 let activeAction = null;
 
 let myHP = 1500;
-const maxHP = 1500;
+let maxHP = 1500;
 let isDefending = false;
 let pvpKills = 0;
 
@@ -527,7 +579,7 @@ const MONSTER_DAMAGE_MAX = 26;
 const MONSTER_RESPAWN_SECONDS = 8;
 
 let myMP = 700;
-const maxMP = 700;
+let maxMP = 700;
 let playerDead = false;
 let deadTimer = 0;
 let lastHitTime = -100;
@@ -542,7 +594,180 @@ let monsterKills = 0;
 // Progresia personajului: EXP se acordă o singură dată, la moartea monstrului.
 let playerLevel = 1;
 let playerExp = 0;
+
 const MONSTER_EXP_REWARD = 50;
+
+// Status, inventar și salvare locală (în browser).
+const SAVE_KEY = "mu_dark_fantasy_character_v1";
+const baseStats = { str: 10, agi: 10, vit: 10, ene: 10 };
+let playerStats = { ...baseStats };
+let statPoints = 0;
+let inventory = [
+    { id: "starter_sword", name: "Sabie de începător", type: "weapon", icon: "⚔️", bonus: { str: 5 } },
+    { id: "health_potion", name: "Poțiune HP", type: "consumable", icon: "🧪", quantity: 5 },
+    { id: "starter_shield", name: "Scut de începător", type: "shield", icon: "🛡️", bonus: { vit: 3 } }
+];
+let equipment = { weapon: null, shield: null, helmet: null, armor: null, gloves: null, boots: null };
+let selectedInventoryIndex = -1;
+
+function saveCharacter() {
+    try {
+        const data = {
+            version: 1, level: playerLevel, exp: playerExp, stats: playerStats,
+            statPoints, inventory, equipment, hp: myHP, mp: myMP,
+            monsterKills, savedAt: Date.now()
+        };
+        localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    } catch (err) { console.warn("Salvarea locală nu a reușit:", err); }
+}
+
+function loadCharacterSave() {
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        if (!d || d.version !== 1) return;
+        playerLevel = Math.max(1, Number(d.level) || 1);
+        playerExp = Math.max(0, Number(d.exp) || 0);
+        playerStats = { ...baseStats, ...(d.stats || {}) };
+        statPoints = Math.max(0, Number(d.statPoints) || 0);
+        if (Array.isArray(d.inventory)) inventory = d.inventory.slice(0, 24);
+        equipment = { ...equipment, ...(d.equipment || {}) };
+        monsterKills = Math.max(0, Number(d.monsterKills) || 0);
+        maxHP = 1500 + (playerStats.vit - 10) * 25;
+        maxMP = 700 + (playerStats.ene - 10) * 15;
+        myHP = Math.min(maxHP, Math.max(1, Number(d.hp) || maxHP));
+        myMP = Math.min(maxMP, Math.max(0, Number(d.mp) || maxMP));
+    } catch (err) { console.warn("Datele salvate nu pot fi citite:", err); }
+}
+
+function getEquipmentBonuses() {
+    const total = { str: 0, agi: 0, vit: 0, ene: 0 };
+    for (const itemId of Object.values(equipment)) {
+        const item = inventory.find(it => it && it.id === itemId);
+        if (item && item.bonus) for (const k of Object.keys(total)) total[k] += Number(item.bonus[k]) || 0;
+    }
+    return total;
+}
+
+function getEffectiveStats() {
+    const b = getEquipmentBonuses();
+    return {
+        str: playerStats.str + b.str, agi: playerStats.agi + b.agi,
+        vit: playerStats.vit + b.vit, ene: playerStats.ene + b.ene
+    };
+}
+
+function refreshDerivedStats() {
+    const oldMaxHP = maxHP, oldMaxMP = maxMP;
+    const st = getEffectiveStats();
+    maxHP = 1500 + (st.vit - 10) * 25;
+    maxMP = 700 + (st.ene - 10) * 15;
+    myHP = Math.min(maxHP, myHP + Math.max(0, maxHP - oldMaxHP));
+    myMP = Math.min(maxMP, myMP + Math.max(0, maxMP - oldMaxMP));
+    updateMyHpUI();
+    updateMyMpUI();
+    updateStatusUI();
+}
+
+function allocateStat(stat) {
+    if (statPoints <= 0 || !Object.prototype.hasOwnProperty.call(playerStats, stat)) return;
+    playerStats[stat]++;
+    statPoints--;
+    refreshDerivedStats();
+    saveCharacter();
+    addChat("Ai adăugat 1 punct la " + stat.toUpperCase() + ".", "#ffd700");
+}
+
+function openGamePanel(panel) {
+    const el = document.getElementById(panel);
+    if (!el) return;
+    const willOpen = el.style.display !== "flex";
+    document.getElementById("inventory-panel").style.display = "none";
+    document.getElementById("status-panel").style.display = "none";
+    if (willOpen) {
+        el.style.display = "flex";
+        if (panel === "inventory-panel") renderInventory();
+        else updateStatusUI();
+        if (document.pointerLockElement) document.exitPointerLock();
+    }
+}
+
+function renderInventory() {
+    const grid = document.getElementById("inventory-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+    for (let i = 0; i < 24; i++) {
+        const item = inventory[i];
+        const slot = document.createElement("button");
+        slot.type = "button";
+        slot.className = "inventory-slot" + (selectedInventoryIndex === i ? " selected" : "");
+        slot.title = item ? item.name : "Slot liber";
+        slot.textContent = item ? item.icon + (item.quantity > 1 ? " " + item.quantity : "") : "";
+        slot.addEventListener("click", () => {
+            selectedInventoryIndex = i;
+            if (item) {
+                const info = document.getElementById("inventory-item-info");
+                info.textContent = item.name + (item.bonus ? " • bonus: " + Object.entries(item.bonus).map(([k,v]) => k.toUpperCase() + " +" + v).join(", ") : "");
+                const action = document.getElementById("inventory-action");
+                action.disabled = !["weapon","shield","helmet","armor","gloves","boots"].includes(item.type);
+                action.textContent = equipment[item.type] === item.id ? "Dezechipează" : "Echipează";
+            } else {
+                document.getElementById("inventory-item-info").textContent = "Slot liber";
+                document.getElementById("inventory-action").disabled = true;
+            }
+            renderInventory();
+            // Reafișăm selecția după reconstruirea sloturilor.
+            const chosen = grid.children[i];
+            if (chosen) chosen.classList.add("selected");
+        });
+        grid.appendChild(slot);
+    }
+    const item = inventory[selectedInventoryIndex];
+    if (!item) {
+        document.getElementById("inventory-item-info").textContent = "Selectează un obiect.";
+        document.getElementById("inventory-action").disabled = true;
+    }
+}
+
+function useSelectedInventoryItem() {
+    const item = inventory[selectedInventoryIndex];
+    if (!item) return;
+    if (item.type === "consumable" && item.id === "health_potion") {
+        if (item.quantity <= 0 || myHP >= maxHP) return;
+        myHP = Math.min(maxHP, myHP + 500);
+        item.quantity--;
+        if (item.quantity <= 0) inventory[selectedInventoryIndex] = null;
+        updateMyHpUI();
+        addChat("Ai folosit o Poțiune HP.", "#2ecc71");
+    } else if (["weapon","shield","helmet","armor","gloves","boots"].includes(item.type)) {
+        equipment[item.type] = equipment[item.type] === item.id ? null : item.id;
+        addChat((equipment[item.type] ? "Ai echipat: " : "Ai dezechipat: ") + item.name, "#ffd700");
+        refreshDerivedStats();
+    }
+    saveCharacter();
+    renderInventory();
+}
+
+function updateStatusUI() {
+    const st = getEffectiveStats();
+    for (const k of ["str","agi","vit","ene"]) {
+        const el = document.getElementById("stat-" + k);
+        if (el) el.textContent = st[k] + (st[k] !== playerStats[k] ? " (+" + (st[k]-playerStats[k]) + ")" : "");
+    }
+    const points = document.getElementById("stat-points");
+    if (points) points.textContent = statPoints;
+    const hp = document.getElementById("status-hp");
+    const mp = document.getElementById("status-mp");
+    const atk = document.getElementById("status-atk");
+    const def = document.getElementById("status-def");
+    if (hp) hp.textContent = maxHP;
+    if (mp) mp.textContent = maxMP;
+    if (atk) atk.textContent = 100 + st.str * 3;
+    if (def) def.textContent = 20 + st.agi * 2 + st.vit;
+    document.querySelectorAll("[data-stat]").forEach(btn => btn.disabled = statPoints <= 0);
+}
+
 
 function getExpToNextLevel(level) {
     const earlyLevels = [100, 200, 400, 700, 1000];
@@ -552,7 +777,7 @@ function getExpToNextLevel(level) {
 const monsters = [];
 const floatingTexts = [];
 const effects = [];
-let hudTimer = 0, hpSendTimer = 0, lastHpSent = 1500;
+let hudTimer = 0, hpSendTimer = 0, lastHpSent = 1500, saveTimer = 0;
 
 const SKILLS = {
     1: { cd: 0.6, mp: 0,   range: 3.8, arc: Math.PI * 0.9, min: 90, max: 130, hitDelay: 0.22, readyAt: 0 },
@@ -587,6 +812,7 @@ function awardMonsterExp(amount) {
     while (playerExp >= getExpToNextLevel(playerLevel)) {
         playerExp -= getExpToNextLevel(playerLevel);
         playerLevel++;
+        statPoints += 5;
 
         addChat("✨ LEVEL UP! Ai ajuns la nivelul " + playerLevel + "!", "#ffd700");
         if (scene) {
@@ -596,6 +822,8 @@ function awardMonsterExp(amount) {
     }
 
     updateLevelUI();
+    updateStatusUI();
+    saveCharacter();
     if (playerExp < getExpToNextLevel(playerLevel)) {
         addChat("+" + amount + " EXP", "#f1c40f");
     }
@@ -794,7 +1022,8 @@ function useSkill(n) {
 
 function rollDamage(cfg) {
     const crit = Math.random() < 0.15;
-    let dmg = Math.round(cfg.min + Math.random() * (cfg.max - cfg.min));
+    const st = getEffectiveStats();
+    let dmg = Math.round(cfg.min + Math.random() * (cfg.max - cfg.min) + Math.max(0, st.str - 10) * 2);
     if (crit) dmg = Math.round(dmg * 1.8);
     return { dmg: dmg, crit: crit };
 }
@@ -1040,7 +1269,8 @@ function takeDamage(amount, attackerId) {
             new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.4, myPos.z), false);
         return;
     }
-    amount = Math.min(300, Math.round(amount));
+    const agilityReduction = Math.min(0.30, Math.max(0, getEffectiveStats().agi - 10) * 0.015);
+    amount = Math.min(300, Math.round(amount * (1 - agilityReduction)));
     if (isDefending) amount = Math.max(1, Math.round(amount * 0.3));
     myHP -= amount;
     lastHitTime = nowSec();
@@ -1201,6 +1431,7 @@ function killMonster(m) {
     monsterKills++;
     updateKillUI();
     awardMonsterExp(MONSTER_EXP_REWARD);
+    saveCharacter();
     addChat("☠️ Ai ucis un Demon!", "#2ecc71");
 }
 
@@ -1330,6 +1561,9 @@ function updateCombat(delta, now) {
         if (c5) c5.style.height = Math.max(0, (ROLL.readyAt - now) / ROLL.cd) * 100 + "%";
     }
 
+    saveTimer += delta;
+    if (saveTimer >= 2) { saveTimer = 0; saveCharacter(); }
+
     hpSendTimer += delta;
     if (hpSendTimer > 0.5) {
         hpSendTimer = 0;
@@ -1356,6 +1590,8 @@ function updateCombat(delta, now) {
 }
 
 function startGame() {
+    loadCharacterSave();
+    document.getElementById("game-menu-buttons").style.display = "flex";
     document.getElementById("char-select-screen").style.display = "none";
     document.getElementById("player-hud").style.display = "flex";
     document.getElementById("quest-panel").style.display = "block";
@@ -1364,6 +1600,8 @@ function startGame() {
     document.getElementById("minimap-panel").style.display = "block";
     document.getElementById("ui-name").textContent = selectedCharacterName;
     updateLevelUI();
+    refreshDerivedStats();
+    updateKillUI();
     initGame();
 }
 
@@ -1658,6 +1896,12 @@ function setupControls() {
             document.getElementById("chat-input").focus();
             e.preventDefault();
             return;
+        }
+        if (e.key.toLowerCase() === "i") { openGamePanel("inventory-panel"); e.preventDefault(); return; }
+        if (e.key.toLowerCase() === "c") { openGamePanel("status-panel"); e.preventDefault(); return; }
+        if (e.key === "Escape") {
+            document.getElementById("inventory-panel").style.display = "none";
+            document.getElementById("status-panel").style.display = "none";
         }
         if ((e.key === "[" || e.key === "]") && localPlayerMesh) {
             const k = e.key === "[" ? 0.85 : 1 / 0.85;
