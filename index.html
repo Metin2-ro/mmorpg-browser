@@ -315,6 +315,14 @@ canvas { display: block; width: 100%; height: 100%; }
 /* Panouri inventar și status */
 #game-panels { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:40; pointer-events:none; }
 .game-panel { display:none; pointer-events:auto; width:min(560px,94vw); max-height:82vh; overflow:auto; flex-direction:column; gap:12px; padding:18px; color:#f4e5c5; background:linear-gradient(145deg,rgba(35,22,14,.98),rgba(8,6,5,.98)); border:2px solid #b58a45; border-radius:8px; box-shadow:0 0 35px #000; }
+#status-panel { width:min(820px,96vw); }
+.status-layout { display:grid; grid-template-columns:minmax(190px, .85fr) minmax(280px, 1.15fr); gap:18px; align-items:stretch; }
+#status-character-preview { min-height:320px; height:100%; background:radial-gradient(ellipse at 50% 35%,rgba(145,91,42,.28),rgba(10,7,5,.96) 72%); border:1px solid #78562e; border-radius:6px; overflow:hidden; position:relative; }
+#status-character-preview canvas { display:block; width:100%; height:100%; min-height:320px; }
+.status-character-label { position:absolute; left:0; right:0; bottom:8px; text-align:center; color:#e7c77e; font-size:12px; letter-spacing:2px; pointer-events:none; text-shadow:0 2px 4px #000; }
+.status-details { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.status-row button:disabled { opacity:.35; cursor:not-allowed; }
+@media (max-width:620px) { .status-layout { grid-template-columns:1fr; } #status-character-preview, #status-character-preview canvas { min-height:230px; height:230px; } }
 .game-panel h2 { margin:0; color:#ffd700; text-align:center; letter-spacing:2px; }
 .panel-close { align-self:flex-end; background:#4b2118; color:#fff; border:1px solid #b58a45; padding:6px 12px; cursor:pointer; }
 #inventory-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
@@ -413,18 +421,25 @@ canvas { display: block; width: 100%; height: 100%; }
         <section class="game-panel" id="status-panel">
             <button class="panel-close" onclick="openGamePanel('status-panel')">Închide ✕</button>
             <h2>STATUS PERSONAJ</h2>
-            <div style="text-align:center;color:#ffd700">Puncte disponibile: <strong id="stat-points">0</strong></div>
-            <div class="status-row"><strong>STR – Forță</strong><span id="stat-str">10</span><button data-stat="str" onclick="allocateStat('str')">+1</button></div>
-            <div class="status-row"><strong>AGI – Agilitate</strong><span id="stat-agi">10</span><button data-stat="agi" onclick="allocateStat('agi')">+1</button></div>
-            <div class="status-row"><strong>VIT – Vitalitate</strong><span id="stat-vit">10</span><button data-stat="vit" onclick="allocateStat('vit')">+1</button></div>
-            <div class="status-row"><strong>ENE – Energie</strong><span id="stat-ene">10</span><button data-stat="ene" onclick="allocateStat('ene')">+1</button></div>
-            <div class="status-summary">
-                <div>HP maxim: <strong id="status-hp">1500</strong></div>
-                <div>MP maxim: <strong id="status-mp">700</strong></div>
-                <div>Atac estimat: <strong id="status-atk">130</strong></div>
-                <div>Apărare estimată: <strong id="status-def">50</strong></div>
+            <div class="status-layout">
+                <div id="status-character-preview">
+                    <div class="status-character-label">DARK KNIGHT</div>
+                </div>
+                <div class="status-details">
+                    <div style="text-align:center;color:#ffd700">Puncte disponibile: <strong id="stat-points">0</strong></div>
+                    <div class="status-row"><strong>STR – Forță</strong><span id="stat-str">10</span><button type="button" data-stat="str" onclick="allocateStat('str')">+1</button></div>
+                    <div class="status-row"><strong>AGI – Agilitate</strong><span id="stat-agi">10</span><button type="button" data-stat="agi" onclick="allocateStat('agi')">+1</button></div>
+                    <div class="status-row"><strong>VIT – Vitalitate</strong><span id="stat-vit">10</span><button type="button" data-stat="vit" onclick="allocateStat('vit')">+1</button></div>
+                    <div class="status-row"><strong>ENE – Energie</strong><span id="stat-ene">10</span><button type="button" data-stat="ene" onclick="allocateStat('ene')">+1</button></div>
+                    <div class="status-summary">
+                        <div>HP maxim: <strong id="status-hp">1500</strong></div>
+                        <div>MP maxim: <strong id="status-mp">700</strong></div>
+                        <div>Atac estimat: <strong id="status-atk">130</strong></div>
+                        <div>Apărare estimată: <strong id="status-def">50</strong></div>
+                    </div>
+                    <div style="font-size:11px;color:#bca783">La fiecare nivel nou primești 5 puncte de status. Apasă +1 pentru a distribui punctele imediat.</div>
+                </div>
             </div>
-            <div style="font-size:11px;color:#bca783">La fiecare nivel nou primești 5 puncte de status. Valorile sunt calculate de client în această etapă.</div>
         </section>
     </div>
 
@@ -472,6 +487,11 @@ let sharedCharacterScene = null;
 let sharedAnimations = [];
 let characterModel = null;
 let mixer = null;
+let statusPreviewRenderer = null;
+let statusPreviewScene = null;
+let statusPreviewCamera = null;
+let statusPreviewMixer = null;
+let statusPreviewReady = false;
 
 let idleAction = null;
 let walkAction = null;
@@ -675,6 +695,7 @@ function allocateStat(stat) {
     playerStats[stat]++;
     statPoints--;
     refreshDerivedStats();
+    updateStatusUI();
     saveCharacter();
     addChat("Ai adăugat 1 punct la " + stat.toUpperCase() + ".", "#ffd700");
 }
@@ -688,7 +709,11 @@ function openGamePanel(panel) {
     if (willOpen) {
         el.style.display = "flex";
         if (panel === "inventory-panel") renderInventory();
-        else updateStatusUI();
+        else {
+            updateStatusUI();
+            initStatusCharacterPreview();
+            requestAnimationFrame(renderStatusCharacterPreview);
+        }
         if (document.pointerLockElement) document.exitPointerLock();
     }
 }
@@ -1699,6 +1724,68 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
     return { rootGroup, innerModel: clone };
 }
 
+function initStatusCharacterPreview() {
+    const host = document.getElementById("status-character-preview");
+    if (!host || !localPlayerMesh || statusPreviewReady) return;
+    try {
+        const canvas = document.createElement("canvas");
+        host.insertBefore(canvas, host.firstChild);
+        statusPreviewRenderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        statusPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+        statusPreviewRenderer.setSize(Math.max(200, host.clientWidth), Math.max(230, host.clientHeight), false);
+        statusPreviewRenderer.outputEncoding = THREE.sRGBEncoding;
+        statusPreviewScene = new THREE.Scene();
+        statusPreviewCamera = new THREE.PerspectiveCamera(32, Math.max(200, host.clientWidth) / Math.max(230, host.clientHeight), 0.1, 100);
+        statusPreviewScene.add(new THREE.AmbientLight(0xffffff, 1.8));
+        const keyLight = new THREE.DirectionalLight(0xffd6a0, 2.2);
+        keyLight.position.set(3, 6, 5);
+        statusPreviewScene.add(keyLight);
+        const rimLight = new THREE.DirectionalLight(0x6699ff, 1.1);
+        rimLight.position.set(-4, 3, -3);
+        statusPreviewScene.add(rimLight);
+
+        const previewCharacter = THREE.SkeletonUtils && THREE.SkeletonUtils.clone
+            ? THREE.SkeletonUtils.clone(localPlayerMesh)
+            : localPlayerMesh.clone(true);
+        previewCharacter.rotation.y = -0.35;
+        statusPreviewScene.add(previewCharacter);
+        const bounds = new THREE.Box3().setFromObject(previewCharacter);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+        previewCharacter.position.y -= bounds.min.y;
+        const height = Math.max(size.y, 1);
+        statusPreviewCamera.position.set(0, height * 0.56, height * 2.65);
+        statusPreviewCamera.lookAt(0, height * 0.48, 0);
+        statusPreviewCamera.near = Math.max(0.01, height / 100);
+        statusPreviewCamera.far = height * 20;
+        statusPreviewCamera.updateProjectionMatrix();
+
+        statusPreviewMixer = new THREE.AnimationMixer(previewCharacter);
+        if (sharedAnimations && sharedAnimations.length) {
+            let idleClip = sharedAnimations.find(c => /idle|stand/i.test(c.name)) || sharedAnimations[0];
+            if (idleClip) statusPreviewMixer.clipAction(idleClip).play();
+        }
+        statusPreviewReady = true;
+        renderStatusCharacterPreview();
+    } catch (err) {
+        console.warn("Previzualizarea personajului nu a putut fi inițializată:", err);
+        const label = host.querySelector(".status-character-label");
+        if (label) label.textContent = "DARK KNIGHT";
+    }
+}
+
+function renderStatusCharacterPreview() {
+    if (!statusPreviewRenderer || !statusPreviewScene || !statusPreviewCamera) return;
+    const host = document.getElementById("status-character-preview");
+    if (!host) return;
+    const w = Math.max(200, host.clientWidth);
+    const h = Math.max(230, host.clientHeight);
+    statusPreviewRenderer.setSize(w, h, false);
+    statusPreviewCamera.aspect = w / h;
+    statusPreviewCamera.updateProjectionMatrix();
+    statusPreviewRenderer.render(statusPreviewScene, statusPreviewCamera);
+}
+
 function loadCharacter() {
     const loader = new THREE.GLTFLoader();
     loader.load(selectedCharacterFile, function(gltf) {
@@ -1723,6 +1810,7 @@ function loadCharacter() {
 
         characterLoaded = true;
         setupAnimations(sharedAnimations);
+        initStatusCharacterPreview();
         placePlayerOnGround();
 
         for (const id in remotePlayers) {
@@ -2043,6 +2131,7 @@ function update() {
     const delta = Math.min(clock.getDelta(), 0.05);
     const now = performance.now() / 1000;
     if (mixer) mixer.update(delta);
+    if (statusPreviewMixer) statusPreviewMixer.update(delta);
 
     for (const id in remotePlayers) {
         const rp = remotePlayers[id];
@@ -2278,6 +2367,7 @@ window.addEventListener("resize", function() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    if (statusPreviewReady) renderStatusCharacterPreview();
 });
 </script>
 
