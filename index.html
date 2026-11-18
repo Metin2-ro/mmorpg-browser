@@ -142,6 +142,50 @@ canvas { display: block; width: 100%; height: 100%; }
     pointer-events: none;
     box-shadow: 0 4px 15px rgba(0,0,0,0.8);
 }
+#minimap-panel {
+    position: absolute;
+    top: 20px;
+    right: 290px;
+    width: 184px;
+    padding: 7px;
+    background: rgba(12, 8, 6, 0.92);
+    border: 2px solid #8c6239;
+    border-radius: 5px;
+    z-index: 11;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8), inset 0 0 14px rgba(0,0,0,0.8);
+}
+#minimap-title {
+    color: #ffd700;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    text-align: center;
+    margin: 0 0 5px;
+}
+#minimap-canvas {
+    display: block;
+    width: 166px;
+    height: 166px;
+    border: 1px solid #72502d;
+    border-radius: 50%;
+    background: #11100d;
+}
+#minimap-legend {
+    display: flex;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 5px;
+    color: #c9b99a;
+    font-size: 9px;
+}
+.minimap-key { display: inline-flex; align-items: center; gap: 3px; }
+.minimap-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+@media (max-width: 700px) {
+    #minimap-panel { top: 205px; right: 12px; width: 150px; }
+    #minimap-canvas { width: 132px; height: 132px; }
+}
+
 #quest-panel h4 { color: #f39c12; font-size: 13px; margin: 0 0 8px 0; }
 .map-level-badge {
     background: #21150f;
@@ -308,6 +352,16 @@ canvas { display: block; width: 100%; height: 100%; }
             <div class="quest-title"><span>Jucători Online:</span> <span id="online-count" style="color:#ffd700">1</span></div>
             <div class="quest-title" style="margin-top:4px;"><span>Kills PvP:</span> <span id="pvp-kills" style="color:#2ecc71">0</span></div>
             <div class="quest-title" style="margin-top:4px;"><span>Monștri uciși:</span> <span id="monster-kills" style="color:#2ecc71">0</span></div>
+        </div>
+    </div>
+
+    <div id="minimap-panel">
+        <div id="minimap-title">MINIMAPĂ</div>
+        <canvas id="minimap-canvas" width="332" height="332"></canvas>
+        <div id="minimap-legend">
+            <span class="minimap-key"><i class="minimap-dot" style="background:#ffd34d"></i>Tu</span>
+            <span class="minimap-key"><i class="minimap-dot" style="background:#ff4545"></i>Monștri</span>
+            <span class="minimap-key"><i class="minimap-dot" style="background:#55baff"></i>Jucători</span>
         </div>
     </div>
 
@@ -1256,6 +1310,7 @@ function startGame() {
     document.getElementById("quest-panel").style.display = "block";
     document.getElementById("chat-container").style.display = "flex";
     document.getElementById("action-bar").style.display = "flex";
+    document.getElementById("minimap-panel").style.display = "block";
     document.getElementById("ui-name").textContent = selectedCharacterName;
     initGame();
 }
@@ -1827,6 +1882,91 @@ function update() {
         );
         camera.lookAt(myPos.x, targetY, myPos.z);
     }
+    updateMinimap();
+}
+
+function updateMinimap() {
+    const canvas = document.getElementById("minimap-canvas");
+    if (!canvas || !characterLoaded) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    const radius = Math.min(w, h) * 0.47;
+    const worldHalf = MAP_TARGET_SIZE / 2;
+    const scale = (radius * 2) / MAP_TARGET_SIZE;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    const bg = ctx.createRadialGradient(cx, cy, 8, cx, cy, radius);
+    bg.addColorStop(0, "#34352c");
+    bg.addColorStop(1, "#171b18");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Grilă discretă și cercuri de distanță.
+    ctx.strokeStyle = "rgba(210,190,145,0.16)";
+    ctx.lineWidth = 1;
+    for (let i = -2; i <= 2; i++) {
+        const p = i * radius / 2;
+        ctx.beginPath(); ctx.moveTo(cx + p, cy - radius); ctx.lineTo(cx + p, cy + radius); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - radius, cy + p); ctx.lineTo(cx + radius, cy + p); ctx.stroke();
+    }
+    [0.25, 0.5, 0.75, 1].forEach(function(k) {
+        ctx.beginPath(); ctx.arc(cx, cy, radius * k, 0, Math.PI * 2); ctx.stroke();
+    });
+
+    // Marcajele sunt raportate la centrul hărții încărcate în joc.
+    function mapPoint(x, z) {
+        return { x: cx + x * scale, y: cy + z * scale };
+    }
+    function dot(x, z, color, size) {
+        const p = mapPoint(x, z);
+        if (Math.hypot(p.x - cx, p.y - cy) > radius - 4) return;
+        ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,0.8)"; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // Monștri activi.
+    for (const m of monsters) {
+        if (m.alive) dot(m.x, m.z, "#ff4545", 5);
+    }
+    // Ceilalți jucători.
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (rp.mesh && rp.hp > 0) {
+            dot(rp.rx !== undefined ? rp.rx : rp.x, rp.rz !== undefined ? rp.rz : rp.z, "#55baff", 5);
+        }
+    }
+
+    // Tu: săgeată aurie orientată în direcția personajului.
+    const me = mapPoint(myPos.x, myPos.z);
+    if (Math.hypot(me.x - cx, me.y - cy) <= radius - 5) {
+        ctx.save();
+        ctx.translate(me.x, me.y);
+        ctx.rotate(myPos.rotY);
+        ctx.beginPath();
+        ctx.moveTo(0, -11); ctx.lineTo(8, 9); ctx.lineTo(0, 5); ctx.lineTo(-8, 9);
+        ctx.closePath();
+        ctx.fillStyle = "#ffd34d"; ctx.fill();
+        ctx.strokeStyle = "#fff1b0"; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "#c49a52"; ctx.lineWidth = 4; ctx.stroke();
+
+    // Busola N.
+    ctx.fillStyle = "#f3d58a";
+    ctx.font = "bold 17px Segoe UI";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("N", cx, 18);
 }
 
 function animateGame() {
