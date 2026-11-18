@@ -376,7 +376,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând!
+                <b>[System]:</b> Click pe ecran pentru cameră. <b>WASD</b> mișcare, <b>Shift</b> alergare, <b>1</b> atac, <b>2</b> învârtire, <b>3</b> scut, <b>4</b> magie albastră, <b>5</b> foc, <b>6</b> fulger, <b>7</b> magie întunecată, <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni.
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
@@ -386,9 +386,12 @@ canvas { display: block; width: 100%; height: 100%; }
         <div class="skill-slot" onclick="useSkill(1)">⚔️<div class="cd-overlay" id="cd1"></div><span class="skill-key">1</span></div>
         <div class="skill-slot" onclick="useSkill(2)">🌪️<div class="cd-overlay" id="cd2"></div><span class="skill-key">2</span></div>
         <div class="skill-slot" onclick="triggerDefense3D()">🛡️<div class="cd-overlay" id="cd3"></div><span class="skill-key">3</span></div>
-        <div class="skill-slot" onclick="useSpell()">🔮<div class="cd-overlay" id="cd4"></div><span class="skill-key">4</span></div>
-        <div class="skill-slot" onclick="doRoll()">💨<div class="cd-overlay" id="cd5"></div><span class="skill-key">C</span></div>
-        <div class="skill-slot" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>
+        <div class="skill-slot" title="Magie albastră" onclick="useMagic(4)">🔮<div class="cd-overlay" id="cd4"></div><span class="skill-key">4</span></div>
+        <div class="skill-slot" title="Minge de foc" onclick="useMagic(5)">🔥<div class="cd-overlay" id="cd5"></div><span class="skill-key">5</span></div>
+        <div class="skill-slot" title="Fulger" onclick="useMagic(6)">⚡<div class="cd-overlay" id="cd6"></div><span class="skill-key">6</span></div>
+        <div class="skill-slot" title="Vortex întunecat" onclick="useMagic(7)">🌑<div class="cd-overlay" id="cd7"></div><span class="skill-key">7</span></div>
+        <div class="skill-slot" title="Rostogolire" onclick="doRoll()">💨<div class="cd-overlay" id="cd8"></div><span class="skill-key">C</span></div>
+        <div class="skill-slot" title="Săritură" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>
     </div>
 </div>
 
@@ -854,7 +857,6 @@ function triggerDefense3D() {
 }
 
 /* ---------- vrajă la distanță + rostogolire ---------- */
-const SPELL_SPEED = 24;      // unități/secundă
 const SPELL_RANGE = 30;
 const SPELL_ANIM_SPEED = 1.7;
 let spellAction = null, rollAction = null;
@@ -862,7 +864,13 @@ let rollUntil = 0, rollDX = 0, rollDZ = 1;
 const projectiles = [];
 const particles = [];
 const PARTICLE_GEO = new THREE.SphereGeometry(1, 6, 5);
-SKILLS[4] = { cd: 1.5, mp: 80, range: SPELL_RANGE, min: 110, max: 150, readyAt: 0 };
+const MAGIC = {
+    4: { name: "Magie albastră", cd: 1.5, mp: 80, range: SPELL_RANGE, min: 110, max: 150, speed: 24, color: 0x35aaff, core: 0xe5f7ff, style: "arcane", readyAt: 0 },
+    5: { name: "Minge de foc", cd: 2.2, mp: 100, range: SPELL_RANGE, min: 150, max: 205, speed: 19, color: 0xff5a12, core: 0xffef9a, style: "fire", readyAt: 0 },
+    6: { name: "Fulger", cd: 3.0, mp: 120, range: SPELL_RANGE, min: 190, max: 255, speed: 38, color: 0xffe34a, core: 0xffffff, style: "lightning", readyAt: 0 },
+    7: { name: "Vortex întunecat", cd: 3.8, mp: 140, range: SPELL_RANGE, min: 230, max: 310, speed: 16, color: 0xa34bff, core: 0xe8c8ff, style: "dark", readyAt: 0 }
+};
+for (const id of [4, 5, 6, 7]) SKILLS[id] = MAGIC[id];
 const ROLL = { cd: 3.0, readyAt: 0, speed: 0.19, animSpeed: 1.8 };
 
 function spawnParticle(x, y, z, vx, vy, vz, color, size, life) {
@@ -893,29 +901,49 @@ function updateParticles(delta) {
     }
 }
 
-function explodeAt(x, y, z) {
-    for (let k = 0; k < 16; k++) {
+function explodeAt(x, y, z, cfg) {
+    cfg = cfg || MAGIC[4];
+    const count = cfg.style === "lightning" ? 26 : (cfg.style === "dark" ? 22 : 18);
+    for (let k = 0; k < count; k++) {
         const a = Math.random() * Math.PI * 2;
-        const up = (Math.random() - 0.3) * 4;
-        const sp = 3 + Math.random() * 4;
-        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, 0x7fd0ff, 0.2, 0.5);
+        const up = cfg.style === "fire" ? 1.5 + Math.random() * 5 : (Math.random() - 0.3) * 5;
+        const sp = cfg.style === "lightning" ? 5 + Math.random() * 7 : 3 + Math.random() * 5;
+        const particleColor = cfg.style === "lightning" && k % 3 === 0 ? 0xffffff : cfg.color;
+        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, particleColor, cfg.style === "dark" ? 0.24 : 0.18, 0.45 + Math.random() * 0.2);
+    }
+    // Inel energetic la impact, cu aceeași culoare ca vraja.
+    if (scene) {
+        const geo = new THREE.RingGeometry(0.35, cfg.style === "dark" ? 2.2 : 1.8, 32);
+        const mat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+        const ring = new THREE.Mesh(geo, mat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(x, y + 0.08, z);
+        scene.add(ring);
+        effects.push({ group: ring, mat: mat, geo: geo, life: 0, max: 0.38, skill: 2 });
     }
 }
 
-function spawnProjectile(x, y, z, dx, dz, mine) {
+function spawnProjectile(x, y, z, dx, dz, mine, magicId) {
     if (!scene) return;
+    const cfg = MAGIC[magicId] || MAGIC[4];
     const group = new THREE.Group();
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0xdff4ff });
-    const haloMat = new THREE.MeshBasicMaterial({ color: 0x3a9bff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+    const coreMat = new THREE.MeshBasicMaterial({ color: cfg.core });
+    const haloMat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.48, blending: THREE.AdditiveBlending, depthWrite: false });
     const core = new THREE.Mesh(PARTICLE_GEO, coreMat);
-    core.scale.setScalar(0.28);
+    core.scale.setScalar(cfg.style === "fire" ? 0.34 : 0.28);
     const halo = new THREE.Mesh(PARTICLE_GEO, haloMat);
-    halo.scale.setScalar(0.65);
+    halo.scale.setScalar(cfg.style === "dark" ? 0.9 : 0.68);
     group.add(core);
     group.add(halo);
+    if (cfg.style === "dark") {
+        const ringMat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 6, 20), ringMat);
+        ring.rotation.x = Math.PI / 2;
+        group.add(ring);
+    }
     group.position.set(x, y, z);
     scene.add(group);
-    projectiles.push({ group: group, halo: halo, coreMat: coreMat, haloMat: haloMat, dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine });
+    projectiles.push({ group: group, halo: halo, coreMat: coreMat, haloMat: haloMat, dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine, magicId: magicId || 4, cfg: cfg });
 }
 
 function removeProjectile(i) {
@@ -923,6 +951,12 @@ function removeProjectile(i) {
     scene.remove(p.group);
     p.coreMat.dispose();
     p.haloMat.dispose();
+    // Curăță și geometria/materialul inelului folosit de vortexul întunecat.
+    for (let k = 2; k < p.group.children.length; k++) {
+        const child = p.group.children[k];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+    }
     projectiles.splice(i, 1);
 }
 
@@ -930,7 +964,8 @@ function updateProjectiles(delta) {
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         const pos = p.group.position;
-        const step = SPELL_SPEED * delta;
+        const cfg = p.cfg || MAGIC[p.magicId] || MAGIC[4];
+        const step = cfg.speed * delta;
         pos.x += p.dx * step;
         pos.z += p.dz * step;
         p.dist += step;
@@ -939,11 +974,13 @@ function updateProjectiles(delta) {
         const gy = getGroundHeight(pos.x, pos.z, NaN);
         if (Number.isFinite(gy)) pos.y += (gy + 1.3 - pos.y) * Math.min(1, 10 * delta);
 
-        p.halo.scale.setScalar(0.6 + 0.12 * Math.sin(p.t * 30));
+        p.halo.scale.setScalar((cfg.style === "dark" ? 0.82 : 0.6) + 0.14 * Math.sin(p.t * (cfg.style === "lightning" ? 42 : 30)));
+        if (p.group.children.length > 2) p.group.children[2].rotation.z += delta * (cfg.style === "dark" ? 7 : 3);
         p.trail -= delta;
         if (p.trail <= 0) {
             p.trail = 0.03;
-            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 0x6ec6ff, 0.2, 0.35);
+            const trailColor = cfg.style === "lightning" && Math.random() < 0.35 ? 0xffffff : cfg.color;
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, trailColor, cfg.style === "fire" ? 0.24 : 0.2, 0.35);
         }
 
         let hit = false;
@@ -952,7 +989,7 @@ function updateProjectiles(delta) {
                 if (!m.alive) continue;
                 const hitR = m.boss ? 3.0 : 1.4;
                 if (Math.hypot(m.x - pos.x, m.z - pos.z) < hitR && Math.abs(m.y + (m.boss ? 2.0 : 1.2) - pos.y) < (m.boss ? 4.0 : 2.6)) {
-                    const r = rollDamage(SKILLS[4]);
+                    const r = rollDamage(cfg);
                     damageMonster(m, r.dmg, r.crit, "spell");
                     hit = true;
                     break;
@@ -965,7 +1002,7 @@ function updateProjectiles(delta) {
                     const x = rp.rx !== undefined ? rp.rx : rp.x;
                     const z = rp.rz !== undefined ? rp.rz : rp.z;
                     if (Math.hypot(x - pos.x, z - pos.z) < 1.2 && Math.abs(rp.mesh.position.y + 1.0 - pos.y) < 2.4) {
-                        const r = rollDamage(SKILLS[4]);
+                        const r = rollDamage(cfg);
                         spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
                             new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
                         if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
@@ -977,39 +1014,44 @@ function updateProjectiles(delta) {
             }
         }
 
-        if (hit || p.dist > SPELL_RANGE) {
-            explodeAt(pos.x, pos.y, pos.z);
+        if (hit || p.dist > cfg.range) {
+            explodeAt(pos.x, pos.y, pos.z, cfg);
             removeProjectile(i);
         }
     }
 }
 
-function fireSpell() {
+function fireSpell(magicId) {
     if (playerDead) return;
     const dx = Math.sin(myPos.rotY), dz = Math.cos(myPos.rotY);
-    spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true);
+    const cfg = MAGIC[magicId] || MAGIC[4];
+    spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true, magicId || 4);
+    addChat("Ai lansat: " + cfg.name, "#b9dcff");
 }
 
-function useSpell() {
-    if (!characterLoaded || playerDead || !spellAction || nowSec() < rollUntil) return;
-    const cfg = SKILLS[4];
+function useMagic(magicId) {
+    const cfg = MAGIC[magicId];
+    if (!cfg || !characterLoaded || playerDead || !spellAction || nowSec() < rollUntil) return;
     const now = nowSec();
     if (now < cfg.readyAt) return;
-    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    if (myMP < cfg.mp) { addChat("Mană insuficientă pentru " + cfg.name + "!", "#e74c3c"); return; }
 
     myMP -= cfg.mp;
     cfg.readyAt = now + cfg.cd;
+    updateMyMpUI();
     autoFaceNearest(22);
 
     playOneShot(spellAction, SPELL_ANIM_SPEED);
     attackStart = now;
     attackUntil = now + spellAction.getClip().duration / SPELL_ANIM_SPEED;
     attackProcedural = false;
-    attackType = 4;
+    attackType = magicId;
 
-    if (socket && socket.connected) socket.emit("playerAttack", { skill: 4 });
-    setTimeout(fireSpell, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: magicId });
+    setTimeout(function() { fireSpell(magicId); }, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
 }
+
+function useSpell() { useMagic(4); }
 
 function doRoll() {
     if (!characterLoaded || playerDead || !rollAction) return;
@@ -1252,8 +1294,11 @@ function updateCombat(delta, now) {
         cd("cd1", SKILLS[1].readyAt, SKILLS[1].cd);
         cd("cd2", SKILLS[2].readyAt, SKILLS[2].cd);
         cd("cd3", DEFENSE.readyAt, DEFENSE.cd);
-        cd("cd4", SKILLS[4].readyAt, SKILLS[4].cd);
-        cd("cd5", ROLL.readyAt, ROLL.cd);
+        cd("cd4", MAGIC[4].readyAt, MAGIC[4].cd);
+        cd("cd5", MAGIC[5].readyAt, MAGIC[5].cd);
+        cd("cd6", MAGIC[6].readyAt, MAGIC[6].cd);
+        cd("cd7", MAGIC[7].readyAt, MAGIC[7].cd);
+        cd("cd8", ROLL.readyAt, ROLL.cd);
 
         // bara boss-ului
         const boss = monsterById["boss"];
@@ -1828,10 +1873,10 @@ function setupSocket() {
         socket.on("playerAttacked", function(data) {
             const rp = remotePlayers[data && data.id];
             if (!rp || !rp.mesh) return;
-            if (data.skill === 4) {
+            if (data.skill >= 4 && data.skill <= 7) {
                 const ry = rp.mesh.rotation.y;
                 spawnProjectile(rp.mesh.position.x + Math.sin(ry) * 0.9, rp.mesh.position.y + 1.3, rp.mesh.position.z + Math.cos(ry) * 0.9,
-                    Math.sin(ry), Math.cos(ry), false);
+                    Math.sin(ry), Math.cos(ry), false, data.skill);
             } else {
                 spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, rp.mesh.rotation.y, data.skill || 1);
             }
@@ -2199,7 +2244,10 @@ function setupControls() {
             if (e.code === "Digit1") useSkill(1);
             else if (e.code === "Digit2") useSkill(2);
             else if (e.code === "Digit3") triggerDefense3D();
-            else if (e.code === "Digit4") useSpell();
+            else if (e.code === "Digit4") useMagic(4);
+            else if (e.code === "Digit5") useMagic(5);
+            else if (e.code === "Digit6") useMagic(6);
+            else if (e.code === "Digit7") useMagic(7);
             else if (e.code === "KeyC") doRoll();
             else if (e.code === "KeyQ") usePotion("hp");
             else if (e.code === "KeyE") usePotion("mp");
