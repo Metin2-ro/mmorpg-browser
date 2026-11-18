@@ -90,7 +90,7 @@ canvas { display: block; width: 100%; height: 100%; }
     display: none;
     align-items: center;
     gap: 15px;
-    width: 270px;
+    width: 310px;
     z-index: 10;
     pointer-events: none;
     box-shadow: 0 4px 15px rgba(0,0,0,0.8);
@@ -118,6 +118,10 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 .hp-fill { height: 100%; background: linear-gradient(90deg,#8b0000,#ff2a2a); transition: width 0.15s; }
 .mp-fill { height: 100%; background: linear-gradient(90deg,#003366,#1e90ff); }
+.xp-fill { height: 100%; width: 0%; background: linear-gradient(90deg,#8a5a00,#ffd700); transition: width 0.25s; }
+.level-row { display: flex; justify-content: space-between; align-items: center; color: #ffd700; font-size: 10px; font-weight: bold; text-shadow: 1px 1px #000; }
+.xp-bar-container { height: 8px; background: #110d0a; border: 1px solid #6e5420; position: relative; border-radius: 2px; overflow: hidden; }
+.xp-text { font-size: 8px; line-height: 8px; }
 .bar-text {
     position: absolute;
     inset: 0;
@@ -333,6 +337,13 @@ canvas { display: block; width: 100%; height: 100%; }
         <div class="avatar-box">🔥</div>
         <div class="stats-box">
             <span class="player-name" id="ui-name">Dark Knight</span>
+            <div class="level-row">
+                <span id="ui-level-text">Nivel 1</span>
+                <span id="ui-exp-text">EXP: 0 / 100</span>
+            </div>
+            <div class="xp-bar-container">
+                <div class="xp-fill" id="ui-exp-bar"></div>
+            </div>
             <div class="bar-container">
                 <div class="hp-fill" id="ui-hp-bar" style="width:100%"></div>
                 <div class="bar-text" id="ui-hp-text">HP: 1500 / 1500</div>
@@ -527,6 +538,17 @@ let hitUntil = 0, lastHitAnim = -100;
 let shieldMesh = null;
 let monstersSpawned = false;
 let monsterKills = 0;
+
+// Progresia personajului: EXP se acordă o singură dată, la moartea monstrului.
+let playerLevel = 1;
+let playerExp = 0;
+const MONSTER_EXP_REWARD = 50;
+
+function getExpToNextLevel(level) {
+    const earlyLevels = [100, 200, 400, 700, 1000];
+    return earlyLevels[level - 1] || (1000 + (level - 5) * 300);
+}
+
 const monsters = [];
 const floatingTexts = [];
 const effects = [];
@@ -549,6 +571,34 @@ function updateMyMpUI() {
 function updateKillUI() {
     document.getElementById("pvp-kills").textContent = pvpKills;
     document.getElementById("monster-kills").textContent = monsterKills;
+}
+
+function updateLevelUI() {
+    const needed = getExpToNextLevel(playerLevel);
+    const pct = Math.max(0, Math.min(100, (playerExp / needed) * 100));
+    document.getElementById("ui-level-text").textContent = "Nivel " + playerLevel;
+    document.getElementById("ui-exp-text").textContent = "EXP: " + playerExp + " / " + needed;
+    document.getElementById("ui-exp-bar").style.width = pct + "%";
+}
+
+function awardMonsterExp(amount) {
+    playerExp += amount;
+
+    while (playerExp >= getExpToNextLevel(playerLevel)) {
+        playerExp -= getExpToNextLevel(playerLevel);
+        playerLevel++;
+
+        addChat("✨ LEVEL UP! Ai ajuns la nivelul " + playerLevel + "!", "#ffd700");
+        if (scene) {
+            spawnFloatingText("LEVEL UP!", "#ffd700",
+                new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1.2, myPos.z), true);
+        }
+    }
+
+    updateLevelUI();
+    if (playerExp < getExpToNextLevel(playerLevel)) {
+        addChat("+" + amount + " EXP", "#f1c40f");
+    }
 }
 
 /* ---------- bară de viață (sprite) și text plutitor ---------- */
@@ -1150,6 +1200,7 @@ function killMonster(m) {
     m.bar.sprite.visible = false;
     monsterKills++;
     updateKillUI();
+    awardMonsterExp(MONSTER_EXP_REWARD);
     addChat("☠️ Ai ucis un Demon!", "#2ecc71");
 }
 
@@ -1312,6 +1363,7 @@ function startGame() {
     document.getElementById("action-bar").style.display = "flex";
     document.getElementById("minimap-panel").style.display = "block";
     document.getElementById("ui-name").textContent = selectedCharacterName;
+    updateLevelUI();
     initGame();
 }
 
