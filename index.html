@@ -304,6 +304,26 @@ canvas { display: block; width: 100%; height: 100%; }
     pointer-events: none;
     text-align: center;
 }
+
+#mini-map-wrap { position:absolute; right:20px; bottom:105px; width:190px; height:190px; padding:7px; background:rgba(8,7,8,.88); border:2px solid #8c6239; border-radius:50%; z-index:12; box-shadow:0 4px 18px #000; pointer-events:none; }
+#mini-map { width:100%; height:100%; display:block; border-radius:50%; }
+#panel-controls { position:absolute; top:112px; left:20px; display:none; gap:7px; z-index:15; }
+.ui-toggle { background:linear-gradient(#3a2818,#17100b); border:1px solid #b58a4c; color:#ffe0a0; padding:7px 11px; border-radius:4px; cursor:pointer; font-weight:bold; }
+.ui-toggle:hover { border-color:#ffd700; color:#fff; }
+.game-window { position:absolute; display:none; z-index:30; top:50%; left:50%; transform:translate(-50%,-50%); width:min(520px, calc(100vw - 30px)); max-height:78vh; overflow:auto; background:linear-gradient(145deg,rgba(29,19,13,.98),rgba(7,7,9,.98)); border:2px solid #9b713b; box-shadow:0 12px 45px #000; padding:16px; border-radius:6px; }
+.window-head { display:flex; justify-content:space-between; align-items:center; color:#ffd36b; font-weight:bold; font-size:18px; border-bottom:1px solid #72512d; padding-bottom:9px; margin-bottom:12px; }
+.window-close { background:#401a15; border:1px solid #a34a35; color:#fff; cursor:pointer; padding:4px 10px; border-radius:3px; }
+#inventory-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
+.inv-slot { min-height:62px; background:rgba(10,8,7,.9); border:1px solid #624728; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e8d6b7; font-size:11px; text-align:center; border-radius:3px; }
+.inv-slot button { background:#342315; border:1px solid #9c713b; color:#ffe0a0; font-size:10px; padding:3px 6px; cursor:pointer; }
+.inv-slot .item-icon { font-size:22px; }
+#status-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.stat-row { display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,.35); border:1px solid #574027; padding:10px; color:#eee; }
+.stat-row strong { color:#ffd36b; }
+.stat-row button { background:#4a321b; border:1px solid #b58a4c; color:#fff; padding:4px 10px; cursor:pointer; }
+#status-points { color:#8eff9a; margin-bottom:10px; }
+@media(max-width:700px){ #mini-map-wrap{width:135px;height:135px;right:8px;bottom:100px} #action-bar{gap:4px;padding:6px;right:6px;bottom:6px} .skill-slot{width:38px;height:38px;font-size:18px} #chat-container{width:250px;left:8px;bottom:60px} #panel-controls{left:8px;top:110px} }
+
 #boss-name { color: #ff6b4a; font-weight: bold; letter-spacing: 2px; text-shadow: 1px 1px #000; margin-bottom: 4px; font-size: 14px; }
 #boss-bar .bar-container { height: 16px; border-color: #7a2a1a; }
 #boss-bar .bar-text { line-height: 16px; font-size: 11px; }
@@ -364,6 +384,22 @@ canvas { display: block; width: 100%; height: 100%; }
         <span>💧 <b id="inv-mp">0</b> (E)</span>
         <span>💎 <b id="inv-crystal">0</b></span>
     </div>
+    <div id="panel-controls">
+        <button class="ui-toggle" onclick="toggleGameWindow('inventory-window')">🎒 Inventar (I)</button>
+        <button class="ui-toggle" onclick="toggleGameWindow('status-window')">📊 Status (P)</button>
+    </div>
+    <div id="mini-map-wrap"><canvas id="mini-map" width="360" height="360"></canvas></div>
+    <div id="inventory-window" class="game-window">
+        <div class="window-head"><span>🎒 Inventar</span><button class="window-close" onclick="toggleGameWindow('inventory-window')">✕</button></div>
+        <div style="color:#d8c28a;margin-bottom:10px">Aur: <b id="window-gold">0</b> · Obiecte și consumabile</div>
+        <div id="inventory-grid"></div>
+    </div>
+    <div id="status-window" class="game-window">
+        <div class="window-head"><span>📊 Status personaj</span><button class="window-close" onclick="toggleGameWindow('status-window')">✕</button></div>
+        <div id="status-points">Puncte disponibile: 0</div>
+        <div id="status-grid"></div>
+        <div style="margin-top:12px;color:#bca783;font-size:11px">STR crește daunele. VIT, AGI și ENE sunt păstrate în profil pentru extinderea atributelor.</div>
+    </div>
 
     <div id="boss-bar">
         <div id="boss-name">Lordul Infernului</div>
@@ -376,7 +412,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Click pe ecran pentru cameră. <b>WASD</b> mișcare, <b>Shift</b> alergare, <b>1</b> atac, <b>2</b> învârtire, <b>3</b> scut, <b>4</b> magie albastră, <b>5</b> foc, <b>6</b> fulger, <b>7</b> magie întunecată, <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni.
+                <b>[System]:</b> Click pe ecran pentru cameră. <b>WASD</b> mișcare, <b>Shift</b> alergare, <b>1</b> atac, <b>2</b> învârtire, <b>3</b> scut, <b>4</b> magie albastră, <b>5</b> foc, <b>6</b> fulger, <b>7</b> magie întunecată, <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni, <b>I</b> inventar, <b>P</b> status.
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
@@ -783,16 +819,6 @@ function findBestTarget(range, allowBehind) {
         if (score < bestScore) { bestScore = score; best = m; }
     }
     return best;
-}
-
-function cycleTarget() {
-    const candidates = monsters.filter(m => m.alive && m.root && m.root.visible && Math.hypot(m.x - myPos.x, m.z - myPos.z) <= 45);
-    if (!candidates.length) { setSelectedTarget(null); addChat('Nu există monștri în apropiere.', '#e0b0a0'); return; }
-    candidates.sort((a, b) => Math.hypot(a.x - myPos.x, a.z - myPos.z) - Math.hypot(b.x - myPos.x, b.z - myPos.z));
-    let idx = selectedTarget ? candidates.indexOf(selectedTarget) : -1;
-    setSelectedTarget(candidates[(idx + 1) % candidates.length]);
-    const t = selectedTarget;
-    if (t) addChat('Țintă selectată: ' + (t.name || (t.boss ? 'Boss' : 'Monstru')), '#ffb4a8');
 }
 
 function updateTargetLock(delta) {
@@ -1451,6 +1477,8 @@ let gameStarted = false;
 let heroName = "Dark Knight";
 let playerLevel = 1, playerXP = 0;
 let gold = 0, hpPotions = 0, mpPotions = 0, crystals = 0;
+let statPoints = 0;
+const characterStats = { STR: 10, AGI: 10, VIT: 10, ENE: 10 };
 let damageMult = 1;
 let saveTimer = null;
 let potionReadyAt = 0;
@@ -1480,6 +1508,8 @@ function loadGame() {
         crystals = num(d.crystals, 0, 9999, 0);
         monsterKills = num(d.monsterKills, 0, 1e9, 0);
         pvpKills = num(d.pvpKills, 0, 1e9, 0);
+        statPoints = num(d.statPoints, 0, 1e6, 0);
+        for (const key of ["STR", "AGI", "VIT", "ENE"]) characterStats[key] = num(d.stats && d.stats[key], 1, 99999, 10);
     } catch (e) {
         console.warn("Salvarea nu a putut fi citită:", e);
     }
@@ -1491,7 +1521,7 @@ function saveNow() {
         localStorage.setItem(SAVE_KEY, JSON.stringify({
             name: heroName, level: playerLevel, xp: playerXP, gold: gold,
             hpPotions: hpPotions, mpPotions: mpPotions, crystals: crystals,
-            monsterKills: monsterKills, pvpKills: pvpKills
+            monsterKills: monsterKills, pvpKills: pvpKills, statPoints: statPoints, stats: characterStats
         }));
     } catch (e) {}
 }
@@ -1512,9 +1542,9 @@ window.addEventListener("beforeunload", saveNow);
 })();
 
 function recalcStats(fullHeal) {
-    maxHP = 1500 + (playerLevel - 1) * 120;
-    maxMP = 700 + (playerLevel - 1) * 40;
-    damageMult = 1 + (playerLevel - 1) * 0.08;
+    maxHP = 1500 + (playerLevel - 1) * 120 + (characterStats.VIT - 10) * 12;
+    maxMP = 700 + (playerLevel - 1) * 40 + (characterStats.ENE - 10) * 8;
+    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + (characterStats.STR - 10) * 0.012);
     if (fullHeal) { myHP = maxHP; myMP = maxMP; }
     else { myHP = Math.min(myHP, maxHP); myMP = Math.min(myMP, maxMP); }
 }
@@ -1534,6 +1564,62 @@ function updateInvUI() {
     document.getElementById("inv-hp").textContent = hpPotions;
     document.getElementById("inv-mp").textContent = mpPotions;
     document.getElementById("inv-crystal").textContent = crystals;
+    const goldEl = document.getElementById("window-gold");
+    if (goldEl) goldEl.textContent = gold;
+    const grid = document.getElementById("inventory-grid");
+    if (grid) {
+        const items = [
+            {icon:"🧪",name:"Poțiune HP",count:hpPotions,action:"usePotion('hp')",key:"Q"},
+            {icon:"💧",name:"Poțiune MP",count:mpPotions,action:"usePotion('mp')",key:"E"},
+            {icon:"💎",name:"Cristal",count:crystals},
+            {icon:"🪙",name:"Aur",count:gold}
+        ];
+        grid.innerHTML = items.map(it => `<div class="inv-slot"><span class="item-icon">${it.icon}</span><span>${it.name}</span><b>x${it.count}</b>${it.action ? `<button onclick="${it.action}">Folosește (${it.key})</button>` : ""}</div>`).join("");
+        for (let i=items.length;i<24;i++) grid.insertAdjacentHTML("beforeend", '<div class="inv-slot" style="opacity:.35"><span class="item-icon">·</span><span>Slot liber</span></div>');
+    }
+}
+
+function updateStatusUI() {
+    const points = document.getElementById("status-points");
+    const grid = document.getElementById("status-grid");
+    if (!points || !grid) return;
+    points.textContent = "Puncte disponibile: " + statPoints;
+    const labels = {STR:"Forță (STR)",AGI:"Agilitate (AGI)",VIT:"Vitalitate (VIT)",ENE:"Energie (ENE)"};
+    grid.innerHTML = Object.keys(characterStats).map(key => `<div class="stat-row"><span>${labels[key]}</span><strong>${characterStats[key]}</strong><button ${statPoints<=0?"disabled":""} onclick="addStatPoint('${key}')">+1</button></div>`).join("");
+}
+
+function addStatPoint(key) {
+    if (!Object.prototype.hasOwnProperty.call(characterStats,key) || statPoints<=0) return;
+    characterStats[key]++; statPoints--;
+    recalcStats(false); updateStatusUI(); updateNameUI(); saveGame();
+    if (key === "VIT") { myHP = Math.min(maxHP, myHP + 12); updateMyHpUI(); }
+    if (key === "ENE") { myMP = Math.min(maxMP, myMP + 8); updateMyMpUI(); }
+}
+
+function toggleGameWindow(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const opening = el.style.display !== "block";
+    document.querySelectorAll(".game-window").forEach(w => w.style.display="none");
+    el.style.display = opening ? "block" : "none";
+    if (opening) { if (id === "inventory-window") updateInvUI(); else updateStatusUI(); }
+}
+
+function drawMiniMap() {
+    const canvas = document.getElementById("mini-map");
+    if (!canvas || !gameStarted) return;
+    const ctx = canvas.getContext("2d");
+    const w=canvas.width, h=canvas.height, cx=w/2, cy=h/2, radius=164, scale=radius/45;
+    ctx.clearRect(0,0,w,h);
+    ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,radius,0,Math.PI*2); ctx.clip();
+    ctx.fillStyle="rgba(25,30,25,.94)"; ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle="rgba(210,180,120,.22)"; ctx.lineWidth=2;
+    for(let r=45;r<=135;r+=45){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();}
+    ctx.beginPath();ctx.moveTo(cx-radius,cy);ctx.lineTo(cx+radius,cy);ctx.moveTo(cx,cy-radius);ctx.lineTo(cx,cy+radius);ctx.stroke();
+    for(const m of monsters){if(!m.alive)continue;const dx=(m.x-myPos.x)*scale, dz=(m.z-myPos.z)*scale;if(Math.hypot(dx,dz)>radius)continue;ctx.fillStyle=(selectedTarget===m)?"#ff4545":"#e6b35a";ctx.beginPath();ctx.arc(cx+dx,cy+dz,selectedTarget===m?8:5,0,Math.PI*2);ctx.fill();}
+    for(const id in remotePlayers){const rp=remotePlayers[id];if(!rp.mesh)continue;const dx=(rp.x-myPos.x)*scale,dz=(rp.z-myPos.z)*scale;if(Math.hypot(dx,dz)<radius){ctx.fillStyle="#59c7ff";ctx.beginPath();ctx.arc(cx+dx,cy+dz,5,0,Math.PI*2);ctx.fill();}}
+    ctx.translate(cx,cy);ctx.rotate(-myPos.rotY);ctx.fillStyle="#ffffff";ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(-9,10);ctx.lineTo(0,6);ctx.lineTo(9,10);ctx.closePath();ctx.fill();
+    ctx.restore();
 }
 
 function sendHp() {
@@ -1562,6 +1648,7 @@ function gainXP(amount) {
     while (playerLevel < MAX_LEVEL && playerXP >= xpForLevel(playerLevel)) {
         playerXP -= xpForLevel(playerLevel);
         playerLevel++;
+        statPoints += 5;
         leveled = true;
     }
     if (playerLevel >= MAX_LEVEL) playerXP = Math.min(playerXP, xpForLevel(MAX_LEVEL) - 1);
@@ -1570,6 +1657,7 @@ function gainXP(amount) {
         levelUpEffect();
         addChat("⭐ Nivel " + playerLevel + "! Viață, mană și daune au crescut.", "#ffd700");
         updateNameUI();
+        updateStatusUI();
         if (socket && socket.connected) {
             socket.emit("levelUpdate", { level: playerLevel });
             sendHp();
@@ -2041,6 +2129,7 @@ function startGame() {
     updateNameUI();
     updateXpUI();
     updateInvUI();
+    updateStatusUI();
     updateKillUI();
     saveNow();
 
@@ -2048,6 +2137,7 @@ function startGame() {
     document.getElementById("player-hud").style.display = "flex";
     document.getElementById("quest-panel").style.display = "block";
     document.getElementById("inv-panel").style.display = "flex";
+    document.getElementById("panel-controls").style.display = "flex";
     document.getElementById("chat-container").style.display = "flex";
     document.getElementById("action-bar").style.display = "flex";
     initGame();
@@ -2353,12 +2443,13 @@ function setupControls() {
             if (e.code === "Digit1") useSkill(1);
             else if (e.code === "Digit2") useSkill(2);
             else if (e.code === "Digit3") triggerDefense3D();
-            else if (e.code === "Tab") { e.preventDefault(); cycleTarget(); }
             else if (e.code === "Digit4") useMagic(4);
             else if (e.code === "Digit5") useMagic(5);
             else if (e.code === "Digit6") useMagic(6);
             else if (e.code === "Digit7") useMagic(7);
             else if (e.code === "KeyC") doRoll();
+            else if (e.code === "KeyI") toggleGameWindow("inventory-window");
+            else if (e.code === "KeyP") toggleGameWindow("status-window");
             else if (e.code === "KeyQ") usePotion("hp");
             else if (e.code === "KeyE") usePotion("mp");
             else if (e.code === "Space") { doJump(); e.preventDefault(); }
@@ -2448,6 +2539,7 @@ function update() {
     if (!camera) return;
 
     updateCombat(delta, now);
+    drawMiniMap();
 
     const forward = (keys["KeyW"] || keys["w"] || keys["ArrowUp"]) ? 1 : 0;
     const backward = (keys["KeyS"] || keys["s"] || keys["ArrowDown"]) ? 1 : 0;
