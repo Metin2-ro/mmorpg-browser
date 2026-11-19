@@ -552,8 +552,6 @@ let mapLoaded = false;
 let characterLoaded = false;
 let fallbackFloor = null;
 let playerPointLight = null;
-let ambientParticles = null;
-let ambientParticleData = [];
 
 const clock = new THREE.Clock();
 const keys = {};
@@ -2271,77 +2269,6 @@ function initGame() {
     animateGame();
 }
 
-// Particule ambientale: praf rece și jar plutitor aproape de sol.
-function createAmbientEffects() {
-    if (!scene || ambientParticles) return;
-    const count = 150;
-    const positions = new Float32Array(count * 3);
-    const colors = new Float32Array(count * 3);
-    ambientParticleData = [];
-
-    for (let i = 0; i < count; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 3 + Math.random() * 17;
-        const ember = Math.random() < 0.34;
-        positions[i * 3] = Math.cos(angle) * radius;
-        positions[i * 3 + 1] = 0.15 + Math.random() * 2.0;
-        positions[i * 3 + 2] = Math.sin(angle) * radius;
-
-        if (ember) {
-            colors[i * 3] = 1.0;
-            colors[i * 3 + 1] = 0.30 + Math.random() * 0.28;
-            colors[i * 3 + 2] = 0.08;
-        } else {
-            const c = 0.48 + Math.random() * 0.22;
-            colors[i * 3] = c * 0.72;
-            colors[i * 3 + 1] = c * 0.82;
-            colors[i * 3 + 2] = c;
-        }
-        ambientParticleData.push({
-            vx: (Math.random() - 0.5) * 0.012,
-            vz: (Math.random() - 0.5) * 0.012,
-            rise: 0.003 + Math.random() * 0.012,
-            phase: Math.random() * Math.PI * 2
-        });
-    }
-
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    const material = new THREE.PointsMaterial({
-        size: 0.19, vertexColors: true, transparent: true, opacity: 0.72,
-        depthWrite: false, sizeAttenuation: true, blending: THREE.AdditiveBlending
-    });
-    ambientParticles = new THREE.Points(geometry, material);
-    ambientParticles.frustumCulled = false;
-    scene.add(ambientParticles);
-}
-
-function updateAmbientEffects(delta) {
-    if (!ambientParticles || !localPlayerMesh) return;
-    const positions = ambientParticles.geometry.attributes.position;
-    const px = myPos.x, pz = myPos.z;
-    for (let i = 0; i < ambientParticleData.length; i++) {
-        const d = ambientParticleData[i];
-        let x = positions.getX(i) + d.vx * delta * 60;
-        let y = positions.getY(i) + d.rise * delta * 60;
-        let z = positions.getZ(i) + d.vz * delta * 60;
-        d.phase += delta * 1.5;
-        x += Math.sin(d.phase) * 0.0015;
-        z += Math.cos(d.phase) * 0.0015;
-        const dx = x - px, dz = z - pz;
-        if (y > 2.6 || dx * dx + dz * dz > 24 * 24) {
-            const a = Math.random() * Math.PI * 2;
-            const r = 4 + Math.random() * 15;
-            x = px + Math.cos(a) * r;
-            z = pz + Math.sin(a) * r;
-            y = 0.12 + Math.random() * 0.65;
-        }
-        positions.setXYZ(i, x, myPos.y + y, z);
-    }
-    positions.needsUpdate = true;
-}
-
 // Măsoară înălțimea reală a modelului (după oase dacă are schelet) și cota tălpilor
 function measureModel(root) {
     root.updateMatrixWorld(true);
@@ -2526,6 +2453,31 @@ function fadeToAction(action, duration = 0.18) {
     activeAction = action;
 }
 
+// Textură procedurală subtilă pentru relief vizual pe materialele de sol existente.
+function createGroundBumpTexture() {
+    const size = 128;
+    const data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const i = (y * size + x) * 4;
+            const noise = 112 + Math.floor(Math.random() * 32);
+            data[i] = noise;
+            data[i + 1] = noise;
+            data[i + 2] = noise;
+            data[i + 3] = 255;
+        }
+    }
+    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+    return texture;
+}
+
 function loadMap() {
     const loader = new THREE.GLTFLoader();
     loader.load(MAP_FILE, function(gltf) {
@@ -2544,13 +2496,49 @@ function loadMap() {
         mapModel.position.z -= center.z;
         mapModel.position.y -= box.min.y;
 
+        // Ajustări selective pentru vegetație, clădiri și teren, fără a scala întreaga hartă.
+        const groundBump = createGroundBumpTexture();
         mapModel.traverse(function(node) {
             if (!node.isMesh) return;
+
+            const label = ((node.name || "") + " " +
+                (node.parent && node.parent.name ? node.parent.name : "") + " " +
+                (node.material && !Array.isArray(node.material) ? node.material.name : "")
+            ).toLowerCase();
+
+            // Mărim copacii și clădirile după numele obiectelor din model.
+            let objectScale = 1;
+            if (/(tree|pine|palm|oak|forest|copac|arb(o|u)re|vegetation)/i.test(label)) {
+                objectScale = 1.32;
+            } else if (/(building|house|tower|clock|castle|structure|temple|shop|hut|cladire)/i.test(label)) {
+                objectScale = 1.22;
+            }
+
+            if (objectScale !== 1 && node.geometry && !node.isSkinnedMesh) {
+                node.geometry = node.geometry.clone();
+                node.geometry.computeBoundingBox();
+                const center = node.geometry.boundingBox.getCenter(new THREE.Vector3());
+                node.geometry.translate(-center.x, -center.y, -center.z);
+                node.geometry.scale(objectScale, objectScale, objectScale);
+                node.geometry.translate(center.x, center.y, center.z);
+                node.geometry.computeBoundingSphere();
+            }
+
             node.castShadow = true;
             node.receiveShadow = true;
             if (node.material) {
                 const mats = Array.isArray(node.material) ? node.material : [node.material];
-                mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
+                mats.forEach(mat => {
+                    mat.side = THREE.DoubleSide;
+                    mat.roughness = Math.max(mat.roughness || 0, 0.82);
+                    if (/(ground|terrain|floor|soil|earth|land|dirt|grass|sol)/i.test(label)) {
+                        mat.roughness = 1.0;
+                        mat.bumpMap = groundBump;
+                        mat.bumpScale = 0.025;
+                        if (mat.color) mat.color.multiplyScalar(0.94);
+                    }
+                    mat.needsUpdate = true;
+                });
             }
             mapMeshes.push(node);
         });
@@ -2724,7 +2712,6 @@ function update() {
     if (!camera) return;
 
     updateCombat(delta, now);
-    updateAmbientEffects(delta);
     drawMiniMap();
 
     const forward = (keys["KeyW"] || keys["w"] || keys["ArrowUp"]) ? 1 : 0;
