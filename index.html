@@ -2222,7 +2222,7 @@ function startGame() {
 function initGame() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0d0908);
-    scene.fog = new THREE.FogExp2(0x0d0908, 0.0025);
+    scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
 
@@ -2458,7 +2458,7 @@ function loadMap() {
         const mapBounds = new THREE.Box3().setFromObject(mapModel);
         const mapSize = mapBounds.getSize(new THREE.Vector3());
         const maxAnisotropy = renderer && renderer.capabilities
-            ? Math.min(16, renderer.capabilities.getMaxAnisotropy())
+            ? Math.min(8, renderer.capabilities.getMaxAnisotropy())
             : 1;
 
         mapModel.traverse(function(node) {
