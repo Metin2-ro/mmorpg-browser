@@ -1,11 +1,20 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// codul serverului și datele jucătorilor nu trebuie să poată fi descărcate din browser
+app.use((req, res, next) => {
+    if (/^\/(server\.js|package(-lock)?\.json|data(\/|$)|node_modules(\/|$)|\.git)/i.test(req.path)) {
+        return res.status(404).end();
+    }
+    next();
+});
 app.use(express.static(__dirname));
 
 /* ===================== SETĂRI ===================== */
@@ -51,6 +60,72 @@ function alivePlayers() {
         }
     }
     return list;
+}
+
+/* ===================== CLASAMENT ===================== */
+// Se salvează în data/leaderboard.json. Pe planul gratuit Render discul se șterge la fiecare
+// redeploy, deci clasamentul rezistă doar cât timp instanța rulează (pentru unul permanent trebuie o bază de date).
+const DATA_DIR = path.join(__dirname, 'data');
+const LB_FILE = path.join(DATA_DIR, 'leaderboard.json');
+const MAX_SCORES = 2000;
+let scores = {};
+let scoresTimer = null;
+
+try {
+    scores = JSON.parse(fs.readFileSync(LB_FILE, 'utf8')) || {};
+    console.log(`Clasament încărcat: ${Object.keys(scores).length} eroi.`);
+} catch (e) {
+    scores = {};
+}
+
+function saveScoresSoon() {
+    if (scoresTimer) return;
+    scoresTimer = setTimeout(() => {
+        scoresTimer = null;
+        try {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+            fs.writeFileSync(LB_FILE, JSON.stringify(scores));
+        } catch (e) {
+            console.warn('Clasamentul nu a putut fi salvat:', e.message);
+        }
+    }, 5000);
+}
+
+function validKey(k) {
+    return typeof k === 'string' && /^[A-Za-z0-9-]{8,48}$/.test(k);
+}
+
+function recordStats(p, d) {
+    if (!p || !p.key || !d) return;
+    const n = (v, hi) => Math.max(0, Math.min(hi, Math.floor(Number(v)) || 0));
+    scores[p.key] = {
+        name: p.name,
+        level: Math.max(1, n(d.level, 50)),
+        xp: n(d.xp, 1e9),
+        kills: n(d.kills, 1e9),
+        bossKills: n(d.bossKills, 1e9),
+        pvp: n(d.pvp, 1e9),
+        updated: Date.now()
+    };
+    const keys = Object.keys(scores);
+    if (keys.length > MAX_SCORES) {
+        keys.sort((a, b) => scores[a].updated - scores[b].updated);
+        for (let i = 0; i < keys.length - MAX_SCORES; i++) delete scores[keys[i]];
+    }
+    saveScoresSoon();
+}
+
+function buildLeaderboard(me) {
+    const online = new Set(Object.values(players).map((p) => p.key).filter(Boolean));
+    const list = Object.entries(scores)
+        .map(([key, v]) => Object.assign({ key: key }, v))
+        .sort((a, b) => b.level - a.level || b.xp - a.xp || b.kills - a.kills);
+    const top = list.slice(0, 10).map((v, i) => ({
+        rank: i + 1, name: v.name, level: v.level, kills: v.kills, bossKills: v.bossKills, pvp: v.pvp,
+        online: online.has(v.key), me: !!(me && me.key && me.key === v.key)
+    }));
+    const idx = me && me.key ? list.findIndex((v) => v.key === me.key) : -1;
+    return { top: top, myRank: idx >= 0 ? idx + 1 : null, total: list.length };
 }
 
 /* ===================== MONȘTRI ===================== */
@@ -323,7 +398,9 @@ io.on('connection', (socket) => {
         hp: 1500,
         maxHp: 1500,
         tokens: 20,
-        lastRefill: nowSec()
+        lastRefill: nowSec(),
+        key: null,
+        lastStats: 0
     };
 
     socket.emit('currentPlayers', publicPlayers());
@@ -351,8 +428,24 @@ io.on('connection', (socket) => {
         const maxHp = Math.floor(Number(d.maxHp));
         if (maxHp > 0 && maxHp < 20000) { p.maxHp = maxHp; p.hp = maxHp; }
         if (Number.isFinite(d.x) && Number.isFinite(d.y)) { p.x = d.x; p.y = d.y; }
+        p.key = validKey(d.key) ? d.key : null;
+        recordStats(p, { level: p.level, xp: d.xp, kills: d.kills, bossKills: d.bossKills, pvp: d.pvp });
         socket.broadcast.emit('playerInfo', { id: socket.id, name: p.name, level: p.level });
         socket.broadcast.emit('playerHp', { id: socket.id, hp: p.hp, max: p.maxHp });
+    });
+
+    socket.on('stats', (d) => {
+        const p = players[socket.id];
+        if (!p || !p.key || !d) return;
+        const now = nowSec();
+        if (now - p.lastStats < 1.5) return;
+        p.lastStats = now;
+        p.level = Math.max(1, Math.min(50, Math.floor(Number(d.level)) || p.level));
+        recordStats(p, d);
+    });
+
+    socket.on('getLeaderboard', () => {
+        socket.emit('leaderboard', buildLeaderboard(players[socket.id]));
     });
 
     socket.on('levelUpdate', (d) => {
