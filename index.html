@@ -2455,13 +2455,75 @@ function loadMap() {
         mapModel.position.z -= center.z;
         mapModel.position.y -= box.min.y;
 
+        const mapBounds = new THREE.Box3().setFromObject(mapModel);
+        const mapSize = mapBounds.getSize(new THREE.Vector3());
+        const maxAnisotropy = renderer && renderer.capabilities
+            ? Math.min(8, renderer.capabilities.getMaxAnisotropy())
+            : 1;
+
         mapModel.traverse(function(node) {
             if (!node.isMesh) return;
             node.castShadow = true;
             node.receiveShadow = true;
+
             if (node.material) {
-                const mats = Array.isArray(node.material) ? node.material : [node.material];
-                mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
+                const originalMats = Array.isArray(node.material) ? node.material : [node.material];
+                const worldBox = new THREE.Box3().setFromObject(node);
+                const size = worldBox.getSize(new THREE.Vector3());
+                const horizontalArea = size.x * size.z;
+                const verticalRatio = size.y / Math.max(size.x, size.z, 0.001);
+
+                // Recunoaștem terenul după suprafața mare, forma aproape plată
+                // și normalele orientate în sus; nu modificăm pereții/clădirile.
+                let upwardRatio = 0;
+                const normals = node.geometry && node.geometry.attributes
+                    ? node.geometry.attributes.normal
+                    : null;
+                if (normals && normals.count) {
+                    const normalMatrix = new THREE.Matrix3().getNormalMatrix(node.matrixWorld);
+                    const sampleCount = Math.min(normals.count, 500);
+                    let upward = 0;
+                    for (let i = 0; i < sampleCount; i++) {
+                        const index = Math.floor(i * normals.count / sampleCount);
+                        const normal = new THREE.Vector3(
+                            normals.getX(index), normals.getY(index), normals.getZ(index)
+                        ).applyMatrix3(normalMatrix).normalize();
+                        if (normal.y > 0.78) upward++;
+                    }
+                    upwardRatio = upward / sampleCount;
+                }
+
+                const isGroundSurface =
+                    horizontalArea > Math.max(12, mapSize.x * mapSize.z * 0.00035) &&
+                    verticalRatio < 0.22 &&
+                    upwardRatio > 0.65 &&
+                    worldBox.min.y < mapBounds.min.y + mapSize.y * 0.45;
+
+                const improvedMats = originalMats.map(function(originalMat) {
+                    const mat = originalMat.clone();
+                    mat.side = THREE.DoubleSide;
+
+                    // Filtrare anisotropic: textura rămâne originală, dar se vede mai clar
+                    // în depărtare și când camera privește solul oblic.
+                    ["map", "normalMap", "roughnessMap", "metalnessMap", "aoMap", "emissiveMap"].forEach(function(key) {
+                        const tex = mat[key];
+                        if (tex && tex.isTexture) {
+                            tex.anisotropy = maxAnisotropy;
+                            tex.needsUpdate = true;
+                        }
+                    });
+
+                    if (isGroundSurface) {
+                        // Corectăm ușor tenta ștearsă fără să înlocuim textura originală.
+                        if (mat.color) mat.color.lerp(new THREE.Color(0xffffff), 0.22);
+                        if ("roughness" in mat) mat.roughness = Math.max(mat.roughness || 0, 0.9);
+                        if ("metalness" in mat) mat.metalness = 0;
+                    }
+                    mat.needsUpdate = true;
+                    return mat;
+                });
+
+                node.material = Array.isArray(node.material) ? improvedMats : improvedMats[0];
             }
             mapMeshes.push(node);
         });
