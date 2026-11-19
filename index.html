@@ -2453,31 +2453,6 @@ function fadeToAction(action, duration = 0.18) {
     activeAction = action;
 }
 
-// Textură procedurală subtilă pentru relief vizual pe materialele de sol existente.
-function createGroundBumpTexture() {
-    const size = 128;
-    const data = new Uint8Array(size * size * 4);
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-            const i = (y * size + x) * 4;
-            const noise = 112 + Math.floor(Math.random() * 32);
-            data[i] = noise;
-            data[i + 1] = noise;
-            data[i + 2] = noise;
-            data[i + 3] = 255;
-        }
-    }
-    const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(10, 10);
-    texture.magFilter = THREE.LinearFilter;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.generateMipmaps = true;
-    texture.needsUpdate = true;
-    return texture;
-}
-
 function loadMap() {
     const loader = new THREE.GLTFLoader();
     loader.load(MAP_FILE, function(gltf) {
@@ -2496,49 +2471,13 @@ function loadMap() {
         mapModel.position.z -= center.z;
         mapModel.position.y -= box.min.y;
 
-        // Ajustări selective pentru vegetație, clădiri și teren, fără a scala întreaga hartă.
-        const groundBump = createGroundBumpTexture();
         mapModel.traverse(function(node) {
             if (!node.isMesh) return;
-
-            const label = ((node.name || "") + " " +
-                (node.parent && node.parent.name ? node.parent.name : "") + " " +
-                (node.material && !Array.isArray(node.material) ? node.material.name : "")
-            ).toLowerCase();
-
-            // Mărim copacii și clădirile după numele obiectelor din model.
-            let objectScale = 1;
-            if (/(tree|pine|palm|oak|forest|copac|arb(o|u)re|vegetation)/i.test(label)) {
-                objectScale = 1.32;
-            } else if (/(building|house|tower|clock|castle|structure|temple|shop|hut|cladire)/i.test(label)) {
-                objectScale = 1.22;
-            }
-
-            if (objectScale !== 1 && node.geometry && !node.isSkinnedMesh) {
-                node.geometry = node.geometry.clone();
-                node.geometry.computeBoundingBox();
-                const center = node.geometry.boundingBox.getCenter(new THREE.Vector3());
-                node.geometry.translate(-center.x, -center.y, -center.z);
-                node.geometry.scale(objectScale, objectScale, objectScale);
-                node.geometry.translate(center.x, center.y, center.z);
-                node.geometry.computeBoundingSphere();
-            }
-
             node.castShadow = true;
             node.receiveShadow = true;
             if (node.material) {
                 const mats = Array.isArray(node.material) ? node.material : [node.material];
-                mats.forEach(mat => {
-                    mat.side = THREE.DoubleSide;
-                    mat.roughness = Math.max(mat.roughness || 0, 0.82);
-                    if (/(ground|terrain|floor|soil|earth|land|dirt|grass|sol)/i.test(label)) {
-                        mat.roughness = 1.0;
-                        mat.bumpMap = groundBump;
-                        mat.bumpScale = 0.025;
-                        if (mat.color) mat.color.multiplyScalar(0.94);
-                    }
-                    mat.needsUpdate = true;
-                });
+                mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
             }
             mapMeshes.push(node);
         });
