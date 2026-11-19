@@ -24,118 +24,59 @@ body {
 canvas { display: block; width: 100%; height: 100%; }
 
 #char-select-screen {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 1000;
+    background: radial-gradient(circle, rgba(35,22,15,.98), rgba(5,5,7,1));
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    padding: 28px;
-    color: #f4ead8;
-    background:
-      radial-gradient(ellipse at 72% 48%, rgba(118,48,20,.30), transparent 38%),
-      radial-gradient(ellipse at 18% 80%, rgba(22,47,68,.34), transparent 42%),
-      linear-gradient(115deg, rgba(3,4,8,.97) 0%, rgba(10,8,10,.90) 48%, rgba(5,5,8,.96) 100%);
+    z-index: 100;
+    gap: 20px;
 }
-#char-select-screen::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: .34;
-    background: repeating-linear-gradient(115deg, transparent 0 78px, rgba(210,165,93,.10) 79px, transparent 81px 150px);
-}
-#char-select-screen::after {
-    content: "";
-    position: absolute;
-    width: min(68vw, 850px);
-    aspect-ratio: 1;
-    right: -12%;
-    top: 50%;
-    transform: translateY(-50%);
-    border: 1px solid rgba(194,145,75,.16);
-    border-radius: 50%;
-    box-shadow: 0 0 0 28px rgba(194,145,75,.025), 0 0 0 70px rgba(194,145,75,.02), inset 0 0 90px rgba(176,86,35,.08);
-    pointer-events: none;
-}
-.start-layout {
-    position: relative;
-    z-index: 2;
-    width: min(1180px, 100%);
-    min-height: min(720px, calc(100vh - 56px));
-    display: grid;
-    grid-template-columns: minmax(300px, 1fr) minmax(320px, 430px);
-    align-items: center;
-    gap: clamp(28px, 6vw, 90px);
-}
-.start-brand { align-self: start; padding-top: 12px; }
-.start-kicker { color:#bd9861; font-size:11px; letter-spacing:5px; text-transform:uppercase; }
-.start-title {
-    margin: 12px 0 8px;
-    color: #f1d6a0;
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: clamp(38px, 6vw, 76px);
-    line-height: .98;
+#char-select-screen h1 {
+    color: #ffd700;
+    text-shadow: 0 0 20px #ff6600;
+    font-size: 32px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    text-shadow: 0 3px 0 #26170e, 0 0 32px rgba(209,132,55,.45);
 }
-.start-subtitle { color:#b9aa96; font-size:13px; letter-spacing:3px; text-transform:uppercase; }
-.start-divider { width: min(390px, 90%); height:1px; margin:28px 0; background:linear-gradient(90deg,#b98b4d,transparent); }
-.start-lore { max-width:440px; color:#c8bdad; font: 16px/1.8 Georgia,serif; }
-.start-lore strong { color:#e6c58d; font-weight:normal; }
-.start-controls-note { margin-top:34px; display:flex; flex-wrap:wrap; gap:9px; color:#9f9485; font-size:11px; letter-spacing:1px; }
-.start-controls-note span { border:1px solid rgba(183,139,76,.35); background:rgba(10,8,8,.45); padding:7px 10px; border-radius:3px; }
-.start-panel {
-    width:100%; padding:30px 28px 25px;
-    background:linear-gradient(145deg,rgba(26,20,17,.94),rgba(7,8,11,.96));
-    border:1px solid #80603a;
-    outline:1px solid rgba(218,176,107,.15);
-    outline-offset:6px;
-    box-shadow:0 22px 80px rgba(0,0,0,.72), inset 0 0 35px rgba(183,117,51,.06);
-    text-align:center;
-}
-.start-panel-heading { color:#d9b879; font:20px Georgia,serif; letter-spacing:3px; text-transform:uppercase; margin:0 0 6px; }
-.start-panel-caption { color:#82786d; font-size:10px; letter-spacing:2px; text-transform:uppercase; margin-bottom:22px; }
-.char-cards-container { display:flex; justify-content:center; }
+.char-cards-container { display: flex; gap: 20px; }
 .char-card {
-    position:relative; width:100%; max-width:310px; padding:22px 18px 18px;
-    border:1px solid #a47b45; border-radius:3px;
-    background:radial-gradient(ellipse at 50% 0%,rgba(146,83,37,.24),transparent 68%),linear-gradient(#211913,#0c0b0c);
-    text-align:center; cursor:default; transition:.25s;
+    width: 240px;
+    background: linear-gradient(#261811,#0d0806);
+    border: 2px solid #8c6239;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: .25s;
 }
-.char-card.selected { border-color:#d4ae70; box-shadow:0 0 26px rgba(201,135,60,.17),inset 0 0 24px rgba(201,135,60,.07); }
-.char-emblem { width:92px; height:92px; margin:0 auto 12px; display:grid; place-items:center; border:1px solid #a77c48; border-radius:50%; background:radial-gradient(circle,#49301d,#100d0c 70%); box-shadow:0 0 25px rgba(190,115,48,.18); font-size:47px; }
-.char-card h3 { color:#e7c58b; font:22px Georgia,serif; letter-spacing:2px; margin:8px 0 5px; }
-.char-card p { color:#9e9282; font-size:11px; letter-spacing:1px; margin:0; }
-.char-class-line { color:#b67d42; font-size:10px; letter-spacing:2px; margin-top:15px; text-transform:uppercase; }
-#hero-name {
-    width:100%; max-width:310px; margin:20px auto 0; padding:13px 14px;
-    color:#f1dfc2; background:rgba(0,0,0,.48); border:1px solid #655039; border-radius:2px;
-    outline:none; text-align:center; font-size:14px; letter-spacing:2px;
+.char-card:hover, .char-card.selected {
+    border-color: #ffd700;
+    box-shadow: 0 0 30px #ff6600;
+    transform: translateY(-5px);
 }
-#hero-name:focus { border-color:#d0a35e; box-shadow:0 0 14px rgba(208,163,94,.18); }
-#hero-name::placeholder { color:#766b5d; }
+.char-card h3 { color: #f39c12; margin-bottom: 5px; }
+.char-card p { color: #aaa; font-size: 11px; }
+
 #start-game-btn {
-    display:block; width:100%; max-width:310px; margin:14px auto 0; padding:16px 20px;
-    color:#1a1108; background:linear-gradient(180deg,#e5c17e,#a97839);
-    border:1px solid #f0d69b; border-radius:2px; cursor:pointer;
-    font: bold 14px Georgia,serif; letter-spacing:3px; text-transform:uppercase;
-    box-shadow:0 5px 20px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.35); transition:.2s;
+    background: linear-gradient(#d4af37,#8c6239);
+    color: #111;
+    border: 2px solid #ffd700;
+    padding: 14px 45px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 15px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: 0.2s;
 }
-#start-game-btn:hover { filter:brightness(1.15); transform:translateY(-2px); box-shadow:0 8px 28px rgba(191,132,57,.25); }
-.start-footer { margin-top:18px; color:#71685e; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; }
-@media(max-width:760px) {
-    #char-select-screen { overflow-y:auto; padding:24px 16px; }
-    .start-layout { min-height:0; grid-template-columns:1fr; gap:26px; max-width:480px; }
-    .start-brand { text-align:center; padding-top:4px; }
-    .start-title { font-size:clamp(36px,11vw,58px); }
-    .start-divider { margin:16px auto; }
-    .start-lore { display:none; }
-    .start-controls-note { justify-content:center; margin-top:16px; }
-    .start-panel { padding:24px 18px 20px; }
-    #char-select-screen::after { width:120vw; right:-55%; }
+#start-game-btn:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 15px #ffd700;
 }
 
 #player-hud {
@@ -363,29 +304,82 @@ canvas { display: block; width: 100%; height: 100%; }
     pointer-events: none;
     text-align: center;
 }
-
-#mini-map-wrap { position:absolute; right:20px; bottom:105px; width:190px; height:190px; padding:7px; background:rgba(8,7,8,.88); border:2px solid #8c6239; border-radius:50%; z-index:12; box-shadow:0 4px 18px #000; pointer-events:none; }
-#mini-map { width:100%; height:100%; display:block; border-radius:50%; }
-#panel-controls { position:absolute; top:112px; left:20px; display:none; gap:7px; z-index:15; }
-.ui-toggle { background:linear-gradient(#3a2818,#17100b); border:1px solid #b58a4c; color:#ffe0a0; padding:7px 11px; border-radius:4px; cursor:pointer; font-weight:bold; }
-.ui-toggle:hover { border-color:#ffd700; color:#fff; }
-.game-window { position:absolute; display:none; z-index:30; top:50%; left:50%; transform:translate(-50%,-50%); width:min(520px, calc(100vw - 30px)); max-height:78vh; overflow:auto; background:linear-gradient(145deg,rgba(29,19,13,.98),rgba(7,7,9,.98)); border:2px solid #9b713b; box-shadow:0 12px 45px #000; padding:16px; border-radius:6px; }
-.window-head { display:flex; justify-content:space-between; align-items:center; color:#ffd36b; font-weight:bold; font-size:18px; border-bottom:1px solid #72512d; padding-bottom:9px; margin-bottom:12px; }
-.window-close { background:#401a15; border:1px solid #a34a35; color:#fff; cursor:pointer; padding:4px 10px; border-radius:3px; }
-#inventory-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:7px; }
-.inv-slot { min-height:62px; background:rgba(10,8,7,.9); border:1px solid #624728; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:#e8d6b7; font-size:11px; text-align:center; border-radius:3px; }
-.inv-slot button { background:#342315; border:1px solid #9c713b; color:#ffe0a0; font-size:10px; padding:3px 6px; cursor:pointer; }
-.inv-slot .item-icon { font-size:22px; }
-#status-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
-.stat-row { display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,.35); border:1px solid #574027; padding:10px; color:#eee; }
-.stat-row strong { color:#ffd36b; }
-.stat-row button { background:#4a321b; border:1px solid #b58a4c; color:#fff; padding:4px 10px; cursor:pointer; }
-#status-points { color:#8eff9a; margin-bottom:10px; }
-@media(max-width:700px){ #mini-map-wrap{width:135px;height:135px;right:8px;bottom:100px} #action-bar{gap:4px;padding:6px;right:6px;bottom:6px} .skill-slot{width:38px;height:38px;font-size:18px} #chat-container{width:250px;left:8px;bottom:60px} #panel-controls{left:8px;top:110px} }
-
 #boss-name { color: #ff6b4a; font-weight: bold; letter-spacing: 2px; text-shadow: 1px 1px #000; margin-bottom: 4px; font-size: 14px; }
 #boss-bar .bar-container { height: 16px; border-color: #7a2a1a; }
 #boss-bar .bar-text { line-height: 16px; font-size: 11px; }
+
+#toolbar {
+    position: absolute;
+    top: 172px;
+    left: 20px;
+    display: none;
+    gap: 6px;
+    z-index: 12;
+}
+#toolbar button {
+    background: rgba(12, 8, 6, 0.9);
+    border: 2px solid #6e4f2c;
+    color: #ffd700;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+#toolbar button:hover { border-color: #ffd700; }
+#minimap-wrap {
+    position: absolute;
+    top: 208px;
+    right: 20px;
+    width: 170px;
+    height: 170px;
+    display: none;
+    z-index: 9;
+    pointer-events: none;
+}
+#minimap {
+    border-radius: 50%;
+    border: 2px solid #8c6239;
+    background: rgba(8, 6, 6, 0.55);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+}
+.modal-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 560px;
+    max-width: 94vw;
+    max-height: 82vh;
+    overflow-y: auto;
+    background: linear-gradient(#1f140e, #0d0806);
+    border: 2px solid #8c6239;
+    border-radius: 6px;
+    padding: 16px 18px;
+    display: none;
+    z-index: 40;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.9);
+    cursor: default;
+}
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.panel-head h3 { margin: 0; color: #ffd700; letter-spacing: 1px; }
+.panel-head .wallet { color: #d8c28a; font-size: 13px; }
+.panel-close { background: none; border: 1px solid #6e4f2c; color: #ccc; border-radius: 4px; cursor: pointer; padding: 2px 8px; }
+#shop-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+#shop-tabs button { background: #18110e; border: 1px solid #6e4f2c; color: #ccc; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+#shop-tabs button.active { border-color: #ffd700; color: #ffd700; }
+.shop-row { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 9px 4px; border-bottom: 1px solid #2c1f15; font-size: 13px; }
+.shop-row small { display: block; color: #a8957a; margin-top: 2px; }
+.shop-price { color: #ffd34d; font-size: 12px; white-space: nowrap; }
+.shop-btn { background: linear-gradient(#d4af37, #8c6239); color: #111; border: 1px solid #ffd700; border-radius: 4px; padding: 6px 10px; font-weight: bold; cursor: pointer; font-size: 12px; }
+.shop-btn:disabled { background: #2a2018; color: #8a7a66; border-color: #4a3520; cursor: not-allowed; }
+.shop-tag { font-size: 12px; color: #8a7a66; }
+.shop-tag.ok { color: #6fdc8c; }
+.shop-tag.lock { color: #6b5b4a; }
+.lb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.lb-table th { text-align: left; color: #d8c28a; border-bottom: 1px solid #6e4f2c; padding: 6px 4px; font-size: 11px; text-transform: uppercase; }
+.lb-table td { padding: 7px 4px; border-bottom: 1px solid #2c1f15; }
+.lb-table tr.me td { background: rgba(255, 215, 0, 0.1); color: #ffd700; }
+.lb-dot { color: #4cff7a; margin-right: 4px; font-size: 10px; }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -396,33 +390,16 @@ canvas { display: block; width: 100%; height: 100%; }
 <body>
 
 <div id="char-select-screen">
-    <div class="start-layout">
-        <section class="start-brand">
-            <div class="start-kicker">O lume învăluită în întuneric</div>
-            <h1 class="start-title">MU<br>Dark Fantasy</h1>
-            <div class="start-subtitle">Legendele se nasc în luptă</div>
-            <div class="start-divider"></div>
-            <p class="start-lore">Ridică-ți sabia, stăpânește magia și înfruntă creaturile care au cucerit acest tărâm. <strong>Aventura ta începe acum.</strong></p>
-            <div class="start-controls-note">
-                <span>W A S D · Mișcare</span><span>Click dreapta · Cameră</span><span>1–7 · Abilități</span>
-            </div>
-        </section>
-        <section class="start-panel">
-            <h2 class="start-panel-heading">Alege-ți eroul</h2>
-            <div class="start-panel-caption">Pregătește-te pentru aventură</div>
-            <div class="char-cards-container">
-                <div class="char-card selected">
-                    <div class="char-emblem">⚔</div>
-                    <h3>Dark Knight</h3>
-                    <p>Războinic · Luptă corp la corp</p>
-                    <div class="char-class-line">Putere · Curaj · Onoare</div>
-                </div>
-            </div>
-            <input id="hero-name" maxlength="14" placeholder="Introdu numele eroului" autocomplete="off">
-            <button id="start-game-btn" onclick="startGame()">⚔ &nbsp; Start joc</button>
-            <div class="start-footer">MU Dark Fantasy · PC Edition</div>
-        </section>
+    <h1>MU Online - PC Client Edition</h1>
+    <div class="char-cards-container">
+        <div class="char-card selected">
+            <div style="font-size:45px">⚔️</div>
+            <h3>Dark Knight</h3>
+            <p>Clasă PC Optimizată • PvP & PvE</p>
+        </div>
     </div>
+    <input id="hero-name" maxlength="14" placeholder="Numele eroului" autocomplete="off">
+    <button id="start-game-btn" onclick="startGame()">Conectare în Joc (PC)</button>
 </div>
 
 <div id="game-container">
@@ -454,27 +431,45 @@ canvas { display: block; width: 100%; height: 100%; }
         </div>
     </div>
 
+    <div id="toolbar">
+        <button onclick="toggleShop()">🛒 Magazin (B)</button>
+        <button onclick="toggleLeaderboard()">🏆 Clasament (L)</button>
+        <button id="btn-music" onclick="toggleMusic()">🎵</button>
+        <button id="btn-sfx" onclick="toggleSfx()">🔊</button>
+    </div>
+
+    <div id="minimap-wrap"><canvas id="minimap" width="170" height="170"></canvas></div>
+
+    <div id="shop-panel" class="modal-panel">
+        <div class="panel-head">
+            <h3>🛒 Magazin</h3>
+            <span class="wallet" id="shop-gold"></span>
+            <button class="panel-close" data-act="close">✕</button>
+        </div>
+        <div id="shop-tabs">
+            <button data-tab="weapon">⚔️ Arme</button>
+            <button data-tab="armor">🛡️ Armuri</button>
+            <button data-tab="amulet">📿 Amulete</button>
+            <button data-tab="potions">🧪 Poțiuni</button>
+            <button data-tab="sell">💎 Vinde</button>
+        </div>
+        <div id="shop-body"></div>
+    </div>
+
+    <div id="lb-panel" class="modal-panel">
+        <div class="panel-head">
+            <h3>🏆 Clasament</h3>
+            <span class="wallet" id="lb-rank"></span>
+            <button class="panel-close" data-act="close">✕</button>
+        </div>
+        <div id="lb-body">Se încarcă...</div>
+    </div>
+
     <div id="inv-panel">
         <span>💰 <b id="inv-gold">0</b></span>
         <span>🧪 <b id="inv-hp">0</b> (Q)</span>
         <span>💧 <b id="inv-mp">0</b> (E)</span>
         <span>💎 <b id="inv-crystal">0</b></span>
-    </div>
-    <div id="panel-controls">
-        <button class="ui-toggle" onclick="toggleGameWindow('inventory-window')">🎒 Inventar (I)</button>
-        <button class="ui-toggle" onclick="toggleGameWindow('status-window')">📊 Status (P)</button>
-    </div>
-    <div id="mini-map-wrap"><canvas id="mini-map" width="360" height="360"></canvas></div>
-    <div id="inventory-window" class="game-window">
-        <div class="window-head"><span>🎒 Inventar</span><button class="window-close" onclick="toggleGameWindow('inventory-window')">✕</button></div>
-        <div style="color:#d8c28a;margin-bottom:10px">Aur: <b id="window-gold">0</b> · Obiecte și consumabile</div>
-        <div id="inventory-grid"></div>
-    </div>
-    <div id="status-window" class="game-window">
-        <div class="window-head"><span>📊 Status personaj</span><button class="window-close" onclick="toggleGameWindow('status-window')">✕</button></div>
-        <div id="status-points">Puncte disponibile: 0</div>
-        <div id="status-grid"></div>
-        <div style="margin-top:12px;color:#bca783;font-size:11px">STR crește daunele. VIT, AGI și ENE sunt păstrate în profil pentru extinderea atributelor.</div>
     </div>
 
     <div id="boss-bar">
@@ -488,7 +483,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Click pe ecran pentru cameră. <b>WASD</b> mișcare, <b>Shift</b> alergare, <b>1</b> atac, <b>2</b> învârtire, <b>3</b> scut, <b>4</b> magie albastră, <b>5</b> foc, <b>6</b> fulger, <b>7</b> magie întunecată, <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni, <b>I</b> inventar, <b>P</b> status.
+                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând! <b>B</b> magazin, <b>L</b> clasament, <b>M/N</b> muzică/sunete, <b>+/−</b> zoom hartă.
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
@@ -498,12 +493,9 @@ canvas { display: block; width: 100%; height: 100%; }
         <div class="skill-slot" onclick="useSkill(1)">⚔️<div class="cd-overlay" id="cd1"></div><span class="skill-key">1</span></div>
         <div class="skill-slot" onclick="useSkill(2)">🌪️<div class="cd-overlay" id="cd2"></div><span class="skill-key">2</span></div>
         <div class="skill-slot" onclick="triggerDefense3D()">🛡️<div class="cd-overlay" id="cd3"></div><span class="skill-key">3</span></div>
-        <div class="skill-slot" title="Magie albastră" onclick="useMagic(4)">🔮<div class="cd-overlay" id="cd4"></div><span class="skill-key">4</span></div>
-        <div class="skill-slot" title="Minge de foc" onclick="useMagic(5)">🔥<div class="cd-overlay" id="cd5"></div><span class="skill-key">5</span></div>
-        <div class="skill-slot" title="Fulger" onclick="useMagic(6)">⚡<div class="cd-overlay" id="cd6"></div><span class="skill-key">6</span></div>
-        <div class="skill-slot" title="Vortex întunecat" onclick="useMagic(7)">🌑<div class="cd-overlay" id="cd7"></div><span class="skill-key">7</span></div>
-        <div class="skill-slot" title="Rostogolire" onclick="doRoll()">💨<div class="cd-overlay" id="cd8"></div><span class="skill-key">C</span></div>
-        <div class="skill-slot" title="Săritură" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>
+        <div class="skill-slot" onclick="useSpell()">🔮<div class="cd-overlay" id="cd4"></div><span class="skill-key">4</span></div>
+        <div class="skill-slot" onclick="doRoll()">💨<div class="cd-overlay" id="cd5"></div><span class="skill-key">C</span></div>
+        <div class="skill-slot" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>
     </div>
 </div>
 
@@ -560,7 +552,7 @@ const myPos = { x: 0, y: 0, z: 0, velocityX: 0, velocityZ: 0, walkSpeed: 0.11, r
 let cameraAngle = 0;
 let cameraPitch = 0.35;
 let cameraDistance = 7.0;
-let isPointerLocked = false; // păstrat doar pentru compatibilitate; camera nu mai folosește Pointer Lock
+let isPointerLocked = false;
 
 const groundRaycaster = new THREE.Raycaster();
 groundRaycaster.far = 2000;
@@ -847,118 +839,20 @@ function startAttackAnim(n) {
     attackType = n;
 }
 
-// ---------- TARGET LOCK: selectare automată și indicator 3D ----------
-let selectedTarget = null;
-let targetMarker = null;
-let targetMarkerRing = null;
-let targetMarkerInner = null;
-let targetMarkerBeam = null;
-let targetScanTimer = 0;
-
-function createTargetMarker() {
-    if (!scene || targetMarker) return;
-    targetMarker = new THREE.Group();
-    const outerMat = new THREE.MeshBasicMaterial({ color: 0xff3b32, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false });
-    const innerMat = new THREE.MeshBasicMaterial({ color: 0xffc45c, transparent: true, opacity: 0.82, side: THREE.DoubleSide, depthWrite: false });
-    const beamMat = new THREE.MeshBasicMaterial({ color: 0xff4b35, transparent: true, opacity: 0.18, depthWrite: false });
-    targetMarkerRing = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.055, 8, 48), outerMat);
-    targetMarkerRing.rotation.x = Math.PI / 2;
-    targetMarkerInner = new THREE.Mesh(new THREE.TorusGeometry(0.57, 0.025, 6, 40), innerMat);
-    targetMarkerInner.rotation.x = Math.PI / 2;
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.22, 2.7, 12, 1, true), beamMat);
-    beam.position.y = 1.45;
-    targetMarkerBeam = beam;
-    targetMarker.add(targetMarkerRing, targetMarkerInner, beam);
-    targetMarker.visible = false;
-    targetMarker.renderOrder = 1001;
-    scene.add(targetMarker);
-}
-
-const monsterPickRaycaster = new THREE.Raycaster();
-const monsterPickPointer = new THREE.Vector2();
-
-function pickMonsterAtPointer(event) {
-    if (!renderer || !camera || !monsters.length) return null;
-    const rect = renderer.domElement.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return null;
-    monsterPickPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    monsterPickPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    monsterPickRaycaster.setFromCamera(monsterPickPointer, camera);
-    const roots = monsters.filter(m => m.alive && m.root && m.root.visible).map(m => m.root);
-    const hits = monsterPickRaycaster.intersectObjects(roots, true);
-    if (!hits.length) return null;
-    let node = hits[0].object;
-    while (node) {
-        const found = monsters.find(m => m.root === node);
-        if (found) return found;
-        node = node.parent;
-    }
-    return null;
-}
-function setSelectedTarget(m) {
-    if (m && (!m.alive || !m.root || !m.root.visible)) m = null;
-    selectedTarget = m || null;
-    if (targetMarker) targetMarker.visible = !!selectedTarget;
-}
-
-function findBestTarget(range, allowBehind) {
-    let best = null, bestScore = Infinity;
-    const fx = Math.sin(myPos.rotY), fz = Math.cos(myPos.rotY);
-    for (const m of monsters) {
-        if (!m.alive || !m.root || !m.root.visible) continue;
-        const dx = m.x - myPos.x, dz = m.z - myPos.z;
-        const d = Math.hypot(dx, dz);
-        if (d > range || d < 0.01) continue;
-        const dot = (dx * fx + dz * fz) / d;
-        if (!allowBehind && dot < -0.15) continue;
-        // Favorizează țintele din față, dar păstrează distanța drept criteriu principal.
-        const score = d + (1 - dot) * 3.2 - (m.boss ? 0.35 : 0);
-        if (score < bestScore) { bestScore = score; best = m; }
-    }
-    return best;
-}
-
-function updateTargetLock(delta) {
-    if (!scene) return;
-    createTargetMarker();
-    targetScanTimer -= delta;
-    if (!selectedTarget || !selectedTarget.alive || !selectedTarget.root || !selectedTarget.root.visible || Math.hypot(selectedTarget.x - myPos.x, selectedTarget.z - myPos.z) > 48) {
-        if (targetScanTimer <= 0) {
-            setSelectedTarget(findBestTarget(36, false) || findBestTarget(36, true));
-            targetScanTimer = 0.35;
-        }
-    }
-    if (selectedTarget && targetMarker) {
-        const m = selectedTarget;
-        targetMarker.visible = true;
-        targetMarker.position.set(m.x, m.y + 0.06, m.z);
-        const pulse = 1 + Math.sin(nowSec() * 7) * 0.07;
-        targetMarkerRing.scale.setScalar(pulse * (m.boss ? 1.45 : 1));
-        targetMarkerInner.rotation.y += delta * 1.8;
-        targetMarkerRing.rotation.z += delta * 0.55;
-        targetMarkerBeam.material.opacity = 0.12 + (Math.sin(nowSec() * 5) + 1) * 0.045;
-    } else if (targetMarker) targetMarker.visible = false;
-}
-
 function autoFaceNearest(range) {
-    let target = selectedTarget;
-    if (!target || !target.alive || Math.hypot(target.x - myPos.x, target.z - myPos.z) > range + 8) {
-        target = findBestTarget(range, false) || findBestTarget(range, true);
-        if (target) setSelectedTarget(target);
-    }
-    if (target && target.alive) {
-        myPos.rotY = Math.atan2(target.x - myPos.x, target.z - myPos.z);
-        return;
-    }
-    // Fallback PvP dacă nu există monstru selectat.
     let best = null, bestD = range;
+    for (const m of monsters) {
+        if (!m.alive) continue;
+        const d = Math.hypot(m.x - myPos.x, m.z - myPos.z);
+        if (d < bestD) { bestD = d; best = { x: m.x, z: m.z }; }
+    }
     for (const id in remotePlayers) {
         const rp = remotePlayers[id];
         if (!rp.mesh || rp.hp <= 0) continue;
         const x = rp.rx !== undefined ? rp.rx : rp.x;
         const z = rp.rz !== undefined ? rp.rz : rp.z;
         const d = Math.hypot(x - myPos.x, z - myPos.z);
-        if (d < bestD) { bestD = d; best = { x, z }; }
+        if (d < bestD) { bestD = d; best = { x: x, z: z }; }
     }
     if (best) myPos.rotY = Math.atan2(best.x - myPos.x, best.z - myPos.z);
 }
@@ -999,6 +893,7 @@ function useSkill(n) {
 
     autoFaceNearest(cfg.range + 3);
     startAttackAnim(visual);
+    sndSwing(visual);
     spawnSlashEffect(myPos.x, myPos.y, myPos.z, myPos.rotY, visual, tilt);
     if (socket && socket.connected) socket.emit("playerAttack", { skill: visual });
 
@@ -1006,7 +901,7 @@ function useSkill(n) {
 }
 
 function rollDamage(cfg, mult) {
-    const crit = Math.random() < 0.15;
+    const crit = Math.random() < critChance;
     let dmg = (cfg.min + Math.random() * (cfg.max - cfg.min)) * damageMult * (mult || 1);
     if (crit) dmg *= 1.8;
     return { dmg: Math.max(1, Math.round(dmg)), crit: crit };
@@ -1031,12 +926,10 @@ function applyAttackDamage(n, opts) {
         return (dx * fx + dz * fz) / d >= cosHalf;
     }
 
-    const meleeTargets = (n === 1 && selectedTarget && selectedTarget.alive) ? [selectedTarget] : monsters;
-    for (const m of meleeTargets) {
+    for (const m of monsters) {
         if (!m.alive || !inCone(m.x, m.z, m.boss ? 2.0 : 0)) continue;
         const r = rollDamage(cfg, mult);
         damageMonster(m, r.dmg, r.crit, "melee");
-        if (n === 1) break;
     }
 
     for (const id in remotePlayers) {
@@ -1049,6 +942,7 @@ function applyAttackDamage(n, opts) {
         spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
             new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
         if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
+        sndHit(r.crit, 0);
         setRemoteHp(id, rp.hp - r.dmg);
     }
 }
@@ -1065,10 +959,12 @@ function triggerDefense3D() {
     DEFENSE.readyAt = now + DEFENSE.cd;
     isDefending = true;
     addChat("🛡️ Scut activat! (-70% daune)", "#3498db");
+    sndShield();
     setTimeout(function() { isDefending = false; }, DEFENSE.duration * 1000);
 }
 
 /* ---------- vrajă la distanță + rostogolire ---------- */
+const SPELL_SPEED = 24;      // unități/secundă
 const SPELL_RANGE = 30;
 const SPELL_ANIM_SPEED = 1.7;
 let spellAction = null, rollAction = null;
@@ -1076,13 +972,7 @@ let rollUntil = 0, rollDX = 0, rollDZ = 1;
 const projectiles = [];
 const particles = [];
 const PARTICLE_GEO = new THREE.SphereGeometry(1, 6, 5);
-const MAGIC = {
-    4: { name: "Magie albastră", cd: 1.5, mp: 80, range: SPELL_RANGE, min: 110, max: 150, speed: 24, color: 0x35aaff, core: 0xe5f7ff, style: "arcane", readyAt: 0 },
-    5: { name: "Minge de foc", cd: 2.2, mp: 100, range: SPELL_RANGE, min: 150, max: 205, speed: 19, color: 0xff5a12, core: 0xffef9a, style: "fire", readyAt: 0 },
-    6: { name: "Fulger", cd: 3.0, mp: 120, range: SPELL_RANGE, min: 190, max: 255, speed: 38, color: 0xffe34a, core: 0xffffff, style: "lightning", readyAt: 0 },
-    7: { name: "Vortex întunecat", cd: 3.8, mp: 140, range: SPELL_RANGE, min: 230, max: 310, speed: 16, color: 0xa34bff, core: 0xe8c8ff, style: "dark", readyAt: 0 }
-};
-for (const id of [4, 5, 6, 7]) SKILLS[id] = MAGIC[id];
+SKILLS[4] = { cd: 1.5, mp: 80, range: SPELL_RANGE, min: 110, max: 150, readyAt: 0 };
 const ROLL = { cd: 3.0, readyAt: 0, speed: 0.19, animSpeed: 1.8 };
 
 function spawnParticle(x, y, z, vx, vy, vz, color, size, life) {
@@ -1113,49 +1003,30 @@ function updateParticles(delta) {
     }
 }
 
-function explodeAt(x, y, z, cfg) {
-    cfg = cfg || MAGIC[4];
-    const count = cfg.style === "lightning" ? 26 : (cfg.style === "dark" ? 22 : 18);
-    for (let k = 0; k < count; k++) {
+function explodeAt(x, y, z) {
+    sndImpact(Math.hypot(x - myPos.x, z - myPos.z));
+    for (let k = 0; k < 16; k++) {
         const a = Math.random() * Math.PI * 2;
-        const up = cfg.style === "fire" ? 1.5 + Math.random() * 5 : (Math.random() - 0.3) * 5;
-        const sp = cfg.style === "lightning" ? 5 + Math.random() * 7 : 3 + Math.random() * 5;
-        const particleColor = cfg.style === "lightning" && k % 3 === 0 ? 0xffffff : cfg.color;
-        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, particleColor, cfg.style === "dark" ? 0.24 : 0.18, 0.45 + Math.random() * 0.2);
-    }
-    // Inel energetic la impact, cu aceeași culoare ca vraja.
-    if (scene) {
-        const geo = new THREE.RingGeometry(0.35, cfg.style === "dark" ? 2.2 : 1.8, 32);
-        const mat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
-        const ring = new THREE.Mesh(geo, mat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(x, y + 0.08, z);
-        scene.add(ring);
-        effects.push({ group: ring, mat: mat, geo: geo, life: 0, max: 0.38, skill: 2 });
+        const up = (Math.random() - 0.3) * 4;
+        const sp = 3 + Math.random() * 4;
+        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, 0x7fd0ff, 0.2, 0.5);
     }
 }
 
-function spawnProjectile(x, y, z, dx, dz, mine, magicId) {
+function spawnProjectile(x, y, z, dx, dz, mine) {
     if (!scene) return;
-    const cfg = MAGIC[magicId] || MAGIC[4];
     const group = new THREE.Group();
-    const coreMat = new THREE.MeshBasicMaterial({ color: cfg.core });
-    const haloMat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.48, blending: THREE.AdditiveBlending, depthWrite: false });
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xdff4ff });
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0x3a9bff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
     const core = new THREE.Mesh(PARTICLE_GEO, coreMat);
-    core.scale.setScalar(cfg.style === "fire" ? 0.34 : 0.28);
+    core.scale.setScalar(0.28);
     const halo = new THREE.Mesh(PARTICLE_GEO, haloMat);
-    halo.scale.setScalar(cfg.style === "dark" ? 0.9 : 0.68);
+    halo.scale.setScalar(0.65);
     group.add(core);
     group.add(halo);
-    if (cfg.style === "dark") {
-        const ringMat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.8, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 6, 20), ringMat);
-        ring.rotation.x = Math.PI / 2;
-        group.add(ring);
-    }
     group.position.set(x, y, z);
     scene.add(group);
-    projectiles.push({ group: group, halo: halo, coreMat: coreMat, haloMat: haloMat, dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine, magicId: magicId || 4, cfg: cfg });
+    projectiles.push({ group: group, halo: halo, coreMat: coreMat, haloMat: haloMat, dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine });
 }
 
 function removeProjectile(i) {
@@ -1163,12 +1034,6 @@ function removeProjectile(i) {
     scene.remove(p.group);
     p.coreMat.dispose();
     p.haloMat.dispose();
-    // Curăță și geometria/materialul inelului folosit de vortexul întunecat.
-    for (let k = 2; k < p.group.children.length; k++) {
-        const child = p.group.children[k];
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-    }
     projectiles.splice(i, 1);
 }
 
@@ -1176,21 +1041,7 @@ function updateProjectiles(delta) {
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         const pos = p.group.position;
-        const cfg = p.cfg || MAGIC[p.magicId] || MAGIC[4];
-        const step = cfg.speed * delta;
-        // Proiectilele jucătorului urmăresc ținta selectată, cu viraj gradual.
-        if (p.mine && p.target && p.target.alive && p.target.root && p.target.root.visible) {
-            const tx = p.target.x - pos.x, tz = p.target.z - pos.z;
-            const tl = Math.hypot(tx, tz);
-            if (tl > 0.001) {
-                const desiredX = tx / tl, desiredZ = tz / tl;
-                const turn = Math.min(1, delta * 5.5);
-                p.dx += (desiredX - p.dx) * turn;
-                p.dz += (desiredZ - p.dz) * turn;
-                const dl = Math.hypot(p.dx, p.dz) || 1;
-                p.dx /= dl; p.dz /= dl;
-            }
-        }
+        const step = SPELL_SPEED * delta;
         pos.x += p.dx * step;
         pos.z += p.dz * step;
         p.dist += step;
@@ -1199,13 +1050,11 @@ function updateProjectiles(delta) {
         const gy = getGroundHeight(pos.x, pos.z, NaN);
         if (Number.isFinite(gy)) pos.y += (gy + 1.3 - pos.y) * Math.min(1, 10 * delta);
 
-        p.halo.scale.setScalar((cfg.style === "dark" ? 0.82 : 0.6) + 0.14 * Math.sin(p.t * (cfg.style === "lightning" ? 42 : 30)));
-        if (p.group.children.length > 2) p.group.children[2].rotation.z += delta * (cfg.style === "dark" ? 7 : 3);
+        p.halo.scale.setScalar(0.6 + 0.12 * Math.sin(p.t * 30));
         p.trail -= delta;
         if (p.trail <= 0) {
             p.trail = 0.03;
-            const trailColor = cfg.style === "lightning" && Math.random() < 0.35 ? 0xffffff : cfg.color;
-            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, trailColor, cfg.style === "fire" ? 0.24 : 0.2, 0.35);
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 0x6ec6ff, 0.2, 0.35);
         }
 
         let hit = false;
@@ -1214,7 +1063,7 @@ function updateProjectiles(delta) {
                 if (!m.alive) continue;
                 const hitR = m.boss ? 3.0 : 1.4;
                 if (Math.hypot(m.x - pos.x, m.z - pos.z) < hitR && Math.abs(m.y + (m.boss ? 2.0 : 1.2) - pos.y) < (m.boss ? 4.0 : 2.6)) {
-                    const r = rollDamage(cfg);
+                    const r = rollDamage(SKILLS[4]);
                     damageMonster(m, r.dmg, r.crit, "spell");
                     hit = true;
                     break;
@@ -1227,10 +1076,11 @@ function updateProjectiles(delta) {
                     const x = rp.rx !== undefined ? rp.rx : rp.x;
                     const z = rp.rz !== undefined ? rp.rz : rp.z;
                     if (Math.hypot(x - pos.x, z - pos.z) < 1.2 && Math.abs(rp.mesh.position.y + 1.0 - pos.y) < 2.4) {
-                        const r = rollDamage(cfg);
+                        const r = rollDamage(SKILLS[4]);
                         spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
                             new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
                         if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
+                        sndHit(r.crit, 0);
                         setRemoteHp(id, rp.hp - r.dmg);
                         hit = true;
                         break;
@@ -1239,50 +1089,41 @@ function updateProjectiles(delta) {
             }
         }
 
-        if (hit || p.dist > cfg.range) {
-            explodeAt(pos.x, pos.y, pos.z, cfg);
+        if (hit || p.dist > SPELL_RANGE) {
+            explodeAt(pos.x, pos.y, pos.z);
             removeProjectile(i);
         }
     }
 }
 
-function fireSpell(magicId) {
+function fireSpell() {
     if (playerDead) return;
-    const target = selectedTarget && selectedTarget.alive ? selectedTarget : (findBestTarget(SPELL_RANGE, false) || findBestTarget(SPELL_RANGE, true));
-    if (target) {
-        setSelectedTarget(target);
-        myPos.rotY = Math.atan2(target.x - myPos.x, target.z - myPos.z);
-    }
     const dx = Math.sin(myPos.rotY), dz = Math.cos(myPos.rotY);
-    const cfg = MAGIC[magicId] || MAGIC[4];
-    spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true, magicId || 4);
-    if (target && projectiles.length) projectiles[projectiles.length - 1].target = target;
-    addChat("Ai lansat: " + cfg.name + (target ? ' asupra țintei selectate' : ''), "#b9dcff");
+    spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true);
+    sndSpellFire();
 }
 
-function useMagic(magicId) {
-    const cfg = MAGIC[magicId];
-    if (!cfg || !characterLoaded || playerDead || !spellAction || nowSec() < rollUntil) return;
+function useSpell() {
+    if (!characterLoaded || playerDead || !spellAction || nowSec() < rollUntil) return;
+    const cfg = SKILLS[4];
     const now = nowSec();
     if (now < cfg.readyAt) return;
-    if (myMP < cfg.mp) { addChat("Mană insuficientă pentru " + cfg.name + "!", "#e74c3c"); return; }
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
 
     myMP -= cfg.mp;
     cfg.readyAt = now + cfg.cd;
-    updateMyMpUI();
     autoFaceNearest(22);
 
     playOneShot(spellAction, SPELL_ANIM_SPEED);
+    sndSpellCast();
     attackStart = now;
     attackUntil = now + spellAction.getClip().duration / SPELL_ANIM_SPEED;
     attackProcedural = false;
-    attackType = magicId;
+    attackType = 4;
 
-    if (socket && socket.connected) socket.emit("playerAttack", { skill: magicId });
-    setTimeout(function() { fireSpell(magicId); }, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: 4 });
+    setTimeout(fireSpell, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
 }
-
-function useSpell() { useMagic(4); }
 
 function doRoll() {
     if (!characterLoaded || playerDead || !rollAction) return;
@@ -1307,6 +1148,7 @@ function doRoll() {
     attackUntil = 0;
     hitUntil = 0;
     playOneShot(rollAction, ROLL.animSpeed);
+    sndRoll();
     rollUntil = now + rollAction.getClip().duration / ROLL.animSpeed;
 }
 
@@ -1314,6 +1156,7 @@ function doRoll() {
 function takeDamage(amount, attackerId) {
     if (playerDead || amount <= 0) return;
     if (nowSec() < rollUntil) {
+        sndDodge();
         spawnFloatingText("Esquivă!", "#7fdbff",
             new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.4, myPos.z), false);
         return;
@@ -1322,6 +1165,7 @@ function takeDamage(amount, attackerId) {
     if (isDefending) amount = Math.max(1, Math.round(amount * 0.3));
     myHP -= amount;
     lastHitTime = nowSec();
+    sndHurt();
     if (hitAction && myHP > 0 && lastHitTime >= attackUntil && lastHitTime - lastHitAnim > 0.7) {
         lastHitAnim = lastHitTime;
         hitUntil = lastHitTime + hitAction.getClip().duration;
@@ -1344,6 +1188,7 @@ function killPlayer(attackerId) {
     jumping = false;
     jumpOffset = 0;
     if (deathAction) playOneShot(deathAction, 1);
+    sndDeath();
     myPos.velocityX = 0;
     myPos.velocityZ = 0;
     addChat("☠️ Ai murit! Revii în 4 secunde.", "#e74c3c");
@@ -1441,6 +1286,7 @@ function pickSpawnPoint() {
 function damageMonster(m, dmg, crit, kind) {
     if (!m.alive || !socket || !socket.connected) return;
     m.flash = 0.15;
+    sndHit(crit, 0);
     spawnFloatingText((crit ? "CRIT " : "") + dmg, crit ? "#ffdd33" : "#ffffff",
         new THREE.Vector3(m.x, m.y + 3.0 * m.scale, m.z), crit);
     m.hp = Math.max(1, m.hp - dmg);   // doar vizual; serverul hotărăște moartea
@@ -1486,6 +1332,7 @@ function updateMonsters(delta, now) {
         if (m.attackCount !== m.attackSeen) {
             m.attackSeen = m.attackCount;
             m.attackT = 0.0001;
+            sndMonsterAttack(dist, m.boss);
         }
         if (m.attackT > 0) {
             m.attackT += delta / 0.5;
@@ -1525,15 +1372,13 @@ function updateCombat(delta, now) {
         cd("cd1", SKILLS[1].readyAt, SKILLS[1].cd);
         cd("cd2", SKILLS[2].readyAt, SKILLS[2].cd);
         cd("cd3", DEFENSE.readyAt, DEFENSE.cd);
-        cd("cd4", MAGIC[4].readyAt, MAGIC[4].cd);
-        cd("cd5", MAGIC[5].readyAt, MAGIC[5].cd);
-        cd("cd6", MAGIC[6].readyAt, MAGIC[6].cd);
-        cd("cd7", MAGIC[7].readyAt, MAGIC[7].cd);
-        cd("cd8", ROLL.readyAt, ROLL.cd);
+        cd("cd4", SKILLS[4].readyAt, SKILLS[4].cd);
+        cd("cd5", ROLL.readyAt, ROLL.cd);
 
         // bara boss-ului
         const boss = monsterById["boss"];
         const bossBar = document.getElementById("boss-bar");
+        musicMode = (boss && boss.alive && Math.hypot(boss.x - myPos.x, boss.z - myPos.z) < 70) ? "boss" : "calm";
         if (boss && boss.alive && Math.hypot(boss.x - myPos.x, boss.z - myPos.z) < 80) {
             bossBar.style.display = "block";
             document.getElementById("boss-fill").style.width = Math.max(0, boss.hp / boss.maxHp * 100) + "%";
@@ -1558,13 +1403,13 @@ function updateCombat(delta, now) {
     }
 
     updateMonsters(delta, now);
-    updateTargetLock(delta);
     updateEffects(delta);
     updateProjectiles(delta);
     updateParticles(delta);
     updateTelegraphs(delta);
     updateLoot(delta, now);
     updateFloatingTexts(delta);
+    updateMinimap(delta);
 }
 
 /* ====================== PROGRES, INVENTAR, SALVARE ====================== */
@@ -1574,8 +1419,6 @@ let gameStarted = false;
 let heroName = "Dark Knight";
 let playerLevel = 1, playerXP = 0;
 let gold = 0, hpPotions = 0, mpPotions = 0, crystals = 0;
-let statPoints = 0;
-const characterStats = { STR: 10, AGI: 10, VIT: 10, ENE: 10 };
 let damageMult = 1;
 let saveTimer = null;
 let potionReadyAt = 0;
@@ -1604,9 +1447,12 @@ function loadGame() {
         mpPotions = num(d.mpPotions, 0, 9999, 0);
         crystals = num(d.crystals, 0, 9999, 0);
         monsterKills = num(d.monsterKills, 0, 1e9, 0);
+        bossKills = num(d.bossKills, 0, 1e9, 0);
         pvpKills = num(d.pvpKills, 0, 1e9, 0);
-        statPoints = num(d.statPoints, 0, 1e6, 0);
-        for (const key of ["STR", "AGI", "VIT", "ENE"]) characterStats[key] = num(d.stats && d.stats[key], 1, 99999, 10);
+        const e = d.equip || {};
+        equip.weapon = num(e.weapon, 0, 4, 0);
+        equip.armor = num(e.armor, 0, 4, 0);
+        equip.amulet = num(e.amulet, 0, 4, 0);
     } catch (e) {
         console.warn("Salvarea nu a putut fi citită:", e);
     }
@@ -1618,7 +1464,8 @@ function saveNow() {
         localStorage.setItem(SAVE_KEY, JSON.stringify({
             name: heroName, level: playerLevel, xp: playerXP, gold: gold,
             hpPotions: hpPotions, mpPotions: mpPotions, crystals: crystals,
-            monsterKills: monsterKills, pvpKills: pvpKills, statPoints: statPoints, stats: characterStats
+            monsterKills: monsterKills, bossKills: bossKills, pvpKills: pvpKills,
+            equip: equip
         }));
     } catch (e) {}
 }
@@ -1639,9 +1486,11 @@ window.addEventListener("beforeunload", saveNow);
 })();
 
 function recalcStats(fullHeal) {
-    maxHP = 1500 + (playerLevel - 1) * 120 + (characterStats.VIT - 10) * 12;
-    maxMP = 700 + (playerLevel - 1) * 40 + (characterStats.ENE - 10) * 8;
-    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + (characterStats.STR - 10) * 0.012);
+    const w = equipBonus("weapon"), a = equipBonus("armor"), m = equipBonus("amulet");
+    maxHP = 1500 + (playerLevel - 1) * 120 + (a ? a.hp : 0);
+    maxMP = 700 + (playerLevel - 1) * 40 + (m ? m.mp : 0);
+    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + (w ? w.dmg : 0));
+    critChance = 0.15 + (m ? m.crit : 0);
     if (fullHeal) { myHP = maxHP; myMP = maxMP; }
     else { myHP = Math.min(myHP, maxHP); myMP = Math.min(myMP, maxMP); }
 }
@@ -1661,62 +1510,6 @@ function updateInvUI() {
     document.getElementById("inv-hp").textContent = hpPotions;
     document.getElementById("inv-mp").textContent = mpPotions;
     document.getElementById("inv-crystal").textContent = crystals;
-    const goldEl = document.getElementById("window-gold");
-    if (goldEl) goldEl.textContent = gold;
-    const grid = document.getElementById("inventory-grid");
-    if (grid) {
-        const items = [
-            {icon:"🧪",name:"Poțiune HP",count:hpPotions,action:"usePotion('hp')",key:"Q"},
-            {icon:"💧",name:"Poțiune MP",count:mpPotions,action:"usePotion('mp')",key:"E"},
-            {icon:"💎",name:"Cristal",count:crystals},
-            {icon:"🪙",name:"Aur",count:gold}
-        ];
-        grid.innerHTML = items.map(it => `<div class="inv-slot"><span class="item-icon">${it.icon}</span><span>${it.name}</span><b>x${it.count}</b>${it.action ? `<button onclick="${it.action}">Folosește (${it.key})</button>` : ""}</div>`).join("");
-        for (let i=items.length;i<24;i++) grid.insertAdjacentHTML("beforeend", '<div class="inv-slot" style="opacity:.35"><span class="item-icon">·</span><span>Slot liber</span></div>');
-    }
-}
-
-function updateStatusUI() {
-    const points = document.getElementById("status-points");
-    const grid = document.getElementById("status-grid");
-    if (!points || !grid) return;
-    points.textContent = "Puncte disponibile: " + statPoints;
-    const labels = {STR:"Forță (STR)",AGI:"Agilitate (AGI)",VIT:"Vitalitate (VIT)",ENE:"Energie (ENE)"};
-    grid.innerHTML = Object.keys(characterStats).map(key => `<div class="stat-row"><span>${labels[key]}</span><strong>${characterStats[key]}</strong><button ${statPoints<=0?"disabled":""} onclick="addStatPoint('${key}')">+1</button></div>`).join("");
-}
-
-function addStatPoint(key) {
-    if (!Object.prototype.hasOwnProperty.call(characterStats,key) || statPoints<=0) return;
-    characterStats[key]++; statPoints--;
-    recalcStats(false); updateStatusUI(); updateNameUI(); saveGame();
-    if (key === "VIT") { myHP = Math.min(maxHP, myHP + 12); updateMyHpUI(); }
-    if (key === "ENE") { myMP = Math.min(maxMP, myMP + 8); updateMyMpUI(); }
-}
-
-function toggleGameWindow(id) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const opening = el.style.display !== "block";
-    document.querySelectorAll(".game-window").forEach(w => w.style.display="none");
-    el.style.display = opening ? "block" : "none";
-    if (opening) { if (id === "inventory-window") updateInvUI(); else updateStatusUI(); }
-}
-
-function drawMiniMap() {
-    const canvas = document.getElementById("mini-map");
-    if (!canvas || !gameStarted) return;
-    const ctx = canvas.getContext("2d");
-    const w=canvas.width, h=canvas.height, cx=w/2, cy=h/2, radius=164, scale=radius/45;
-    ctx.clearRect(0,0,w,h);
-    ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,radius,0,Math.PI*2); ctx.clip();
-    ctx.fillStyle="rgba(25,30,25,.94)"; ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle="rgba(210,180,120,.22)"; ctx.lineWidth=2;
-    for(let r=45;r<=135;r+=45){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();}
-    ctx.beginPath();ctx.moveTo(cx-radius,cy);ctx.lineTo(cx+radius,cy);ctx.moveTo(cx,cy-radius);ctx.lineTo(cx,cy+radius);ctx.stroke();
-    for(const m of monsters){if(!m.alive)continue;const dx=(m.x-myPos.x)*scale, dz=-(m.z-myPos.z)*scale;if(Math.hypot(dx,dz)>radius)continue;ctx.fillStyle=(selectedTarget===m)?"#ff4545":"#e6b35a";ctx.beginPath();ctx.arc(cx+dx,cy+dz,selectedTarget===m?8:5,0,Math.PI*2);ctx.fill();}
-    for(const id in remotePlayers){const rp=remotePlayers[id];if(!rp.mesh)continue;const dx=(rp.x-myPos.x)*scale,dz=-(rp.z-myPos.z)*scale;if(Math.hypot(dx,dz)<radius){ctx.fillStyle="#59c7ff";ctx.beginPath();ctx.arc(cx+dx,cy+dz,5,0,Math.PI*2);ctx.fill();}}
-    ctx.translate(cx,cy);ctx.rotate(myPos.rotY);ctx.fillStyle="#ffffff";ctx.beginPath();ctx.moveTo(0,-13);ctx.lineTo(-9,10);ctx.lineTo(0,6);ctx.lineTo(9,10);ctx.closePath();ctx.fill();
-    ctx.restore();
 }
 
 function sendHp() {
@@ -1726,6 +1519,7 @@ function sendHp() {
 }
 
 function levelUpEffect() {
+    sndLevelUp();
     spawnFloatingText("LEVEL UP!", "#ffd700",
         new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1.0, myPos.z), true);
     spawnSlashEffect(myPos.x, myPos.y, myPos.z, 0, 2);
@@ -1745,7 +1539,6 @@ function gainXP(amount) {
     while (playerLevel < MAX_LEVEL && playerXP >= xpForLevel(playerLevel)) {
         playerXP -= xpForLevel(playerLevel);
         playerLevel++;
-        statPoints += 5;
         leveled = true;
     }
     if (playerLevel >= MAX_LEVEL) playerXP = Math.min(playerXP, xpForLevel(MAX_LEVEL) - 1);
@@ -1754,7 +1547,6 @@ function gainXP(amount) {
         levelUpEffect();
         addChat("⭐ Nivel " + playerLevel + "! Viață, mană și daune au crescut.", "#ffd700");
         updateNameUI();
-        updateStatusUI();
         if (socket && socket.connected) {
             socket.emit("levelUpdate", { level: playerLevel });
             sendHp();
@@ -1762,6 +1554,7 @@ function gainXP(amount) {
     }
     updateXpUI();
     saveGame();
+    sendStatsSoon();
 }
 
 function usePotion(kind) {
@@ -1785,6 +1578,7 @@ function usePotion(kind) {
         spawnFloatingText("+" + gain, "#5db2ff", new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.6, myPos.z), false);
     }
     potionReadyAt = now + 1;
+    sndPotion();
     updateMyHpUI();
     updateMyMpUI();
     updateInvUI();
@@ -1805,6 +1599,7 @@ function doJump() {
     jumping = true;
     jumpVel = JUMP_SPEED;
     jumpOffset = 0.001;
+    sndJump();
     if (jumpAction && nowSec() >= attackUntil) playOneShot(jumpAction, 1);
 }
 
@@ -1897,17 +1692,21 @@ function applyLootGranted(d) {
     const pos = new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.5, myPos.z);
     if (d.type === "gold") {
         gold += amount;
+        sndCoin();
         spawnFloatingText("+" + amount + " aur", "#ffd34d", pos, false);
     } else if (d.type === "hp") {
         hpPotions += amount;
+        sndPickup();
         spawnFloatingText("Poțiune de viață", "#ff6b6b", pos, false);
         addChat("🧪 Ai găsit o poțiune de viață.", "#ff9a9a");
     } else if (d.type === "mp") {
         mpPotions += amount;
+        sndPickup();
         spawnFloatingText("Poțiune de mană", "#6bb8ff", pos, false);
         addChat("💧 Ai găsit o poțiune de mană.", "#8ec9ff");
     } else if (d.type === "crystal") {
         crystals += amount;
+        sndCrystal();
         spawnFloatingText("Cristal!", "#c792ff", pos, true);
         addChat("💎 Ai găsit un cristal rar!", "#c792ff");
     }
@@ -1927,7 +1726,7 @@ function addTelegraph(x, z, r, t) {
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(x, y, z);
     scene.add(mesh);
-    telegraphs.push({ mesh: mesh, geo: geo, mat: mat, life: 0, max: t });
+    telegraphs.push({ mesh: mesh, geo: geo, mat: mat, life: 0, max: t, x: x, z: z, r: r });
     addChat("⚠️ Lordul Infernului pregătește o lovitură în sol! Fugi din cerc sau rostogolește-te (C)!", "#ff8a65");
 }
 
@@ -2011,6 +1810,7 @@ function addMonsterFromServer(info) {
 }
 
 function killMonsterVisual(m) {
+    sndMonsterDie(Math.hypot(m.x - myPos.x, m.z - myPos.z), m.boss);
     m.alive = false;
     m.deathT = 0;
     m.bar.sprite.visible = false;
@@ -2103,7 +1903,10 @@ function clearRemotePlayers() {
 
 function sendJoin() {
     if (!socket || !socket.connected) return;
-    socket.emit("join", { name: heroName, level: playerLevel, maxHp: maxHP, x: myPos.x * 20, y: myPos.z * 20 });
+    socket.emit("join", {
+        name: heroName, level: playerLevel, maxHp: maxHP, x: myPos.x * 20, y: myPos.z * 20,
+        key: getPlayerKey(), xp: playerXP, kills: monsterKills, bossKills: bossKills, pvp: pvpKills
+    });
     lastHpSent = Math.round(myHP);
 }
 
@@ -2167,10 +1970,10 @@ function setupSocket() {
         socket.on("playerAttacked", function(data) {
             const rp = remotePlayers[data && data.id];
             if (!rp || !rp.mesh) return;
-            if (data.skill >= 4 && data.skill <= 7) {
+            if (data.skill === 4) {
                 const ry = rp.mesh.rotation.y;
                 spawnProjectile(rp.mesh.position.x + Math.sin(ry) * 0.9, rp.mesh.position.y + 1.3, rp.mesh.position.z + Math.cos(ry) * 0.9,
-                    Math.sin(ry), Math.cos(ry), false, data.skill);
+                    Math.sin(ry), Math.cos(ry), false);
             } else {
                 spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, rp.mesh.rotation.y, data.skill || 1);
             }
@@ -2180,6 +1983,8 @@ function setupSocket() {
             updateKillUI();
             addChat("⚔️ Ai învins un jucător!", "#2ecc71");
             saveGame();
+            sendStatsSoon();
+            sndPickup();
         });
 
         // ---- lumea (monștri, boss, drop-uri) ----
@@ -2200,20 +2005,887 @@ function setupSocket() {
             if (!d) return;
             if (d.killed) {
                 monsterKills++;
+                if (d.boss) bossKills++;
                 updateKillUI();
             }
             gainXP(Number(d.xp) || 0);
             addChat((d.killed ? "☠️ Ai învins " : "✨ Ajutor la ") + d.name + " (+" + d.xp + " XP)", d.boss ? "#ffd966" : "#2ecc71");
         });
-        socket.on("lootDrop", addLootItem);
+        socket.on("lootDrop", function(l) {
+            addLootItem(l);
+            if (l) sndDrop(Math.hypot(l.x - myPos.x, l.z - myPos.z));
+        });
         socket.on("lootGone", function(d) { if (d) removeLootItem(d.id); });
         socket.on("lootGranted", applyLootGranted);
-        socket.on("bossSlamWarn", function(d) { addTelegraph(d.x, d.z, d.r, d.t); });
-        socket.on("bossSlam", function(d) { spawnShockwave(d.x, d.z, d.r); });
+        socket.on("bossSlamWarn", function(d) { addTelegraph(d.x, d.z, d.r, d.t); sndBossWarn(); });
+        socket.on("bossSlam", function(d) { spawnShockwave(d.x, d.z, d.r); sndBossSlam(Math.hypot(d.x - myPos.x, d.z - myPos.z)); });
         socket.on("serverMessage", function(d) { if (d) addChat("📢 " + d.text, "#ffd966"); });
+        socket.on("leaderboard", renderLeaderboard);
     } catch (e) {
         console.warn("Eroare la conectarea la server:", e);
     }
+}
+
+/* ====================== ECHIPAMENT ====================== */
+const EQUIP = {
+    weapon: { label: "Armă", tiers: [
+        { name: "Sabie de fier",     dmg: 0.12, price: 150,   lvl: 1,  crystals: 0 },
+        { name: "Sabie de oțel",     dmg: 0.28, price: 700,   lvl: 5,  crystals: 0 },
+        { name: "Sabie runică",      dmg: 0.50, price: 2500,  lvl: 10, crystals: 0 },
+        { name: "Sabia Infernului",  dmg: 0.85, price: 8000,  lvl: 20, crystals: 3 }
+    ] },
+    armor: { label: "Armură", tiers: [
+        { name: "Armură de piele",   hp: 300,  price: 120,   lvl: 1,  crystals: 0 },
+        { name: "Zale de oțel",      hp: 800,  price: 600,   lvl: 5,  crystals: 0 },
+        { name: "Platoșă runică",    hp: 1700, price: 2200,  lvl: 10, crystals: 0 },
+        { name: "Armura Infernului", hp: 3200, price: 7000,  lvl: 20, crystals: 2 }
+    ] },
+    amulet: { label: "Amuletă", tiers: [
+        { name: "Amuletă de bronz",  mp: 100, crit: 0.02, price: 300,   lvl: 1,  crystals: 0 },
+        { name: "Amuletă de argint", mp: 250, crit: 0.04, price: 1200,  lvl: 5,  crystals: 0 },
+        { name: "Amuletă de aur",    mp: 500, crit: 0.07, price: 4000,  lvl: 12, crystals: 0 },
+        { name: "Inima Infernului",  mp: 900, crit: 0.12, price: 12000, lvl: 20, crystals: 5 }
+    ] }
+};
+const POTION_PRICE = 40;
+const CRYSTAL_SELL = 200;
+
+let equip = { weapon: 0, armor: 0, amulet: 0 };
+let critChance = 0.15;
+let bossKills = 0;
+
+function equipBonus(slot) {
+    const t = equip[slot];
+    return t > 0 ? EQUIP[slot].tiers[t - 1] : null;
+}
+
+/* ====================== SUNET ȘI MUZICĂ (sintetizate, fără fișiere) ====================== */
+let sndCtx = null, sndMaster = null, sndSfxGain = null, sndMusicGain = null, sndMusicBus = null, sndNoiseBuf = null;
+let sfxOn = true, musicOn = true;
+let musicMode = "calm";
+let musicTimer = null, musicNextMelody = 0, musicNextBeat = 0, musicBeatIdx = 0;
+const sndLast = {};
+const MUSIC_NOTES = [110.0, 116.54, 130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 233.08, 261.63, 293.66];
+
+(function() {
+    try {
+        const d = JSON.parse(localStorage.getItem("mu_audio") || "null");
+        if (d) { sfxOn = d.sfx !== false; musicOn = d.music !== false; }
+    } catch (e) {}
+})();
+
+function sndSavePrefs() {
+    try { localStorage.setItem("mu_audio", JSON.stringify({ sfx: sfxOn, music: musicOn })); } catch (e) {}
+}
+
+function updateAudioButtons() {
+    const m = document.getElementById("btn-music"), f = document.getElementById("btn-sfx");
+    if (m) m.textContent = musicOn ? "🎵" : "🔇";
+    if (f) f.textContent = sfxOn ? "🔊" : "🔈";
+    if (m) m.title = "Muzică (M)";
+    if (f) f.title = "Efecte sonore (N)";
+}
+
+function sndInit() {
+    if (sndCtx) { sndResume(); return; }
+    try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        sndCtx = new AC();
+        sndMaster = sndCtx.createGain();
+        sndMaster.gain.value = 0.9;
+        sndMaster.connect(sndCtx.destination);
+        sndSfxGain = sndCtx.createGain();
+        sndSfxGain.gain.value = sfxOn ? 0.8 : 0;
+        sndSfxGain.connect(sndMaster);
+        sndMusicGain = sndCtx.createGain();
+        sndMusicGain.gain.value = musicOn ? 0.5 : 0;
+        sndMusicGain.connect(sndMaster);
+
+        const len = Math.floor(sndCtx.sampleRate * 2);
+        sndNoiseBuf = sndCtx.createBuffer(1, len, sndCtx.sampleRate);
+        const data = sndNoiseBuf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+
+        sndStartMusic();
+    } catch (e) {
+        console.warn("Sunetul nu este disponibil:", e);
+        sndCtx = null;
+    }
+}
+
+function sndResume() {
+    if (sndCtx && sndCtx.state === "suspended") sndCtx.resume();
+}
+window.addEventListener("pointerdown", sndResume);
+window.addEventListener("keydown", sndResume);
+
+function sndAllow(name, gap) {
+    const t = performance.now();
+    if (sndLast[name] && t - sndLast[name] < gap) return false;
+    sndLast[name] = t;
+    return true;
+}
+
+function sndVol(dist, maxDist) { return Math.max(0, 1 - dist / maxDist); }
+
+function sndTone(freq, dur, o) {
+    if (!sndCtx || !sfxOn) return;
+    try {
+        o = o || {};
+        const vol = (o.vol === undefined ? 0.2 : o.vol) * (o.scale === undefined ? 1 : o.scale);
+        if (vol <= 0.0005) return;
+        const t0 = sndCtx.currentTime + (o.delay || 0);
+        const osc = sndCtx.createOscillator();
+        osc.type = o.type || "sine";
+        osc.frequency.setValueAtTime(freq, t0);
+        if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.to), t0 + dur);
+        const g = sndCtx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + (o.attack || 0.006));
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.connect(g);
+        g.connect(o.dest || sndSfxGain);
+        osc.start(t0);
+        osc.stop(t0 + dur + 0.05);
+    } catch (e) {}
+}
+
+function sndNoise(dur, o) {
+    if (!sndCtx || !sfxOn || !sndNoiseBuf) return;
+    try {
+        o = o || {};
+        const vol = (o.vol === undefined ? 0.2 : o.vol) * (o.scale === undefined ? 1 : o.scale);
+        if (vol <= 0.0005) return;
+        const t0 = sndCtx.currentTime + (o.delay || 0);
+        const src = sndCtx.createBufferSource();
+        src.buffer = sndNoiseBuf;
+        const f = sndCtx.createBiquadFilter();
+        f.type = o.filter || "lowpass";
+        f.frequency.setValueAtTime(o.freq || 1000, t0);
+        if (o.to) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t0 + dur);
+        f.Q.value = o.q || 1;
+        const g = sndCtx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        src.connect(f);
+        f.connect(g);
+        g.connect(o.dest || sndSfxGain);
+        src.start(t0, Math.random() * 1.5);
+        src.stop(t0 + dur + 0.05);
+    } catch (e) {}
+}
+
+function sndSwing(stage) {
+    if (!sndAllow("swing", 80)) return;
+    const big = stage === 2;
+    sndNoise(big ? 0.45 : 0.2, { filter: "bandpass", freq: big ? 500 : 900, to: big ? 2600 : 3400, q: 0.9, vol: big ? 0.3 : 0.24 });
+    sndTone(big ? 150 : 220, 0.14, { type: "triangle", to: 90, vol: 0.08 });
+}
+function sndHit(crit, dist) {
+    const sc = sndVol(dist || 0, 60);
+    if (sc <= 0 || !sndAllow("hit", 40)) return;
+    sndNoise(0.09, { filter: "bandpass", freq: 700, q: 1.2, vol: 0.28, scale: sc });
+    sndTone(150, 0.12, { type: "sine", to: 55, vol: 0.32, scale: sc });
+    if (crit) {
+        sndTone(1250, 0.18, { type: "triangle", to: 1900, vol: 0.12, scale: sc });
+        sndTone(2500, 0.12, { type: "sine", vol: 0.05, delay: 0.02, scale: sc });
+    }
+}
+function sndSpellCast() {
+    sndTone(260, 0.4, { type: "sine", to: 880, vol: 0.12 });
+    sndTone(390, 0.4, { type: "triangle", to: 1320, vol: 0.07 });
+    sndNoise(0.35, { filter: "highpass", freq: 2000, to: 6000, vol: 0.05 });
+}
+function sndSpellFire() {
+    sndNoise(0.3, { filter: "bandpass", freq: 600, to: 2200, q: 1.5, vol: 0.25 });
+    sndTone(480, 0.25, { type: "sawtooth", to: 180, vol: 0.1 });
+}
+function sndImpact(dist) {
+    const sc = sndVol(dist, 55);
+    if (sc <= 0 || !sndAllow("impact", 60)) return;
+    sndNoise(0.3, { filter: "lowpass", freq: 1800, to: 200, vol: 0.3, scale: sc });
+    sndTone(110, 0.3, { type: "sine", to: 40, vol: 0.35, scale: sc });
+}
+function sndRoll() {
+    sndNoise(0.4, { filter: "lowpass", freq: 1400, to: 300, vol: 0.16 });
+    sndTone(130, 0.25, { type: "triangle", to: 70, vol: 0.06 });
+}
+function sndJump() {
+    sndTone(200, 0.14, { type: "triangle", to: 420, vol: 0.12 });
+    sndNoise(0.08, { filter: "highpass", freq: 1500, vol: 0.06 });
+}
+function sndLand() {
+    if (!sndAllow("land", 120)) return;
+    sndTone(90, 0.14, { type: "sine", to: 45, vol: 0.2 });
+    sndNoise(0.07, { filter: "lowpass", freq: 500, vol: 0.12 });
+}
+function sndShield() {
+    sndTone(440, 0.6, { type: "sine", vol: 0.08 });
+    sndTone(659, 0.6, { type: "sine", vol: 0.06, delay: 0.03 });
+    sndTone(880, 0.5, { type: "triangle", to: 1320, vol: 0.05, delay: 0.06 });
+}
+function sndDodge() {
+    sndNoise(0.15, { filter: "bandpass", freq: 2500, to: 900, vol: 0.12 });
+    sndTone(900, 0.12, { type: "sine", to: 1500, vol: 0.06 });
+}
+function sndHurt() {
+    if (!sndAllow("hurt", 90)) return;
+    sndTone(190, 0.2, { type: "sawtooth", to: 80, vol: 0.17 });
+    sndNoise(0.12, { filter: "lowpass", freq: 900, vol: 0.18 });
+}
+function sndDeath() {
+    sndTone(220, 1.4, { type: "sawtooth", to: 35, vol: 0.2, attack: 0.05 });
+    sndNoise(1.0, { filter: "lowpass", freq: 900, to: 80, vol: 0.25 });
+}
+function sndLevelUp() {
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach(function(f, i) {
+        sndTone(f, 0.35, { type: "triangle", vol: 0.14, delay: i * 0.09 });
+        sndTone(f * 2, 0.3, { type: "sine", vol: 0.05, delay: i * 0.09 });
+    });
+}
+function sndCoin() {
+    sndTone(1318.5, 0.08, { type: "square", vol: 0.06 });
+    sndTone(1760, 0.22, { type: "square", vol: 0.06, delay: 0.07 });
+}
+function sndPickup() {
+    sndTone(600, 0.12, { type: "sine", to: 1000, vol: 0.14 });
+    sndTone(900, 0.15, { type: "sine", to: 1400, vol: 0.1, delay: 0.08 });
+}
+function sndCrystal() {
+    [1568, 1976, 2349].forEach(function(f, i) { sndTone(f, 0.5, { type: "sine", vol: 0.1, delay: i * 0.08 }); });
+    sndTone(784, 0.8, { type: "triangle", vol: 0.08 });
+}
+function sndPotion() {
+    sndNoise(0.25, { filter: "bandpass", freq: 500, to: 1200, q: 2, vol: 0.12 });
+    sndTone(350, 0.18, { type: "sine", to: 220, vol: 0.1 });
+    sndTone(300, 0.18, { type: "sine", to: 200, vol: 0.1, delay: 0.12 });
+}
+function sndBuy() { sndCoin(); setTimeout(sndCoin, 120); }
+function sndError() { sndTone(130, 0.18, { type: "square", vol: 0.08 }); }
+function sndClick() { sndTone(900, 0.04, { type: "square", vol: 0.04 }); }
+function sndDrop(dist) {
+    const sc = sndVol(dist, 40);
+    if (sc <= 0 || !sndAllow("drop", 80)) return;
+    sndTone(1500, 0.1, { type: "sine", vol: 0.07, scale: sc });
+    sndTone(2100, 0.12, { type: "sine", vol: 0.05, delay: 0.05, scale: sc });
+}
+function sndBossWarn() {
+    sndTone(70, 1.5, { type: "sawtooth", to: 110, vol: 0.18, attack: 0.2 });
+    [0, 0.5, 1.0].forEach(function(d) { sndTone(440, 0.16, { type: "square", vol: 0.06, delay: d }); });
+}
+function sndBossSlam(dist) {
+    const sc = sndVol(dist, 90);
+    sndTone(95, 0.9, { type: "sine", to: 28, vol: 0.55, scale: sc });
+    sndNoise(0.9, { filter: "lowpass", freq: 700, to: 60, vol: 0.5, scale: sc });
+}
+function sndMonsterDie(dist, boss) {
+    const sc = sndVol(dist, 55);
+    sndTone(boss ? 100 : 170, boss ? 1.2 : 0.45, { type: "sawtooth", to: boss ? 30 : 55, vol: boss ? 0.3 : 0.16, scale: sc });
+    sndNoise(boss ? 0.8 : 0.3, { filter: "lowpass", freq: 1200, to: 100, vol: boss ? 0.3 : 0.16, scale: sc });
+}
+function sndMonsterAttack(dist, boss) {
+    const sc = sndVol(dist, 30);
+    if (sc <= 0 || !sndAllow("mattack", 110)) return;
+    sndNoise(0.12, { filter: "bandpass", freq: 350, q: 2, vol: 0.12, scale: sc });
+    sndTone(boss ? 70 : 100, 0.2, { type: "sawtooth", to: boss ? 50 : 70, vol: 0.07, scale: sc });
+}
+
+function sndStartMusic() {
+    const pad = sndCtx.createGain();
+    pad.gain.value = 0.05;
+    pad.connect(sndMusicGain);
+    const filt = sndCtx.createBiquadFilter();
+    filt.type = "lowpass";
+    filt.frequency.value = 320;
+    filt.Q.value = 2;
+    filt.connect(pad);
+    [55, 82.41, 110, 110.7].forEach(function(f, i) {
+        const o = sndCtx.createOscillator();
+        o.type = i < 2 ? "sawtooth" : "triangle";
+        o.frequency.value = f;
+        o.detune.value = (i - 1.5) * 5;
+        o.connect(filt);
+        o.start();
+    });
+    const lfo = sndCtx.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lg = sndCtx.createGain();
+    lg.gain.value = 140;
+    lfo.connect(lg);
+    lg.connect(filt.frequency);
+    lfo.start();
+
+    sndMusicBus = sndCtx.createGain();
+    sndMusicBus.gain.value = 1;
+    sndMusicBus.connect(sndMusicGain);
+    const delay = sndCtx.createDelay(2);
+    delay.delayTime.value = 0.52;
+    const fb = sndCtx.createGain();
+    fb.gain.value = 0.42;
+    const lp = sndCtx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 1800;
+    sndMusicBus.connect(delay);
+    delay.connect(lp);
+    lp.connect(fb);
+    fb.connect(delay);
+    lp.connect(sndMusicGain);
+
+    musicNextMelody = sndCtx.currentTime + 2;
+    musicNextBeat = sndCtx.currentTime + 1;
+    musicTimer = setInterval(sndMusicTick, 120);
+}
+
+function sndMelodyNote(t) {
+    const f = MUSIC_NOTES[Math.floor(Math.random() * MUSIC_NOTES.length)] * (Math.random() < 0.25 ? 2 : 1);
+    const o = sndCtx.createOscillator();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(f, t);
+    const g = sndCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.11, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+    o.connect(g);
+    g.connect(sndMusicBus);
+    o.start(t);
+    o.stop(t + 3);
+}
+
+function sndBossBeat(t, i) {
+    // tobă
+    const k = sndCtx.createOscillator();
+    k.type = "sine";
+    k.frequency.setValueAtTime(120, t);
+    k.frequency.exponentialRampToValueAtTime(45, t + 0.18);
+    const kg = sndCtx.createGain();
+    kg.gain.setValueAtTime(0.5, t);
+    kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    k.connect(kg);
+    kg.connect(sndMusicGain);
+    k.start(t);
+    k.stop(t + 0.25);
+    // bas
+    const bass = [55, 55, 65.41, 58.27][i % 4];
+    const b = sndCtx.createOscillator();
+    b.type = "sawtooth";
+    b.frequency.setValueAtTime(bass, t);
+    const bf = sndCtx.createBiquadFilter();
+    bf.type = "lowpass";
+    bf.frequency.value = 260;
+    const bg = sndCtx.createGain();
+    bg.gain.setValueAtTime(0.0001, t);
+    bg.gain.linearRampToValueAtTime(0.16, t + 0.02);
+    bg.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    b.connect(bf);
+    bf.connect(bg);
+    bg.connect(sndMusicGain);
+    b.start(t);
+    b.stop(t + 0.45);
+    // sunet metalic pe contratimp
+    if (sndNoiseBuf) {
+        const n = sndCtx.createBufferSource();
+        n.buffer = sndNoiseBuf;
+        const nf = sndCtx.createBiquadFilter();
+        nf.type = "highpass";
+        nf.frequency.value = 6000;
+        const ng = sndCtx.createGain();
+        ng.gain.setValueAtTime(0.0001, t + 0.25);
+        ng.gain.linearRampToValueAtTime(0.05, t + 0.26);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+        n.connect(nf);
+        nf.connect(ng);
+        ng.connect(sndMusicGain);
+        n.start(t + 0.25, Math.random());
+        n.stop(t + 0.35);
+    }
+}
+
+function sndMusicTick() {
+    if (!sndCtx || !musicOn) return;
+    try {
+        const now = sndCtx.currentTime;
+        const ahead = now + 0.3;
+        if (musicNextMelody < ahead) {
+            const t = Math.max(musicNextMelody, now);
+            sndMelodyNote(t);
+            musicNextMelody = t + (musicMode === "boss" ? 0.9 + Math.random() * 0.8 : 2.2 + Math.random() * 3.2);
+        }
+        if (musicMode === "boss") {
+            while (musicNextBeat < ahead) {
+                sndBossBeat(Math.max(musicNextBeat, now), musicBeatIdx++);
+                musicNextBeat += 0.5;
+            }
+        } else {
+            musicNextBeat = Math.max(musicNextBeat, now);
+        }
+    } catch (e) {}
+}
+
+function toggleMusic() {
+    musicOn = !musicOn;
+    if (sndMusicGain) sndMusicGain.gain.setTargetAtTime(musicOn ? 0.5 : 0, sndCtx.currentTime, 0.15);
+    if (musicOn && sndCtx) { musicNextMelody = sndCtx.currentTime + 1; musicNextBeat = sndCtx.currentTime + 0.5; }
+    updateAudioButtons();
+    sndSavePrefs();
+}
+
+function toggleSfx() {
+    sfxOn = !sfxOn;
+    if (sndSfxGain) sndSfxGain.gain.setTargetAtTime(sfxOn ? 0.8 : 0, sndCtx.currentTime, 0.05);
+    updateAudioButtons();
+    sndSavePrefs();
+    if (sfxOn) sndClick();
+}
+
+/* ====================== MAGAZIN ====================== */
+let shopOpen = false, lbOpen = false, shopTab = "weapon", lbTimer = null;
+
+function panelOpen() { return shopOpen || lbOpen; }
+
+function closePanels() {
+    closeShop();
+    closeLeaderboard();
+}
+
+function toggleShop() { if (shopOpen) closeShop(); else openShop(); }
+
+function openShop() {
+    if (!gameStarted || playerDead) return;
+    closeLeaderboard();
+    shopOpen = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    document.getElementById("shop-panel").style.display = "block";
+    renderShop();
+    sndClick();
+}
+
+function closeShop() {
+    if (!shopOpen) return;
+    shopOpen = false;
+    document.getElementById("shop-panel").style.display = "none";
+}
+
+function tierBonusText(slot, t) {
+    if (slot === "weapon") return "+" + Math.round(t.dmg * 100) + "% daune";
+    if (slot === "armor") return "+" + t.hp + " viață";
+    return "+" + t.mp + " mană, +" + Math.round(t.crit * 100) + "% șansă critică";
+}
+
+function renderShop() {
+    const body = document.getElementById("shop-body");
+    document.getElementById("shop-gold").textContent = "💰 " + gold + "    💎 " + crystals;
+    document.querySelectorAll("#shop-tabs button").forEach(function(b) {
+        b.classList.toggle("active", b.dataset.tab === shopTab);
+    });
+
+    let html = "";
+    if (EQUIP[shopTab]) {
+        EQUIP[shopTab].tiers.forEach(function(t, i) {
+            const tier = i + 1;
+            let state;
+            if (tier < equip[shopTab]) {
+                state = '<span class="shop-tag">Înlocuit</span>';
+            } else if (tier === equip[shopTab]) {
+                state = '<span class="shop-tag ok">✔ Echipat</span>';
+            } else if (tier === equip[shopTab] + 1) {
+                const need = [];
+                if (playerLevel < t.lvl) need.push("nivel " + t.lvl);
+                if (gold < t.price) need.push("aur");
+                if ((t.crystals || 0) > crystals) need.push("cristale");
+                state = need.length
+                    ? '<button class="shop-btn" disabled>Necesită: ' + need.join(", ") + '</button>'
+                    : '<button class="shop-btn" data-act="buy" data-slot="' + shopTab + '">Cumpără</button>';
+            } else {
+                state = '<span class="shop-tag lock">🔒 Treapta anterioară întâi</span>';
+            }
+            const price = t.price + " aur" + (t.crystals ? " + " + t.crystals + " 💎" : "");
+            html += '<div class="shop-row"><div><b>' + t.name + '</b><small>' + tierBonusText(shopTab, t) +
+                    ' · nivel ' + t.lvl + '</small></div><div class="shop-price">' + price + '</div><div>' + state + '</div></div>';
+        });
+    } else if (shopTab === "potions") {
+        html += '<div class="shop-row"><div><b>🧪 Poțiune de viață</b><small>Vindecă 35% din viață · ai ' + hpPotions + '</small></div>' +
+                '<div class="shop-price">' + POTION_PRICE + ' aur</div><div>' +
+                '<button class="shop-btn" data-act="potion" data-kind="hp" data-n="1"' + (gold < POTION_PRICE ? " disabled" : "") + '>x1</button> ' +
+                '<button class="shop-btn" data-act="potion" data-kind="hp" data-n="5"' + (gold < POTION_PRICE * 5 ? " disabled" : "") + '>x5</button></div></div>';
+        html += '<div class="shop-row"><div><b>💧 Poțiune de mană</b><small>Dă înapoi 40% din mană · ai ' + mpPotions + '</small></div>' +
+                '<div class="shop-price">' + POTION_PRICE + ' aur</div><div>' +
+                '<button class="shop-btn" data-act="potion" data-kind="mp" data-n="1"' + (gold < POTION_PRICE ? " disabled" : "") + '>x1</button> ' +
+                '<button class="shop-btn" data-act="potion" data-kind="mp" data-n="5"' + (gold < POTION_PRICE * 5 ? " disabled" : "") + '>x5</button></div></div>';
+    } else {
+        html += '<div class="shop-row"><div><b>💎 Cristal</b><small>Ai ' + crystals + ' · cristalele sunt necesare pentru echipamentul Infernului</small></div>' +
+                '<div class="shop-price">' + CRYSTAL_SELL + ' aur</div><div>' +
+                '<button class="shop-btn" data-act="sell"' + (crystals < 1 ? " disabled" : "") + '>Vinde 1</button></div></div>';
+    }
+    body.innerHTML = html;
+}
+
+function buyTier(slot) {
+    const def = EQUIP[slot];
+    if (!def) return;
+    const tier = equip[slot] + 1;
+    const t = def.tiers[tier - 1];
+    if (!t) return;
+    if (playerLevel < t.lvl || gold < t.price || (t.crystals || 0) > crystals) { sndError(); return; }
+
+    const oldHP = maxHP, oldMP = maxMP;
+    gold -= t.price;
+    crystals -= (t.crystals || 0);
+    equip[slot] = tier;
+    recalcStats(false);
+    myHP = Math.min(maxHP, myHP + Math.max(0, maxHP - oldHP));
+    myMP = Math.min(maxMP, myMP + Math.max(0, maxMP - oldMP));
+    updateMyHpUI();
+    updateMyMpUI();
+    updateInvUI();
+    sendHp();
+    sndBuy();
+    addChat("🛒 Ai cumpărat: " + t.name + " (" + tierBonusText(slot, t) + ")", "#ffd966");
+    saveNow();
+    renderShop();
+}
+
+function buyPotion(kind, n) {
+    const cost = POTION_PRICE * n;
+    if (gold < cost) { sndError(); return; }
+    gold -= cost;
+    if (kind === "hp") hpPotions += n; else mpPotions += n;
+    updateInvUI();
+    sndBuy();
+    saveNow();
+    renderShop();
+}
+
+function sellCrystal() {
+    if (crystals < 1) { sndError(); return; }
+    crystals--;
+    gold += CRYSTAL_SELL;
+    updateInvUI();
+    sndCoin();
+    saveNow();
+    renderShop();
+}
+
+function onShopClick(e) {
+    e.stopPropagation();
+    const tab = e.target.closest("[data-tab]");
+    if (tab) { shopTab = tab.dataset.tab; sndClick(); renderShop(); return; }
+    const b = e.target.closest("[data-act]");
+    if (!b || b.disabled) return;
+    const act = b.dataset.act;
+    if (act === "close") closeShop();
+    else if (act === "buy") buyTier(b.dataset.slot);
+    else if (act === "potion") buyPotion(b.dataset.kind, Math.max(1, Math.min(5, Number(b.dataset.n) || 1)));
+    else if (act === "sell") sellCrystal();
+}
+
+/* ====================== CLASAMENT ====================== */
+let statsTimer = null;
+
+function getPlayerKey() {
+    try {
+        let k = localStorage.getItem("mu_player_key");
+        if (!k || !/^[A-Za-z0-9-]{8,48}$/.test(k)) {
+            k = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+                : (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2));
+            localStorage.setItem("mu_player_key", k);
+        }
+        return k;
+    } catch (e) {
+        return null;
+    }
+}
+
+function sendStats() {
+    if (!socket || !socket.connected) return;
+    socket.emit("stats", { level: playerLevel, xp: playerXP, kills: monsterKills, bossKills: bossKills, pvp: pvpKills });
+}
+
+function sendStatsSoon() {
+    if (statsTimer) return;
+    statsTimer = setTimeout(function() { statsTimer = null; sendStats(); }, 2000);
+}
+
+function escapeHtml(v) {
+    return String(v).replace(/[&<>"']/g, function(c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+}
+
+function toggleLeaderboard() { if (lbOpen) closeLeaderboard(); else openLeaderboard(); }
+
+function openLeaderboard() {
+    if (!gameStarted) return;
+    closeShop();
+    lbOpen = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    document.getElementById("lb-panel").style.display = "block";
+    sendStats();
+    requestLeaderboard();
+    if (lbTimer) clearInterval(lbTimer);
+    lbTimer = setInterval(requestLeaderboard, 5000);
+    sndClick();
+}
+
+function closeLeaderboard() {
+    if (!lbOpen) return;
+    lbOpen = false;
+    document.getElementById("lb-panel").style.display = "none";
+    if (lbTimer) { clearInterval(lbTimer); lbTimer = null; }
+}
+
+function requestLeaderboard() {
+    if (socket && socket.connected) socket.emit("getLeaderboard");
+    else document.getElementById("lb-body").textContent = "Fără conexiune la server.";
+}
+
+function renderLeaderboard(d) {
+    const body = document.getElementById("lb-body");
+    if (!d || !d.top) { body.textContent = "Fără date."; return; }
+    let html = '<table class="lb-table"><tr><th>#</th><th>Erou</th><th>Nivel</th><th>Monștri</th><th>Boss</th><th>PvP</th></tr>';
+    d.top.forEach(function(r) {
+        html += '<tr class="' + (r.me ? "me" : "") + '"><td>' + r.rank + '</td><td>' +
+                (r.online ? '<span class="lb-dot">●</span>' : "") + escapeHtml(r.name) + '</td><td>' + r.level +
+                '</td><td>' + r.kills + '</td><td>' + r.bossKills + '</td><td>' + r.pvp + '</td></tr>';
+    });
+    html += "</table>";
+    if (!d.top.length) html = "Încă nu există eroi în clasament.";
+    body.innerHTML = html;
+    document.getElementById("lb-rank").textContent = d.myRank ? "Locul tău: " + d.myRank + " din " + d.total : "";
+}
+
+// panourile nu trebuie să blocheze camera când dai click pe ele
+(function() {
+    const shop = document.getElementById("shop-panel");
+    const lb = document.getElementById("lb-panel");
+    const bar = document.getElementById("toolbar");
+    if (shop) shop.addEventListener("click", onShopClick);
+    if (lb) lb.addEventListener("click", function(e) {
+        e.stopPropagation();
+        const b = e.target.closest("[data-act]");
+        if (b && b.dataset.act === "close") closeLeaderboard();
+    });
+    if (bar) bar.addEventListener("click", function(e) { e.stopPropagation(); sndClick(); });
+})();
+
+/* ====================== HARTĂ MICĂ ====================== */
+const MM_SIZE = 170;
+let mmRange = 55, mmCtx = null, mmTimer = 0, mmScan = null;
+
+function minimapZoom(delta) { mmRange = Math.max(25, Math.min(140, mmRange + delta)); }
+
+function startMinimapScan() {
+    if (mmScan || !mapLoaded || !mapMeshes.length) return;
+    const box = new THREE.Box3();
+    for (const mesh of mapMeshes) { mesh.updateMatrixWorld(true); box.expandByObject(mesh); }
+    if (box.isEmpty()) return;
+    const n = 48;
+    mmScan = {
+        n: n, h: new Float32Array(n * n), i: 0,
+        minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z,
+        cw: (box.max.x - box.min.x) / n, ch: (box.max.z - box.min.z) / n,
+        done: false, canvas: null
+    };
+    mmScan.h.fill(NaN);
+}
+
+// scanează terenul treptat, ca să nu blocheze jocul
+function stepMinimapScan() {
+    const S = mmScan;
+    if (!S || S.done) return;
+    const total = S.n * S.n;
+    const t0 = performance.now();
+    do {
+        const iu = S.i % S.n, iv = Math.floor(S.i / S.n);
+        S.h[S.i] = getGroundHeight(S.minX + (iu + 0.5) * S.cw, S.minZ + (iv + 0.5) * S.ch, NaN);
+        S.i++;
+    } while (S.i < total && performance.now() - t0 < 4);
+    if (S.i >= total) finishMinimapScan();
+}
+
+function finishMinimapScan() {
+    const S = mmScan;
+    S.done = true;
+    try {
+        let lo = Infinity, hi = -Infinity;
+        for (let i = 0; i < S.h.length; i++) {
+            const v = S.h[i];
+            if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; }
+        }
+        const c = document.createElement("canvas");
+        c.width = S.n; c.height = S.n;
+        const cx = c.getContext("2d");
+        const img = cx.createImageData(S.n, S.n);
+        const span = Math.max(1, hi - lo);
+        for (let i = 0; i < S.h.length; i++) {
+            const v = S.h[i], o = i * 4;
+            if (Number.isFinite(v)) {
+                const t = (v - lo) / span;
+                img.data[o] = 55 + 90 * t;
+                img.data[o + 1] = 48 + 70 * t;
+                img.data[o + 2] = 68 + 80 * t;
+                img.data[o + 3] = 235;
+            } else {
+                img.data[o + 3] = 0;
+            }
+        }
+        cx.putImageData(img, 0, 0);
+        S.canvas = c;
+    } catch (e) {
+        S.canvas = null;
+    }
+}
+
+function updateMinimap(delta) {
+    stepMinimapScan();
+    mmTimer += delta;
+    if (mmTimer < 0.033) return;
+    mmTimer = 0;
+    drawMinimap();
+}
+
+function drawMinimap() {
+    if (!mmCtx) {
+        const cv = document.getElementById("minimap");
+        if (!cv) return;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        cv.width = MM_SIZE * dpr;
+        cv.height = MM_SIZE * dpr;
+        cv.style.width = MM_SIZE + "px";
+        cv.style.height = MM_SIZE + "px";
+        mmCtx = cv.getContext("2d");
+        mmCtx.scale(dpr, dpr);
+    }
+    const ctx = mmCtx;
+    const cx = MM_SIZE / 2, cy = MM_SIZE / 2, R = MM_SIZE / 2 - 3;
+    const s = R / mmRange;
+    const a = cameraAngle;
+    // direcția "în sus" pe hartă = direcția în care privește camera
+    const fx = -Math.sin(a), fz = -Math.cos(a), rx = Math.cos(a), rz = -Math.sin(a);
+    const px = myPos.x, pz = myPos.z;
+
+    function toMap(x, z) {
+        const dx = x - px, dz = z - pz;
+        return [cx + (dx * rx + dz * rz) * s, cy - (dx * fx + dz * fz) * s];
+    }
+
+    ctx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = "rgba(10, 8, 9, 0.88)";
+    ctx.fillRect(0, 0, MM_SIZE, MM_SIZE);
+
+    if (mmScan && mmScan.canvas) {
+        const S = mmScan;
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.transform(
+            s * S.cw * rx, -s * S.cw * fx,
+            s * S.ch * rz, -s * S.ch * fz,
+            cx + s * ((S.minX - px) * rx + (S.minZ - pz) * rz),
+            cy - s * ((S.minX - px) * fx + (S.minZ - pz) * fz)
+        );
+        ctx.drawImage(S.canvas, 0, 0);
+        ctx.restore();
+    }
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 1;
+    for (let k = 1; k <= 2; k++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * k / 3, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    for (const t of telegraphs) {
+        const p = toMap(t.x, t.z);
+        ctx.fillStyle = "rgba(255, 50, 20, 0.3)";
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], t.r * s, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    for (const id in lootItems) {
+        const it = lootItems[id];
+        const p = toMap(it.x, it.z);
+        ctx.fillStyle = "#" + (LOOT_COLORS[it.type] || 0xffffff).toString(16).padStart(6, "0");
+        ctx.fillRect(p[0] - 1.5, p[1] - 1.5, 3, 3);
+    }
+
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 250);
+    for (const m of monsters) {
+        if (!m.alive) continue;
+        const p = toMap(m.x, m.z);
+        ctx.beginPath();
+        if (m.boss) {
+            ctx.fillStyle = "rgba(255, 140, 40, " + (0.55 + 0.45 * pulse) + ")";
+            ctx.arc(p[0], p[1], 6, 0, Math.PI * 2);
+        } else {
+            ctx.fillStyle = "#e04848";
+            ctx.arc(p[0], p[1], 2.6, 0, Math.PI * 2);
+        }
+        ctx.fill();
+    }
+
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh) continue;
+        const p = toMap(rp.rx !== undefined ? rp.rx : rp.x, rp.rz !== undefined ? rp.rz : rp.z);
+        ctx.fillStyle = "#4fc3f7";
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 3.2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // săgeată spre boss când e în afara hărții
+    const boss = monsterById["boss"];
+    if (boss && boss.alive) {
+        const dx = boss.x - px, dz = boss.z - pz;
+        const r = dx * rx + dz * rz, f = dx * fx + dz * fz;
+        const dist = Math.hypot(r, f);
+        if (dist > mmRange) {
+            ctx.save();
+            ctx.translate(cx + r / dist * (R - 6), cy - f / dist * (R - 6));
+            ctx.rotate(Math.atan2(r, f));
+            ctx.fillStyle = "rgba(255, 140, 40, " + (0.6 + 0.4 * pulse) + ")";
+            ctx.beginPath();
+            ctx.moveTo(0, -6);
+            ctx.lineTo(5, 4);
+            ctx.lineTo(-5, 4);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+    ctx.restore();
+
+    // eu: săgeată orientată în direcția personajului
+    const hf = Math.sin(myPos.rotY) * fx + Math.cos(myPos.rotY) * fz;
+    const hr = Math.sin(myPos.rotY) * rx + Math.cos(myPos.rotY) * rz;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.atan2(hr, hf));
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(5, 5);
+    ctx.lineTo(0, 2);
+    ctx.lineTo(-5, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.strokeStyle = "#8c6239";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.stroke();
 }
 
 function startGame() {
@@ -2226,7 +2898,6 @@ function startGame() {
     updateNameUI();
     updateXpUI();
     updateInvUI();
-    updateStatusUI();
     updateKillUI();
     saveNow();
 
@@ -2234,9 +2905,12 @@ function startGame() {
     document.getElementById("player-hud").style.display = "flex";
     document.getElementById("quest-panel").style.display = "block";
     document.getElementById("inv-panel").style.display = "flex";
-    document.getElementById("panel-controls").style.display = "flex";
     document.getElementById("chat-container").style.display = "flex";
     document.getElementById("action-bar").style.display = "flex";
+    document.getElementById("toolbar").style.display = "flex";
+    document.getElementById("minimap-wrap").style.display = "block";
+    sndInit();
+    updateAudioButtons();
     initGame();
 }
 
@@ -2476,75 +3150,13 @@ function loadMap() {
         mapModel.position.z -= center.z;
         mapModel.position.y -= box.min.y;
 
-        const mapBounds = new THREE.Box3().setFromObject(mapModel);
-        const mapSize = mapBounds.getSize(new THREE.Vector3());
-        const maxAnisotropy = renderer && renderer.capabilities
-            ? Math.min(8, renderer.capabilities.getMaxAnisotropy())
-            : 1;
-
         mapModel.traverse(function(node) {
             if (!node.isMesh) return;
             node.castShadow = true;
             node.receiveShadow = true;
-
             if (node.material) {
-                const originalMats = Array.isArray(node.material) ? node.material : [node.material];
-                const worldBox = new THREE.Box3().setFromObject(node);
-                const size = worldBox.getSize(new THREE.Vector3());
-                const horizontalArea = size.x * size.z;
-                const verticalRatio = size.y / Math.max(size.x, size.z, 0.001);
-
-                // Recunoaștem terenul după suprafața mare, forma aproape plată
-                // și normalele orientate în sus; nu modificăm pereții/clădirile.
-                let upwardRatio = 0;
-                const normals = node.geometry && node.geometry.attributes
-                    ? node.geometry.attributes.normal
-                    : null;
-                if (normals && normals.count) {
-                    const normalMatrix = new THREE.Matrix3().getNormalMatrix(node.matrixWorld);
-                    const sampleCount = Math.min(normals.count, 500);
-                    let upward = 0;
-                    for (let i = 0; i < sampleCount; i++) {
-                        const index = Math.floor(i * normals.count / sampleCount);
-                        const normal = new THREE.Vector3(
-                            normals.getX(index), normals.getY(index), normals.getZ(index)
-                        ).applyMatrix3(normalMatrix).normalize();
-                        if (normal.y > 0.78) upward++;
-                    }
-                    upwardRatio = upward / sampleCount;
-                }
-
-                const isGroundSurface =
-                    horizontalArea > Math.max(12, mapSize.x * mapSize.z * 0.00035) &&
-                    verticalRatio < 0.22 &&
-                    upwardRatio > 0.65 &&
-                    worldBox.min.y < mapBounds.min.y + mapSize.y * 0.45;
-
-                const improvedMats = originalMats.map(function(originalMat) {
-                    const mat = originalMat.clone();
-                    mat.side = THREE.DoubleSide;
-
-                    // Filtrare anisotropic: textura rămâne originală, dar se vede mai clar
-                    // în depărtare și când camera privește solul oblic.
-                    ["map", "normalMap", "roughnessMap", "metalnessMap", "aoMap", "emissiveMap"].forEach(function(key) {
-                        const tex = mat[key];
-                        if (tex && tex.isTexture) {
-                            tex.anisotropy = maxAnisotropy;
-                            tex.needsUpdate = true;
-                        }
-                    });
-
-                    if (isGroundSurface) {
-                        // Corectăm ușor tenta ștearsă fără să înlocuim textura originală.
-                        if (mat.color) mat.color.lerp(new THREE.Color(0xffffff), 0.22);
-                        if ("roughness" in mat) mat.roughness = Math.max(mat.roughness || 0, 0.9);
-                        if ("metalness" in mat) mat.metalness = 0;
-                    }
-                    mat.needsUpdate = true;
-                    return mat;
-                });
-
-                node.material = Array.isArray(node.material) ? improvedMats : improvedMats[0];
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                mats.forEach(mat => { mat.side = THREE.DoubleSide; mat.needsUpdate = true; });
             }
             mapMeshes.push(node);
         });
@@ -2579,6 +3191,7 @@ function placePlayerOnGround() {
     localPlayerMesh.updateMatrixWorld(true);
 
     trySendSpawnPoints();
+    startMinimapScan();
 }
 
 function setupControls() {
@@ -2599,16 +3212,22 @@ function setupControls() {
             return;
         }
         if (!e.repeat) {
+            if (e.code === "KeyB") { toggleShop(); e.preventDefault(); return; }
+            if (e.code === "KeyL") { toggleLeaderboard(); e.preventDefault(); return; }
+            if (e.code === "KeyM") { toggleMusic(); return; }
+            if (e.code === "KeyN") { toggleSfx(); return; }
+            if (e.code === "Escape" && panelOpen()) { closePanels(); return; }
+        }
+        if (e.code === "Equal" || e.code === "NumpadAdd") { minimapZoom(-8); return; }
+        if (e.code === "Minus" || e.code === "NumpadSubtract") { minimapZoom(8); return; }
+        if (panelOpen()) return;
+
+        if (!e.repeat) {
             if (e.code === "Digit1") useSkill(1);
             else if (e.code === "Digit2") useSkill(2);
             else if (e.code === "Digit3") triggerDefense3D();
-            else if (e.code === "Digit4") useMagic(4);
-            else if (e.code === "Digit5") useMagic(5);
-            else if (e.code === "Digit6") useMagic(6);
-            else if (e.code === "Digit7") useMagic(7);
+            else if (e.code === "Digit4") useSpell();
             else if (e.code === "KeyC") doRoll();
-            else if (e.code === "KeyI") toggleGameWindow("inventory-window");
-            else if (e.code === "KeyP") toggleGameWindow("status-window");
             else if (e.code === "KeyQ") usePotion("hp");
             else if (e.code === "KeyE") usePotion("mp");
             else if (e.code === "Space") { doJump(); e.preventDefault(); }
@@ -2630,56 +3249,30 @@ function updateOnlineCount() {
 
 function setupCamera() {
     const container = document.getElementById("game-container");
-    let rightMouseDown = false;
-
-    // Nu capturăm cursorul: el rămâne vizibil pentru inventar și status.
-    container.addEventListener("contextmenu", function(e) {
-        e.preventDefault();
+    container.addEventListener("click", function() {
+        if (document.activeElement === document.getElementById("chat-input")) return;
+        if (container.requestPointerLock) container.requestPointerLock();
     });
 
-    window.addEventListener("mousedown", function(e) {
-        const ui = e.target && e.target.closest && e.target.closest(
-            ".game-window, button, input, textarea, .ui-toggle, #chat-container"
-        );
-        if (ui) return;
-
-        if (e.button === 2) {
-            rightMouseDown = true;
-            e.preventDefault();
-            return;
-        }
-
-        if (e.button === 0 && container.contains(e.target)) {
-            // Click pe monstru: selectează precis ținta, fără să consume atacul.
-            const clickedMonster = pickMonsterAtPointer(e);
-            if (clickedMonster) {
-                setSelectedTarget(clickedMonster);
-                return;
-            }
-            // Click pe teren: atacă ținta deja selectată.
-            if (selectedTarget && selectedTarget.alive) useSkill(1);
-        }
-    });
-
-    window.addEventListener("mouseup", function(e) {
-        if (e.button === 2) rightMouseDown = false;
-    });
-
-    window.addEventListener("blur", function() {
-        rightMouseDown = false;
+    document.addEventListener("pointerlockchange", function() {
+        isPointerLocked = document.pointerLockElement === container;
     });
 
     window.addEventListener("mousemove", function(e) {
-        if (!rightMouseDown) return;
+        if (!isPointerLocked) return;
         cameraAngle += e.movementX * 0.004;
         cameraPitch += e.movementY * 0.004;
         cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
     });
 
+    window.addEventListener("mousedown", function(e) {
+        if (isPointerLocked && e.button === 0) useSkill(1);
+    });
+
     window.addEventListener("wheel", function(e) {
         cameraDistance += e.deltaY * 0.05;
         cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
-    }, { passive: true });
+    });
 }
 
 function setupChat() {
@@ -2724,7 +3317,6 @@ function update() {
     if (!camera) return;
 
     updateCombat(delta, now);
-    drawMiniMap();
 
     const forward = (keys["KeyW"] || keys["w"] || keys["ArrowUp"]) ? 1 : 0;
     const backward = (keys["KeyS"] || keys["s"] || keys["ArrowDown"]) ? 1 : 0;
@@ -2768,7 +3360,7 @@ function update() {
     if (jumping) {
         jumpVel -= GRAVITY * delta;
         jumpOffset += jumpVel * delta;
-        if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; jumping = false; }
+        if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; jumping = false; sndLand(); }
     }
 
     const moving = Math.hypot(myPos.velocityX, myPos.velocityZ) > 0.005;
