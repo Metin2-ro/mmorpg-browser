@@ -2221,43 +2221,27 @@ function startGame() {
 
 function initGame() {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x17131a);
-    scene.fog = new THREE.FogExp2(0x17131a, 0.0048);
+    scene.background = new THREE.Color(0x0d0908);
+    scene.fog = new THREE.FogExp2(0x0d0908, 0.008);
 
     camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
 
     document.getElementById("game-container").appendChild(renderer.domElement);
 
-    const hemiLight = new THREE.HemisphereLight(0x9eb8d0, 0x33251b, 0.85);
-    scene.add(hemiLight);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.62));
+    scene.add(new THREE.AmbientLight(0xffffff, 1.8));
 
-    const dirLight = new THREE.DirectionalLight(0xffd6ad, 1.65);
-    dirLight.position.set(24, 42, 18);
+    const dirLight = new THREE.DirectionalLight(0xffd2a6, 2.5);
+    dirLight.position.set(20, 50, 20);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(2048, 2048);
-    dirLight.shadow.camera.left = -65;
-    dirLight.shadow.camera.right = 65;
-    dirLight.shadow.camera.top = 65;
-    dirLight.shadow.camera.bottom = -65;
-    dirLight.shadow.bias = -0.00025;
-    dirLight.shadow.normalBias = 0.025;
     scene.add(dirLight);
 
-    playerPointLight = new THREE.PointLight(0xffa45c, 1.35, 26);
-    playerPointLight.castShadow = false;
+    playerPointLight = new THREE.PointLight(0xffaa44, 2.5, 40);
     scene.add(playerPointLight);
-
-    createAmbientEffects();
 
     loadCharacter();
     loadMap();
