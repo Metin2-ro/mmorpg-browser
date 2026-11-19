@@ -874,6 +874,27 @@ function createTargetMarker() {
     scene.add(targetMarker);
 }
 
+const monsterPickRaycaster = new THREE.Raycaster();
+const monsterPickPointer = new THREE.Vector2();
+
+function pickMonsterAtPointer(event) {
+    if (!renderer || !camera || !monsters.length) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) return null;
+    monsterPickPointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    monsterPickPointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    monsterPickRaycaster.setFromCamera(monsterPickPointer, camera);
+    const roots = monsters.filter(m => m.alive && m.root && m.root.visible).map(m => m.root);
+    const hits = monsterPickRaycaster.intersectObjects(roots, true);
+    if (!hits.length) return null;
+    let node = hits[0].object;
+    while (node) {
+        const found = monsters.find(m => m.root === node);
+        if (found) return found;
+        node = node.parent;
+    }
+    return null;
+}
 function setSelectedTarget(m) {
     if (m && (!m.alive || !m.root || !m.root.visible)) m = null;
     selectedTarget = m || null;
@@ -2629,8 +2650,14 @@ function setupCamera() {
         }
 
         if (e.button === 0 && container.contains(e.target)) {
-            // Atacul cu click stânga rămâne disponibil fără Pointer Lock.
-            useSkill(1);
+            // Click pe monstru: selectează precis ținta, fără să consume atacul.
+            const clickedMonster = pickMonsterAtPointer(e);
+            if (clickedMonster) {
+                setSelectedTarget(clickedMonster);
+                return;
+            }
+            // Click pe teren: atacă ținta deja selectată.
+            if (selectedTarget && selectedTarget.alive) useSkill(1);
         }
     });
 
