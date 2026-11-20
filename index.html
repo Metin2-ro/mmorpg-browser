@@ -2053,7 +2053,7 @@ function clearMonsters() {
 }
 
 function addMonsterFromServer(info) {
-    if (!info || monsterById[info.id] || !scene) return;
+    if (!info || info.type === "boss" || info.id === "boss" || monsterById[info.id] || !scene) return;
     const boss = info.type === "boss";
     const scale = info.scale || 1;
     const built = createMonsterMesh(boss ? 0x8a1414 : MONSTER_TINTS[monsters.length % MONSTER_TINTS.length], scale, boss);
