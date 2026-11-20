@@ -629,7 +629,7 @@ function attachWerewolfToMonster(m) {
     const bounds = new THREE.Box3().setFromObject(clone);
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
-    const factor = size.y > 0.001 ? (2.55 * (m.scale || 1)) / size.y : 1;
+    const factor = size.y > 0.001 ? (1.55 * (m.scale || 1)) / size.y : 1;
     clone.scale.setScalar(factor);
     clone.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
     clone.updateMatrixWorld(true);
