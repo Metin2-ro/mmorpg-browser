@@ -2087,37 +2087,58 @@ function updateAudioButtons() {
 }
 
 function sndInit() {
-    if (sndCtx) { sndResume(); return; }
     try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        sndCtx = new AC();
-        sndMaster = sndCtx.createGain();
-        sndMaster.gain.value = 0.9;
-        sndMaster.connect(sndCtx.destination);
-        sndSfxGain = sndCtx.createGain();
-        sndSfxGain.gain.value = sfxOn ? 0.8 : 0;
-        sndSfxGain.connect(sndMaster);
-        sndMusicGain = sndCtx.createGain();
-        sndMusicGain.gain.value = musicOn ? 0.5 : 0;
-        sndMusicGain.connect(sndMaster);
+        if (!sndCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) {
+                console.warn("AudioContext nu este suportat.");
+                return;
+            }
 
-        const len = Math.floor(sndCtx.sampleRate * 2);
-        sndNoiseBuf = sndCtx.createBuffer(1, len, sndCtx.sampleRate);
-        const data = sndNoiseBuf.getChannelData(0);
-        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+            sndCtx = new AC();
 
-        sndStartMusic();
+            sndMaster = sndCtx.createGain();
+            sndMaster.gain.value = 0.9;
+            sndMaster.connect(sndCtx.destination);
+
+            sndSfxGain = sndCtx.createGain();
+            sndSfxGain.gain.value = sfxOn ? 0.8 : 0;
+            sndSfxGain.connect(sndMaster);
+
+            sndMusicGain = sndCtx.createGain();
+            sndMusicGain.gain.value = musicOn ? 0.5 : 0;
+            sndMusicGain.connect(sndMaster);
+
+            const len = Math.floor(sndCtx.sampleRate * 2);
+            sndNoiseBuf = sndCtx.createBuffer(1, len, sndCtx.sampleRate);
+            const data = sndNoiseBuf.getChannelData(0);
+
+            for (let i = 0; i < len; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            sndStartMusic();
+        }
+
+        sndResume();
     } catch (e) {
-        console.warn("Sunetul nu este disponibil:", e);
-        sndCtx = null;
+        console.error("Eroare audio:", e);
     }
 }
 
 function sndResume() {
-    if (sndCtx && sndCtx.state === "suspended") sndCtx.resume();
+    if (sndCtx && sndCtx.state !== "running") {
+        sndCtx.resume().catch(function(e) {
+            console.warn("Nu s-a putut porni sunetul:", e);
+        });
+    }
 }
-window.addEventListener("pointerdown", sndResume);
+
+window.addEventListener("pointerdown", function() {
+    if (!sndCtx) sndInit();
+    else sndResume();
+});
+
 window.addEventListener("keydown", sndResume);
 
 function sndAllow(name, gap) {
