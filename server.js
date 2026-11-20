@@ -301,7 +301,7 @@ function stepMonster(m, now, dt, targets) {
 }
 
 /* ===================== DROP-URI ===================== */
-function addLoot(type, amount, x, z) {
+function addLoot(type, amount, x, z, extra) {
     const ids = Object.keys(loot);
     if (ids.length >= MAX_LOOT) {
         delete loot[ids[0]];
@@ -317,22 +317,43 @@ function addLoot(type, amount, x, z) {
         z: r2(z + Math.sin(angle) * radius),
         expires: nowSec() + LOOT_TTL
     };
+    if (extra) Object.assign(item, extra);
     loot[item.id] = item;
     io.emit('lootDrop', item);
 }
 
-function dropLoot(m) {
+const GEAR_SLOTS = ['weapon', 'armor', 'helmet', 'boots', 'amulet'];
+
+function rollRarity(boss) {
+    const r = Math.random() * 100;
+    if (boss) return r < 55 ? 'rare' : (r < 95 ? 'epic' : 'legendary');
+    return r < 70 ? 'common' : (r < 92 ? 'uncommon' : (r < 98.5 ? 'rare' : 'epic'));
+}
+
+function addGear(x, z, ilvl, boss) {
+    addLoot('gear', 1, x, z, {
+        slot: GEAR_SLOTS[randInt(0, GEAR_SLOTS.length - 1)],
+        rarity: rollRarity(boss),
+        ilvl: Math.max(1, Math.min(50, ilvl)),
+        seed: randInt(1, 2147483646)
+    });
+}
+
+function dropLoot(m, killerLevel) {
     if (m.type === 'boss') {
         addLoot('gold', randInt(250, 400), m.x, m.z);
         for (let i = 0; i < 3; i++) addLoot('hp', 1, m.x, m.z);
         for (let i = 0; i < 2; i++) addLoot('mp', 1, m.x, m.z);
         addLoot('crystal', 1, m.x, m.z);
+        addGear(m.x, m.z, killerLevel + 1, true);
+        addGear(m.x, m.z, killerLevel + 1, true);
         return;
     }
     addLoot('gold', randInt(8, 25), m.x, m.z);
     if (Math.random() < 0.35) addLoot('hp', 1, m.x, m.z);
     if (Math.random() < 0.25) addLoot('mp', 1, m.x, m.z);
     if (Math.random() < 0.06) addLoot('crystal', 1, m.x, m.z);
+    if (Math.random() < 0.14) addGear(m.x, m.z, killerLevel, false);
 }
 
 function killMonster(m, killerId) {
@@ -342,7 +363,8 @@ function killMonster(m, killerId) {
     m.pendingHit = null;
     m.telegraph = false;
     m.respawnAt = nowSec() + (m.type === 'boss' ? BOSS_RESPAWN : MONSTER_RESPAWN);
-    dropLoot(m);
+    const killer = players[killerId];
+    dropLoot(m, killer ? killer.level : 1);
 
     // XP: ucigașul primește tot, jucătorii din apropiere primesc jumătate
     for (const t of alivePlayers()) {
@@ -507,7 +529,7 @@ io.on('connection', (socket) => {
         if (Math.hypot(pos.x - item.x, pos.z - item.z) > 4) return;
         delete loot[item.id];
         io.emit('lootGone', { id: item.id });
-        socket.emit('lootGranted', { type: item.type, amount: item.amount });
+        socket.emit('lootGranted', { type: item.type, amount: item.amount, slot: item.slot, rarity: item.rarity, ilvl: item.ilvl, seed: item.seed });
     });
 
     /* ---- PvP ---- */
