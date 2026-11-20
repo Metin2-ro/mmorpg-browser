@@ -623,14 +623,17 @@ function attachWerewolfToMonster(m) {
     const clone = THREE.SkeletonUtils.clone(werewolfGLTF.scene);
     clone.position.set(0, 0, 0);
     clone.rotation.set(0, 0, 0);
-    clone.scale.set(1, 1, 1);
+    // Păstrăm scara originală din GLB; unele modele au scalare definită în scena exportată.
     clone.updateMatrixWorld(true);
 
     const bounds = new THREE.Box3().setFromObject(clone);
     const size = bounds.getSize(new THREE.Vector3());
     const center = bounds.getCenter(new THREE.Vector3());
-    const factor = size.y > 0.001 ? (1.0 * (m.scale || 1)) / size.y : 1;
-    clone.scale.setScalar(factor);
+    const targetHeight = 1.0 * (m.scale || 1);
+    const factor = size.y > 0.001 ? targetHeight / size.y : 1;
+
+    // Corecția se înmulțește cu scara GLB, nu o înlocuiește.
+    clone.scale.multiplyScalar(factor);
     clone.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
     clone.updateMatrixWorld(true);
 
