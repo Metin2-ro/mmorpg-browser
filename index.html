@@ -602,6 +602,93 @@ input, textarea { cursor: text !important; }
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
 
+const WEREWOLF_FILE = "./werewolf-rigged.glb";
+let werewolfGLTF = null;
+
+function setMonsterAction(m, action, oneShot) {
+    if (!m || !m.mixer || !action || m.currentAction === action) return;
+    action.reset();
+    action.enabled = true;
+    action.setEffectiveTimeScale(1);
+    action.setEffectiveWeight(1);
+    action.setLoop(oneShot ? THREE.LoopOnce : THREE.LoopRepeat, oneShot ? 1 : Infinity);
+    action.clampWhenFinished = !!oneShot;
+    action.play();
+    if (m.currentAction) m.currentAction.crossFadeTo(action, 0.18, true);
+    m.currentAction = action;
+}
+
+function attachWerewolfToMonster(m) {
+    if (!werewolfGLTF || !m || m.werewolfAttached) return;
+    const clone = THREE.SkeletonUtils.clone(werewolfGLTF.scene);
+    clone.position.set(0, 0, 0);
+    clone.rotation.set(0, 0, 0);
+    clone.scale.set(1, 1, 1);
+    clone.updateMatrixWorld(true);
+
+    const bounds = new THREE.Box3().setFromObject(clone);
+    const size = bounds.getSize(new THREE.Vector3());
+    const center = bounds.getCenter(new THREE.Vector3());
+    const factor = size.y > 0.001 ? (2.55 * (m.scale || 1)) / size.y : 1;
+    clone.scale.setScalar(factor);
+    clone.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
+    clone.updateMatrixWorld(true);
+
+    const visualRoot = new THREE.Group();
+    visualRoot.add(clone);
+    const materials = [];
+    clone.traverse(function(node) {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        node.frustumCulled = false;
+        const isArray = Array.isArray(node.material);
+        const mats = isArray ? node.material : [node.material];
+        const copies = mats.map(function(mat) {
+            const copy = mat.clone();
+            copy.needsUpdate = true;
+            materials.push({ material: copy, emissive: copy.emissive ? copy.emissive.clone() : null });
+            return copy;
+        });
+        node.material = isArray ? copies : copies[0];
+    });
+
+    if (m.model) m.root.remove(m.model);
+    m.model = visualRoot;
+    m.root.add(visualRoot);
+    m.materials = materials;
+    m.bodyMat = null;
+    m.mixer = new THREE.AnimationMixer(clone);
+    m.actions = { idle: null, walk: null, attack: null, death: null };
+    const clips = werewolfGLTF.animations || [];
+    clips.forEach(function(clip) {
+        const name = (clip.name || "").toLowerCase();
+        const action = m.mixer.clipAction(clip);
+        if (!m.actions.idle && /(idle|stand|breath)/.test(name)) m.actions.idle = action;
+        else if (!m.actions.walk && /(walk|run|locomotion)/.test(name)) m.actions.walk = action;
+        else if (!m.actions.attack && /(attack|bite|claw|hit|strike)/.test(name)) m.actions.attack = action;
+        else if (!m.actions.death && /(death|die|dead)/.test(name)) m.actions.death = action;
+    });
+    if (!m.actions.idle && clips.length) m.actions.idle = m.mixer.clipAction(clips[0]);
+    if (!m.actions.walk) m.actions.walk = m.actions.idle;
+    m.werewolfAttached = true;
+    setMonsterAction(m, m.actions.idle, false);
+    console.log("Werewolf atasat:", m.id, clips.map(a => a.name));
+}
+
+function loadWerewolfModel() {
+    const loader = new THREE.GLTFLoader();
+    loader.load(WEREWOLF_FILE, function(gltf) {
+        werewolfGLTF = gltf;
+        for (const m of monsters) attachWerewolfToMonster(m);
+        addChat("Modelul Werewolf a fost încărcat pentru toți monștrii.", "#2ecc71");
+    }, undefined, function(error) {
+        console.error("Nu s-a putut încărca werewolf-rigged.glb:", error);
+        addChat("Modelul Werewolf nu s-a încărcat; folosesc modelul de rezervă.", "#ff9966");
+    });
+}
+
+
 /* ================= SETĂRI DE MĂRIME (modifică aici) ================= */
 const PLAYER_HEIGHT = 1.8;    // înălțimea personajului; mai mic = personaj mai mic
 const MAP_TARGET_SIZE = 200;  // lățimea hărții în aceleași unități; mai mare = hartă mai mare
@@ -1396,11 +1483,12 @@ function damageMonster(m, dmg, crit, kind) {
 
 function updateMonsters(delta, now) {
     for (const m of monsters) {
+        if (m.mixer) m.mixer.update(delta);
         if (!m.alive) {
-            if (m.deathT < 1.4) {
+            if (m.deathT < (m.deathDuration || 1.4)) {
                 m.deathT += delta;
-                m.model.rotation.x = -Math.min(1.45, m.deathT * 3);
-                if (m.deathT >= 1.4) m.root.visible = false;
+                if (!m.actions || !m.actions.death) m.model.rotation.x = -Math.min(1.45, m.deathT * 3);
+                if (m.deathT >= (m.deathDuration || 1.4)) m.root.visible = false;
             }
             continue;
         }
@@ -1432,17 +1520,30 @@ function updateMonsters(delta, now) {
             m.attackSeen = m.attackCount;
             m.attackT = 0.0001;
             sndMonsterAttack(dist, m.boss);
+            if (m.actions && m.actions.attack) setMonsterAction(m, m.actions.attack, true);
         }
         if (m.attackT > 0) {
             m.attackT += delta / 0.5;
             if (m.attackT >= 1) m.attackT = 0;
         }
 
-        m.model.position.y = moving ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
-        m.model.position.z = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) * 0.6 * m.scale : 0;
+        if (m.actions && m.werewolfAttached && m.attackT <= 0) {
+            setMonsterAction(m, moving ? m.actions.walk : m.actions.idle, false);
+        }
+        m.model.position.y = moving && !(m.actions && m.actions.walk) ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
+        if (!m.werewolfAttached) m.model.position.z = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) * 0.6 * m.scale : 0;
 
         m.flash -= delta;
-        m.bodyMat.emissive.setHex(m.flash > 0 ? 0xff5522 : (m.boss ? 0x551100 : 0x220000));
+        if (m.bodyMat && m.bodyMat.emissive) {
+            m.bodyMat.emissive.setHex(m.flash > 0 ? 0xff5522 : (m.boss ? 0x551100 : 0x220000));
+        } else if (m.materials) {
+            for (const entry of m.materials) {
+                if (entry.material.emissive) {
+                    if (m.flash > 0) entry.material.emissive.setHex(0xff5522);
+                    else if (entry.emissive) entry.material.emissive.copy(entry.emissive);
+                }
+            }
+        }
 
         m.root.position.set(m.x, m.y, m.z);
     }
@@ -1973,7 +2074,8 @@ function addMonsterFromServer(info) {
         face: 0, hp: info.hp, maxHp: info.maxHp, shownHp: info.hp,
         alive: info.alive !== false,
         attackCount: 0, attackSeen: 0, attackT: 0, flash: 0, deathT: 0,
-        groundTimer: Math.random() * 0.1, phase: Math.random() * 6, needGround: !mapLoaded
+        groundTimer: Math.random() * 0.1, phase: Math.random() * 6, needGround: !mapLoaded,
+        materials: [], mixer: null, actions: null, currentAction: null, werewolfAttached: false, deathDuration: 1.4
     };
     m.bar.draw(m.hp / m.maxHp);
     if (!m.alive) {
@@ -1983,12 +2085,15 @@ function addMonsterFromServer(info) {
     }
     monsters.push(m);
     monsterById[m.id] = m;
+    if (werewolfGLTF) attachWerewolfToMonster(m);
 }
 
 function killMonsterVisual(m) {
     sndMonsterDie(Math.hypot(m.x - myPos.x, m.z - myPos.z), m.boss);
     m.alive = false;
     m.deathT = 0;
+    m.deathDuration = m.actions && m.actions.death ? Math.max(1.4, m.actions.death.getClip().duration) : 1.4;
+    if (m.actions && m.actions.death) setMonsterAction(m, m.actions.death, true);
     m.bar.sprite.visible = false;
     if (m.boss && Math.hypot(m.x - myPos.x, m.z - myPos.z) < 80) addShake(0.4);
 }
@@ -2004,6 +2109,11 @@ function respawnMonsterVisual(m, s) {
     m.deathT = 0;
     m.root.visible = true;
     m.model.rotation.x = 0;
+    if (m.mixer) {
+        m.mixer.stopAllAction();
+        m.currentAction = null;
+        setMonsterAction(m, m.actions && m.actions.idle, false);
+    }
     m.bar.sprite.visible = true;
     m.bar.draw(1);
     m.gy = getGroundHeight(m.x, m.z, m.y);
@@ -3704,6 +3814,7 @@ function initGame() {
 
     loadCharacter();
     loadMap();
+    loadWerewolfModel();
     setupControls();
     setupSocket();
     setupCamera();
