@@ -380,6 +380,62 @@ canvas { display: block; width: 100%; height: 100%; }
 .lb-table td { padding: 7px 4px; border-bottom: 1px solid #2c1f15; }
 .lb-table tr.me td { background: rgba(255, 215, 0, 0.1); color: #ffd700; }
 .lb-dot { color: #4cff7a; margin-right: 4px; font-size: 10px; }
+
+/* cursor de joc MMORPG: îl setează JavaScript; aici doar îl moștenesc toate elementele */
+body * { cursor: inherit !important; }
+input, textarea { cursor: text !important; }
+
+#target-frame {
+    position: absolute;
+    top: 76px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    display: none;
+    z-index: 11;
+    pointer-events: none;
+    text-align: center;
+}
+#target-name { color: #ffb4a8; font-weight: bold; font-size: 13px; text-shadow: 1px 1px #000; margin-bottom: 3px; }
+#target-frame .bar-container { height: 13px; border-color: #7a2a1a; }
+#target-frame .bar-text { line-height: 13px; font-size: 10px; }
+
+#inv-window { width: 520px; left: 31%; }
+#char-panel { width: 340px; left: 73%; }
+.inv-layout { display: flex; gap: 16px; }
+.equip-col { display: flex; flex-direction: column; gap: 6px; }
+.equip-slot {
+    width: 92px; height: 58px; border: 2px solid #5c4326; background: #140d09; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2px;
+}
+.equip-slot .ico { font-size: 22px; line-height: 24px; }
+.equip-slot .faded { opacity: 0.25; }
+.equip-slot small { font-size: 9px; color: #b9a583; line-height: 10px; max-height: 20px; overflow: hidden; }
+.bag-grid { display: grid; grid-template-columns: repeat(6, 48px); gap: 4px; }
+.slot {
+    width: 48px; height: 48px; border: 2px solid #3a2a1c; background: #140d09; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.slot.sel { outline: 2px solid #ffd700; }
+.slot[draggable="true"], .equip-slot[draggable="true"] { background: #1d130c; }
+#inv-cons { margin-top: 10px; font-size: 12px; color: #d8c28a; }
+#inv-cons button, #inv-actions button, .stat-row button {
+    background: linear-gradient(#d4af37, #8c6239); color: #111; border: 1px solid #ffd700; border-radius: 4px;
+    padding: 3px 8px; font-weight: bold; cursor: pointer; font-size: 11px;
+}
+#inv-cons button:disabled, #inv-actions button:disabled, .stat-row button:disabled { background: #2a2018; color: #8a7a66; border-color: #4a3520; }
+#inv-actions { margin-top: 8px; min-height: 38px; font-size: 12px; color: #c9b58f; }
+#inv-actions button { margin-left: 6px; }
+#item-tip {
+    position: fixed; z-index: 70; display: none; max-width: 240px; pointer-events: none;
+    background: rgba(12, 8, 6, 0.97); border: 1px solid #8c6239; border-radius: 4px; padding: 8px 10px; font-size: 12px; line-height: 1.5;
+}
+.stat-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 7px 2px; border-bottom: 1px solid #2c1f15; font-size: 13px; }
+.stat-row small { display: block; color: #a8957a; font-size: 11px; }
+.stat-val { color: #ffd700; font-weight: bold; min-width: 28px; text-align: right; }
+.derived { margin-top: 10px; font-size: 12px; color: #d8c28a; line-height: 1.7; }
+#toolbar button.alert { border-color: #ffd700; box-shadow: 0 0 10px #ffb300; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 2px #ffb300; } }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -432,11 +488,12 @@ canvas { display: block; width: 100%; height: 100%; }
     </div>
 
     <div id="toolbar">
+        <button onclick="toggleInventory()">🎒 Inventar (I)</button>
+        <button id="btn-char" onclick="toggleCharacter()">👤 Personaj (P)</button>
         <button onclick="toggleShop()">🛒 Magazin (B)</button>
         <button onclick="toggleLeaderboard()">🏆 Clasament (L)</button>
         <button id="btn-music" onclick="toggleMusic()">🎵</button>
         <button id="btn-sfx" onclick="toggleSfx()">🔊</button>
-
     </div>
 
     <div id="minimap-wrap"><canvas id="minimap" width="170" height="170"></canvas></div>
@@ -450,6 +507,8 @@ canvas { display: block; width: 100%; height: 100%; }
         <div id="shop-tabs">
             <button data-tab="weapon">⚔️ Arme</button>
             <button data-tab="armor">🛡️ Armuri</button>
+            <button data-tab="helmet">⛑️ Căști</button>
+            <button data-tab="boots">👢 Cizme</button>
             <button data-tab="amulet">📿 Amulete</button>
             <button data-tab="potions">🧪 Poțiuni</button>
             <button data-tab="sell">💎 Vinde</button>
@@ -464,6 +523,39 @@ canvas { display: block; width: 100%; height: 100%; }
             <button class="panel-close" data-act="close">✕</button>
         </div>
         <div id="lb-body">Se încarcă...</div>
+    </div>
+
+    <div id="inv-window" class="modal-panel">
+        <div class="panel-head">
+            <h3>🎒 Inventar</h3>
+            <span class="wallet" id="inv-free"></span>
+            <button class="panel-close" data-act="close">✕</button>
+        </div>
+        <div class="inv-layout">
+            <div class="equip-col" id="inv-equip"></div>
+            <div><div class="bag-grid" id="inv-bag"></div></div>
+        </div>
+        <div id="inv-actions"></div>
+        <div id="inv-cons"></div>
+    </div>
+
+    <div id="char-panel" class="modal-panel">
+        <div class="panel-head">
+            <h3>👤 Personaj</h3>
+            <span class="wallet" id="char-points"></span>
+            <button class="panel-close" data-act="close">✕</button>
+        </div>
+        <div id="char-body"></div>
+    </div>
+
+    <div id="item-tip"></div>
+
+    <div id="target-frame">
+        <div id="target-name"></div>
+        <div class="bar-container">
+            <div class="hp-fill" id="target-fill" style="width:100%"></div>
+            <div class="bar-text" id="target-text"></div>
+        </div>
     </div>
 
     <div id="inv-panel">
@@ -484,7 +576,7 @@ canvas { display: block; width: 100%; height: 100%; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Click pe ecran pentru cameră. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând! <b>B</b> magazin, <b>L</b> clasament, <b>M/N</b> muzică/sunete, <b>+/−</b> zoom hartă.
+                <b>[System]:</b> Mouse: ține <b>click dreapta</b> și mișcă mouse-ul ca să rotești camera, <b>click stânga</b> pe monștri = țintă + atac. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând! <b>B</b> magazin, <b>L</b> clasament, <b>M/N</b> muzică/sunete, <b>+/−</b> zoom hartă, <b>I</b> inventar, <b>P</b> personaj, <b>Tab</b> țintă apropiată.
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
@@ -841,6 +933,12 @@ function startAttackAnim(n) {
 }
 
 function autoFaceNearest(range) {
+    // ținta selectată are prioritate
+    const ti = targetInfo();
+    if (ti && Math.hypot(ti.x - myPos.x, ti.z - myPos.z) <= range + 6) {
+        myPos.rotY = Math.atan2(ti.x - myPos.x, ti.z - myPos.z);
+        return;
+    }
     let best = null, bestD = range;
     for (const m of monsters) {
         if (!m.alive) continue;
@@ -1064,7 +1162,7 @@ function updateProjectiles(delta) {
                 if (!m.alive) continue;
                 const hitR = m.boss ? 3.0 : 1.4;
                 if (Math.hypot(m.x - pos.x, m.z - pos.z) < hitR && Math.abs(m.y + (m.boss ? 2.0 : 1.2) - pos.y) < (m.boss ? 4.0 : 2.6)) {
-                    const r = rollDamage(SKILLS[4]);
+                    const r = rollDamage(SKILLS[4], spellMult);
                     damageMonster(m, r.dmg, r.crit, "spell");
                     hit = true;
                     break;
@@ -1077,7 +1175,7 @@ function updateProjectiles(delta) {
                     const x = rp.rx !== undefined ? rp.rx : rp.x;
                     const z = rp.rz !== undefined ? rp.rz : rp.z;
                     if (Math.hypot(x - pos.x, z - pos.z) < 1.2 && Math.abs(rp.mesh.position.y + 1.0 - pos.y) < 2.4) {
-                        const r = rollDamage(SKILLS[4]);
+                        const r = rollDamage(SKILLS[4], spellMult);
                         spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
                             new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
                         if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
@@ -1410,6 +1508,7 @@ function updateCombat(delta, now) {
     updateTelegraphs(delta);
     updateLoot(delta, now);
     updateFloatingTexts(delta);
+    updateTarget(delta);
     updateMinimap(delta);
 }
 
@@ -1450,10 +1549,36 @@ function loadGame() {
         monsterKills = num(d.monsterKills, 0, 1e9, 0);
         bossKills = num(d.bossKills, 0, 1e9, 0);
         pvpKills = num(d.pvpKills, 0, 1e9, 0);
-        const e = d.equip || {};
-        equip.weapon = num(e.weapon, 0, 4, 0);
-        equip.armor = num(e.armor, 0, 4, 0);
-        equip.amulet = num(e.amulet, 0, 4, 0);
+
+        // puncte de caracter (salvările vechi primesc retroactiv 3 puncte pe nivel)
+        if (d.stats && typeof d.stats === "object") {
+            stats.str = num(d.stats.str, 0, 999, 0);
+            stats.vit = num(d.stats.vit, 0, 999, 0);
+            stats.int = num(d.stats.int, 0, 999, 0);
+            stats.agi = num(d.stats.agi, 0, 999, 0);
+            statPoints = num(d.statPoints, 0, 9999, 0);
+        } else {
+            statPoints = 3 * (playerLevel - 1);
+        }
+
+        // echipament și rucsac
+        bag = new Array(BAG_SIZE).fill(null);
+        if (Array.isArray(d.bag)) {
+            for (let i = 0; i < BAG_SIZE && i < d.bag.length; i++) bag[i] = sanitizeItem(d.bag[i]);
+        }
+        SLOTS.forEach(function(sl) { equipped[sl] = null; });
+        if (d.equipped && typeof d.equipped === "object") {
+            SLOTS.forEach(function(sl) {
+                const it = sanitizeItem(d.equipped[sl]);
+                if (it && it.slot === sl) equipped[sl] = it;
+            });
+        } else if (d.equip && typeof d.equip === "object") {
+            // format vechi: trepte cumpărate -> obiecte echipate
+            ["weapon", "armor", "amulet"].forEach(function(sl) {
+                const tier = num(d.equip[sl], 0, 4, 0);
+                if (tier > 0) equipped[sl] = shopItem(sl, tier - 1);
+            });
+        }
     } catch (e) {
         console.warn("Salvarea nu a putut fi citită:", e);
     }
@@ -1466,7 +1591,7 @@ function saveNow() {
             name: heroName, level: playerLevel, xp: playerXP, gold: gold,
             hpPotions: hpPotions, mpPotions: mpPotions, crystals: crystals,
             monsterKills: monsterKills, bossKills: bossKills, pvpKills: pvpKills,
-            equip: equip
+            stats: stats, statPoints: statPoints, bag: bag, equipped: equipped
         }));
     } catch (e) {}
 }
@@ -1487,11 +1612,13 @@ window.addEventListener("beforeunload", saveNow);
 })();
 
 function recalcStats(fullHeal) {
-    const w = equipBonus("weapon"), a = equipBonus("armor"), m = equipBonus("amulet");
-    maxHP = 1500 + (playerLevel - 1) * 120 + (a ? a.hp : 0);
-    maxMP = 700 + (playerLevel - 1) * 40 + (m ? m.mp : 0);
-    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + (w ? w.dmg : 0));
-    critChance = 0.15 + (m ? m.crit : 0);
+    const g = gearTotals();
+    maxHP = 1500 + (playerLevel - 1) * 120 + g.hp + stats.vit * 45;
+    maxMP = 700 + (playerLevel - 1) * 40 + g.mp + stats.int * 25;
+    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + g.dmg + stats.str * 0.015);
+    critChance = Math.min(0.75, 0.15 + g.crit + stats.agi * 0.0035);
+    moveMult = 1 + Math.min(0.35, g.speed + stats.agi * 0.0025);
+    spellMult = 1 + stats.int * 0.015;
     if (fullHeal) { myHP = maxHP; myMP = maxMP; }
     else { myHP = Math.min(myHP, maxHP); myMP = Math.min(myMP, maxMP); }
 }
@@ -1511,6 +1638,11 @@ function updateInvUI() {
     document.getElementById("inv-hp").textContent = hpPotions;
     document.getElementById("inv-mp").textContent = mpPotions;
     document.getElementById("inv-crystal").textContent = crystals;
+    const b = document.getElementById("btn-char");
+    if (b) b.classList.toggle("alert", statPoints > 0);
+    if (invOpen) renderInventory();
+    if (charOpen) renderCharacter();
+    if (shopOpen) renderShop();
 }
 
 function sendHp() {
@@ -1536,22 +1668,25 @@ function gainXP(amount) {
     playerXP += amount;
     spawnFloatingText("+" + amount + " XP", "#ffd966",
         new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.9, myPos.z), false);
-    let leveled = false;
+    let gained = 0;
     while (playerLevel < MAX_LEVEL && playerXP >= xpForLevel(playerLevel)) {
         playerXP -= xpForLevel(playerLevel);
         playerLevel++;
-        leveled = true;
+        gained++;
     }
     if (playerLevel >= MAX_LEVEL) playerXP = Math.min(playerXP, xpForLevel(MAX_LEVEL) - 1);
-    if (leveled) {
+    if (gained) {
+        statPoints += 3 * gained;
         recalcStats(true);
         levelUpEffect();
         addChat("⭐ Nivel " + playerLevel + "! Viață, mană și daune au crescut.", "#ffd700");
+        addChat("✨ Ai primit " + (3 * gained) + " puncte de caracter. Apasă P ca să le folosești.", "#ffd700");
         updateNameUI();
         if (socket && socket.connected) {
             socket.emit("levelUpdate", { level: playerLevel });
             sendHp();
         }
+        updateInvUI();
     }
     updateXpUI();
     saveGame();
@@ -1608,10 +1743,16 @@ function doJump() {
 const lootItems = {};
 const LOOT_COLORS = { gold: 0xffcc33, hp: 0xff3b3b, mp: 0x3b8bff, crystal: 0xb06bff };
 
-function createLootVisual(type) {
+function lootColor(l) {
+    if (l.type === "gear" && RARITY_INFO[l.rarity]) return parseInt(RARITY_INFO[l.rarity].color.slice(1), 16);
+    return LOOT_COLORS[l.type] || 0xffffff;
+}
+
+function createLootVisual(l) {
     const group = new THREE.Group();
     const spin = new THREE.Group();
-    const color = LOOT_COLORS[type] || 0xffffff;
+    const color = lootColor(l);
+    const type = l.type;
     const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.45, metalness: 0.5, roughness: 0.35 });
 
     if (type === "gold") {
@@ -1620,6 +1761,13 @@ function createLootVisual(type) {
         spin.add(coin);
     } else if (type === "crystal") {
         spin.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.42), mat));
+    } else if (type === "gear") {
+        const chest = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.5), mat);
+        const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.7, 10, 1, false, 0, Math.PI), mat);
+        lid.rotation.z = Math.PI / 2;
+        lid.position.y = 0.2;
+        spin.add(chest);
+        spin.add(lid);
     } else {
         const flask = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), mat);
         const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.28, 8), mat);
@@ -1630,25 +1778,28 @@ function createLootVisual(type) {
     spin.position.y = 0.9;
     group.add(spin);
 
+    const high = type === "gear" && (l.rarity === "epic" || l.rarity === "legendary");
     const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.07, 0.07, 3.2, 8, 1, true),
+        new THREE.CylinderGeometry(0.07, 0.07, high ? 6 : 3.2, 8, 1, true),
         new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
     );
-    beam.position.y = 1.6;
+    beam.position.y = high ? 3 : 1.6;
     group.add(beam);
     return { group: group, spin: spin, beam: beam };
 }
 
 function addLootItem(l) {
     if (!l || lootItems[l.id] || !scene) return;
-    const vis = createLootVisual(l.type);
+    const vis = createLootVisual(l);
     const y = getGroundHeight(l.x, l.z, 0);
     vis.group.position.set(l.x, y, l.z);
+    vis.group.userData = { pickType: "loot", pickId: l.id };
     scene.add(vis.group);
     lootItems[l.id] = {
         id: l.id, type: l.type, amount: l.amount, x: l.x, z: l.z,
+        slot: l.slot, rarity: l.rarity, ilvl: l.ilvl, seed: l.seed,
         group: vis.group, spin: vis.spin, beam: vis.beam,
-        t: Math.random() * 6, pending: 0, needGround: !mapLoaded
+        t: Math.random() * 6, pending: 0, needGround: !mapLoaded, warnAt: 0
     };
 }
 
@@ -1681,6 +1832,14 @@ function updateLoot(delta, now) {
 
         if (!playerDead && socket && socket.connected && now >= it.pending &&
             Math.hypot(myPos.x - it.x, myPos.z - it.z) < 1.9) {
+            if (it.type === "gear" && freeSlots() === 0) {
+                if (now >= it.warnAt) {
+                    it.warnAt = now + 4;
+                    addChat("🎒 Inventarul este plin! Eliberează un loc (I) ca să ridici obiectul.", "#e74c3c");
+                    sndError();
+                }
+                continue;
+            }
             it.pending = now + 1.2;
             socket.emit("pickupLoot", { id: id });
         }
@@ -1710,6 +1869,21 @@ function applyLootGranted(d) {
         sndCrystal();
         spawnFloatingText("Cristal!", "#c792ff", pos, true);
         addChat("💎 Ai găsit un cristal rar!", "#c792ff");
+    } else if (d.type === "gear") {
+        const item = makeGear(d.slot, d.rarity, d.ilvl, d.seed);
+        if (item) {
+            const ri = RARITY_INFO[item.rarity];
+            if (addToBag(item) >= 0) {
+                if (RARITY.indexOf(item.rarity) >= 2) sndCrystal(); else sndPickup();
+                spawnFloatingText(item.name, ri.color, pos, RARITY.indexOf(item.rarity) >= 3);
+                addChat("🎁 Ai găsit: " + item.name + " (" + ri.label + ", nivel " + item.lvl + ")", ri.color);
+            } else {
+                const p = sellPrice(item);
+                gold += p;
+                sndCoin();
+                addChat("🎒 Inventar plin: " + item.name + " a fost vândut automat pentru " + p + " aur.", "#e67e22");
+            }
+        }
     }
     updateInvUI();
     saveGame();
@@ -1786,13 +1960,14 @@ function addMonsterFromServer(info) {
     bar.sprite.position.set(0, 3.0 * scale, 0);
     if (boss) bar.sprite.scale.set(5.2, 1.3, 1);
     built.root.add(bar.sprite);
+    built.root.userData = { pickType: "monster", pickId: info.id };
 
     const y = getGroundHeight(info.x, info.z, 0);
     built.root.position.set(info.x, y, info.z);
     scene.add(built.root);
 
     const m = {
-        id: info.id, boss: boss, scale: scale,
+        id: info.id, boss: boss, scale: scale, name: info.name || (boss ? "Lordul Infernului" : "Demon"),
         root: built.root, model: built.model, bodyMat: built.bodyMat, bar: bar,
         x: info.x, y: y, z: info.z, tx: info.x, tz: info.z, gy: y,
         face: 0, hp: info.hp, maxHp: info.maxHp, shownHp: info.hp,
@@ -2027,37 +2202,141 @@ function setupSocket() {
     }
 }
 
-/* ====================== ECHIPAMENT ====================== */
-const EQUIP = {
-    weapon: { label: "Armă", tiers: [
-        { name: "Sabie de fier",     dmg: 0.12, price: 150,   lvl: 1,  crystals: 0 },
-        { name: "Sabie de oțel",     dmg: 0.28, price: 700,   lvl: 5,  crystals: 0 },
-        { name: "Sabie runică",      dmg: 0.50, price: 2500,  lvl: 10, crystals: 0 },
-        { name: "Sabia Infernului",  dmg: 0.85, price: 8000,  lvl: 20, crystals: 3 }
-    ] },
-    armor: { label: "Armură", tiers: [
-        { name: "Armură de piele",   hp: 300,  price: 120,   lvl: 1,  crystals: 0 },
-        { name: "Zale de oțel",      hp: 800,  price: 600,   lvl: 5,  crystals: 0 },
-        { name: "Platoșă runică",    hp: 1700, price: 2200,  lvl: 10, crystals: 0 },
-        { name: "Armura Infernului", hp: 3200, price: 7000,  lvl: 20, crystals: 2 }
-    ] },
-    amulet: { label: "Amuletă", tiers: [
-        { name: "Amuletă de bronz",  mp: 100, crit: 0.02, price: 300,   lvl: 1,  crystals: 0 },
-        { name: "Amuletă de argint", mp: 250, crit: 0.04, price: 1200,  lvl: 5,  crystals: 0 },
-        { name: "Amuletă de aur",    mp: 500, crit: 0.07, price: 4000,  lvl: 12, crystals: 0 },
-        { name: "Inima Infernului",  mp: 900, crit: 0.12, price: 12000, lvl: 20, crystals: 5 }
-    ] }
+/* ====================== OBIECTE, ECHIPAMENT, PUNCTE DE CARACTER ====================== */
+const RARITY = ["common", "uncommon", "rare", "epic", "legendary"];
+const RARITY_INFO = {
+    common:    { label: "Comun",       color: "#cfcfcf", mult: 1 },
+    uncommon:  { label: "Neobișnuit",  color: "#4cff7a", mult: 1.4 },
+    rare:      { label: "Rar",         color: "#4da6ff", mult: 1.9 },
+    epic:      { label: "Epic",        color: "#c77dff", mult: 2.6 },
+    legendary: { label: "Legendar",    color: "#ff9a1f", mult: 3.6 }
 };
+const SLOTS = ["weapon", "armor", "helmet", "boots", "amulet"];
+const SLOT_INFO = {
+    weapon: { label: "Armă",    icon: "⚔️" },
+    armor:  { label: "Armură",  icon: "🛡️" },
+    helmet: { label: "Coif",    icon: "⛑️" },
+    boots:  { label: "Cizme",   icon: "👢" },
+    amulet: { label: "Amuletă", icon: "📿" }
+};
+const GEAR_NAMES = {
+    weapon: [["Sabie ruginită", "Spadă de fier"], ["Sabie de oțel", "Paloș călit"], ["Sabie runică", "Iatagan sângeriu"], ["Lama Umbrei", "Sabia Furtunii"], ["Sabia Infernului", "Zdrobitorul de Suflete"]],
+    armor:  [["Armură de piele", "Haină întărită"], ["Zale de oțel", "Platoșă ușoară"], ["Platoșă runică", "Armura Santinelei"], ["Armura Întunecată", "Veșmântul Nopții"], ["Armura Infernului", "Egida Eternă"]],
+    helmet: [["Coif de piele", "Cască simplă"], ["Coif de oțel", "Coif cu vizieră"], ["Coif runic", "Coiful Santinelei"], ["Coroana Umbrei", "Masca Nopții"], ["Coroana Infernului", "Diadema Veșnică"]],
+    boots:  [["Cizme de piele", "Încălțări uzate"], ["Cizme întărite", "Cizme de marș"], ["Cizme runice", "Cizmele Vântului"], ["Cizmele Umbrei", "Pași de Fantomă"], ["Cizmele Infernului", "Pașii Furtunii"]],
+    amulet: [["Amuletă de bronz", "Pandantiv șters"], ["Amuletă de argint", "Talisman de jad"], ["Amuletă de aur", "Ochiul Vulturului"], ["Amuleta Umbrei", "Inima Nopții"], ["Inima Infernului", "Ochiul Veșniciei"]]
+};
+const BAG_SIZE = 24;
 const POTION_PRICE = 40;
 const CRYSTAL_SELL = 200;
 
-let equip = { weapon: 0, armor: 0, amulet: 0 };
+let bag = new Array(BAG_SIZE).fill(null);
+let equipped = { weapon: null, armor: null, helmet: null, boots: null, amulet: null };
+let statPoints = 0;
+const stats = { str: 0, vit: 0, int: 0, agi: 0 };
 let critChance = 0.15;
+let moveMult = 1;
+let spellMult = 1;
 let bossKills = 0;
+let uidCounter = 0;
 
-function equipBonus(slot) {
-    const t = equip[slot];
-    return t > 0 ? EQUIP[slot].tiers[t - 1] : null;
+const pct = function(v) { return Math.round(v * 1000) / 10; };
+const r3 = function(v) { return Math.round(v * 1000) / 1000; };
+
+function newUid() {
+    return Date.now().toString(36) + "-" + (uidCounter++).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+}
+
+function mulberry32(a) {
+    return function() {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+}
+
+// același (slot, raritate, nivel, seed) dă mereu același obiect, deci serverul trimite doar aceste patru valori
+function makeGear(slot, rarity, ilvl, seed) {
+    if (SLOTS.indexOf(slot) < 0 || !RARITY_INFO[rarity]) return null;
+    ilvl = Math.max(1, Math.min(50, Math.floor(Number(ilvl)) || 1));
+    const rnd = mulberry32(Math.floor(Number(seed)) || 1);
+    const ri = RARITY.indexOf(rarity);
+    const m = RARITY_INFO[rarity].mult;
+    const v = function() { return 0.9 + rnd() * 0.2; };
+    const st = {};
+    if (slot === "weapon") st.dmg = r3((0.03 + ilvl * 0.006) * m * v());
+    else if (slot === "armor") st.hp = Math.round((60 + ilvl * 25) * m * v());
+    else if (slot === "helmet") st.hp = Math.round((30 + ilvl * 12) * m * v());
+    else if (slot === "boots") {
+        st.speed = r3(Math.min(0.12, (0.01 + ilvl * 0.0008) * m * v()));
+        st.hp = Math.round((20 + ilvl * 6) * m * v());
+    } else {
+        st.mp = Math.round((40 + ilvl * 10) * m * v());
+        st.crit = r3((0.005 + ilvl * 0.0012) * m * v());
+    }
+    if (ri >= 3) {
+        // epic și legendar primesc și o proprietate în plus
+        const pool = ["dmg", "hp", "mp", "crit"].filter(function(k) { return !(k in st); });
+        const k = pool[Math.floor(rnd() * pool.length)];
+        const f = ri - 2;
+        if (k === "dmg") st.dmg = r3((0.01 + ilvl * 0.002) * f);
+        else if (k === "hp") st.hp = Math.round((20 + ilvl * 8) * f);
+        else if (k === "mp") st.mp = Math.round((20 + ilvl * 6) * f);
+        else st.crit = r3(0.004 * f + ilvl * 0.0004);
+    }
+    return {
+        uid: newUid(), slot: slot, rarity: rarity,
+        name: GEAR_NAMES[slot][ri][Math.floor(rnd() * 2)],
+        lvl: ilvl, ilvl: ilvl, stats: st
+    };
+}
+
+function sanitizeItem(it) {
+    if (!it || typeof it !== "object") return null;
+    if (SLOTS.indexOf(it.slot) < 0 || !RARITY_INFO[it.rarity]) return null;
+    const st = {};
+    ["dmg", "hp", "mp", "crit", "speed"].forEach(function(k) {
+        const v = Number(it.stats && it.stats[k]);
+        if (Number.isFinite(v) && v > 0) st[k] = Math.min(v, (k === "hp" || k === "mp") ? 100000 : 3);
+    });
+    const lvl = Math.max(1, Math.min(50, Math.floor(Number(it.lvl)) || 1));
+    return {
+        uid: String(it.uid || newUid()).slice(0, 40), slot: it.slot, rarity: it.rarity,
+        name: String(it.name || "Obiect").slice(0, 40), lvl: lvl,
+        ilvl: Math.max(1, Math.min(50, Math.floor(Number(it.ilvl)) || lvl)), stats: st
+    };
+}
+
+function statLines(st) {
+    const out = [];
+    if (st.dmg) out.push("+" + pct(st.dmg) + "% daune");
+    if (st.hp) out.push("+" + st.hp + " viață");
+    if (st.mp) out.push("+" + st.mp + " mană");
+    if (st.crit) out.push("+" + pct(st.crit) + "% șansă critică");
+    if (st.speed) out.push("+" + pct(st.speed) + "% viteză");
+    return out;
+}
+
+function sellPrice(it) { return Math.round((8 + it.ilvl * 6) * RARITY_INFO[it.rarity].mult); }
+
+function freeSlots() { let n = 0; for (let i = 0; i < BAG_SIZE; i++) if (!bag[i]) n++; return n; }
+
+function addToBag(item) {
+    for (let i = 0; i < BAG_SIZE; i++) {
+        if (!bag[i]) { bag[i] = item; return i; }
+    }
+    return -1;
+}
+
+function gearTotals() {
+    const g = { dmg: 0, hp: 0, mp: 0, crit: 0, speed: 0 };
+    SLOTS.forEach(function(sl) {
+        const it = equipped[sl];
+        if (!it) return;
+        for (const k in g) g[k] += it.stats[k] || 0;
+    });
+    return g;
 }
 
 /* ====================== SUNET ȘI MUZICĂ (sintetizate, fără fișiere) ====================== */
@@ -2066,8 +2345,7 @@ let sfxOn = true, musicOn = true;
 let musicMode = "calm";
 let musicTimer = null, musicNextMelody = 0, musicNextBeat = 0, musicBeatIdx = 0;
 const sndLast = {};
-// Scară Re minor: melodii mai coerente, cu atmosferă fantasy.
-const MUSIC_NOTES = [146.83, 174.61, 196.0, 220.0, 261.63, 293.66, 349.23, 392.0, 440.0, 523.25];
+const MUSIC_NOTES = [110.0, 116.54, 130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 233.08, 261.63, 293.66];
 
 (function() {
     try {
@@ -2089,58 +2367,37 @@ function updateAudioButtons() {
 }
 
 function sndInit() {
+    if (sndCtx) { sndResume(); return; }
     try {
-        if (!sndCtx) {
-            const AC = window.AudioContext || window.webkitAudioContext;
-            if (!AC) {
-                console.warn("AudioContext nu este suportat.");
-                return;
-            }
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        sndCtx = new AC();
+        sndMaster = sndCtx.createGain();
+        sndMaster.gain.value = 0.9;
+        sndMaster.connect(sndCtx.destination);
+        sndSfxGain = sndCtx.createGain();
+        sndSfxGain.gain.value = sfxOn ? 0.8 : 0;
+        sndSfxGain.connect(sndMaster);
+        sndMusicGain = sndCtx.createGain();
+        sndMusicGain.gain.value = musicOn ? 0.5 : 0;
+        sndMusicGain.connect(sndMaster);
 
-            sndCtx = new AC();
+        const len = Math.floor(sndCtx.sampleRate * 2);
+        sndNoiseBuf = sndCtx.createBuffer(1, len, sndCtx.sampleRate);
+        const data = sndNoiseBuf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
 
-            sndMaster = sndCtx.createGain();
-            sndMaster.gain.value = 0.9;
-            sndMaster.connect(sndCtx.destination);
-
-            sndSfxGain = sndCtx.createGain();
-            sndSfxGain.gain.value = sfxOn ? 0.8 : 0;
-            sndSfxGain.connect(sndMaster);
-
-            sndMusicGain = sndCtx.createGain();
-            sndMusicGain.gain.value = musicOn ? 0.5 : 0;
-            sndMusicGain.connect(sndMaster);
-
-            const len = Math.floor(sndCtx.sampleRate * 2);
-            sndNoiseBuf = sndCtx.createBuffer(1, len, sndCtx.sampleRate);
-            const data = sndNoiseBuf.getChannelData(0);
-
-            for (let i = 0; i < len; i++) {
-                data[i] = Math.random() * 2 - 1;
-            }
-
-            sndStartMusic();
-        }
-
-        sndResume();
+        sndStartMusic();
     } catch (e) {
-        console.error("Eroare audio:", e);
+        console.warn("Sunetul nu este disponibil:", e);
+        sndCtx = null;
     }
 }
 
 function sndResume() {
-    if (sndCtx && sndCtx.state !== "running") {
-        sndCtx.resume().catch(function(e) {
-            console.warn("Nu s-a putut porni sunetul:", e);
-        });
-    }
+    if (sndCtx && sndCtx.state === "suspended") sndCtx.resume();
 }
-
-window.addEventListener("pointerdown", function() {
-    if (!sndCtx) sndInit();
-    else sndResume();
-});
-
+window.addEventListener("pointerdown", sndResume);
 window.addEventListener("keydown", sndResume);
 
 function sndAllow(name, gap) {
@@ -2200,39 +2457,30 @@ function sndNoise(dur, o) {
     } catch (e) {}
 }
 
-function sndBladeRing(freq, delay, volume) {
-    sndTone(freq, 0.32, { type: "sine", to: freq * 0.72, vol: volume, delay: delay });
-    sndTone(freq * 2.76, 0.19, { type: "sine", to: freq * 2.1, vol: volume * 0.28, delay: delay });
-}
 function sndSwing(stage) {
     if (!sndAllow("swing", 80)) return;
     const big = stage === 2;
-    sndNoise(big ? 0.42 : 0.24, { filter: "bandpass", freq: big ? 650 : 1100, to: big ? 3200 : 4200, q: 0.8, vol: big ? 0.34 : 0.27 });
-    sndTone(big ? 125 : 190, 0.2, { type: "triangle", to: big ? 55 : 80, vol: big ? 0.13 : 0.09 });
-    sndBladeRing(big ? 1250 : 1750, 0.025, big ? 0.075 : 0.05);
+    sndNoise(big ? 0.45 : 0.2, { filter: "bandpass", freq: big ? 500 : 900, to: big ? 2600 : 3400, q: 0.9, vol: big ? 0.3 : 0.24 });
+    sndTone(big ? 150 : 220, 0.14, { type: "triangle", to: 90, vol: 0.08 });
 }
 function sndHit(crit, dist) {
     const sc = sndVol(dist || 0, 60);
     if (sc <= 0 || !sndAllow("hit", 40)) return;
-    sndNoise(0.13, { filter: "bandpass", freq: 850, to: 260, q: 1.1, vol: 0.34, scale: sc });
-    sndTone(145, 0.18, { type: "sine", to: 42, vol: 0.38, scale: sc });
-    sndBladeRing(crit ? 2100 : 1450, 0.015, (crit ? 0.095 : 0.055) * sc);
+    sndNoise(0.09, { filter: "bandpass", freq: 700, q: 1.2, vol: 0.28, scale: sc });
+    sndTone(150, 0.12, { type: "sine", to: 55, vol: 0.32, scale: sc });
     if (crit) {
         sndTone(1250, 0.18, { type: "triangle", to: 1900, vol: 0.12, scale: sc });
         sndTone(2500, 0.12, { type: "sine", vol: 0.05, delay: 0.02, scale: sc });
     }
 }
 function sndSpellCast() {
-    sndTone(180, 0.65, { type: "sine", to: 720, vol: 0.16 });
-    sndTone(270, 0.55, { type: "triangle", to: 1080, vol: 0.09, delay: 0.035 });
-    sndTone(540, 0.7, { type: "sine", to: 1450, vol: 0.045, delay: 0.08 });
-    sndNoise(0.48, { filter: "highpass", freq: 1800, to: 6500, vol: 0.075 });
+    sndTone(260, 0.4, { type: "sine", to: 880, vol: 0.12 });
+    sndTone(390, 0.4, { type: "triangle", to: 1320, vol: 0.07 });
+    sndNoise(0.35, { filter: "highpass", freq: 2000, to: 6000, vol: 0.05 });
 }
 function sndSpellFire() {
-    sndNoise(0.42, { filter: "bandpass", freq: 520, to: 2800, q: 1.35, vol: 0.3 });
-    sndTone(520, 0.38, { type: "sawtooth", to: 75, vol: 0.15 });
-    sndTone(95, 0.34, { type: "sine", to: 32, vol: 0.22, delay: 0.035 });
-    sndBladeRing(980, 0.06, 0.035);
+    sndNoise(0.3, { filter: "bandpass", freq: 600, to: 2200, q: 1.5, vol: 0.25 });
+    sndTone(480, 0.25, { type: "sawtooth", to: 180, vol: 0.1 });
 }
 function sndImpact(dist) {
     const sc = sndVol(dist, 55);
@@ -2326,7 +2574,7 @@ function sndMonsterAttack(dist, boss) {
 
 function sndStartMusic() {
     const pad = sndCtx.createGain();
-    pad.gain.value = 0.085;
+    pad.gain.value = 0.05;
     pad.connect(sndMusicGain);
     const filt = sndCtx.createBiquadFilter();
     filt.type = "lowpass";
@@ -2371,22 +2619,18 @@ function sndStartMusic() {
 }
 
 function sndMelodyNote(t) {
-    const f = MUSIC_NOTES[Math.floor(Math.random() * MUSIC_NOTES.length)];
-    // Voce principală și armonică discretă, cu atac lent și coadă lungă.
-    [1, 2].forEach(function(mult, i) {
-        const o = sndCtx.createOscillator();
-        o.type = i === 0 ? "triangle" : "sine";
-        o.frequency.setValueAtTime(f * mult, t);
-        const g = sndCtx.createGain();
-        const peak = i === 0 ? 0.13 : 0.025;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(peak, t + 0.16);
-        g.gain.setTargetAtTime(0.0001, t + 0.55, 0.7);
-        o.connect(g);
-        g.connect(sndMusicBus);
-        o.start(t);
-        o.stop(t + 3.2);
-    });
+    const f = MUSIC_NOTES[Math.floor(Math.random() * MUSIC_NOTES.length)] * (Math.random() < 0.25 ? 2 : 1);
+    const o = sndCtx.createOscillator();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(f, t);
+    const g = sndCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.11, t + 0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+    o.connect(g);
+    g.connect(sndMusicBus);
+    o.start(t);
+    o.stop(t + 3);
 }
 
 function sndBossBeat(t, i) {
@@ -2475,71 +2719,128 @@ function toggleSfx() {
     if (sfxOn) sndClick();
 }
 
-/* ====================== MAGAZIN ====================== */
-let shopOpen = false, lbOpen = false, shopTab = "weapon", lbTimer = null;
+/* ====================== PANOURI: MAGAZIN, INVENTAR, PERSONAJ ====================== */
+let shopOpen = false, lbOpen = false, invOpen = false, charOpen = false;
+let shopTab = "weapon", lbTimer = null, invSel = -1;
 
-function panelOpen() { return shopOpen || lbOpen; }
+const SHOP = {
+    weapon: { label: "Arme", tiers: [
+        { name: "Sabie de fier",    lvl: 1,  price: 150,   stats: { dmg: 0.12 } },
+        { name: "Sabie de oțel",    lvl: 5,  price: 700,   stats: { dmg: 0.28 } },
+        { name: "Sabie runică",     lvl: 10, price: 2500,  stats: { dmg: 0.50 } },
+        { name: "Sabia Infernului", lvl: 20, price: 8000,  crystals: 3, stats: { dmg: 0.85 } }
+    ] },
+    armor: { label: "Armuri", tiers: [
+        { name: "Armură de piele",   lvl: 1,  price: 120,  stats: { hp: 300 } },
+        { name: "Zale de oțel",      lvl: 5,  price: 600,  stats: { hp: 800 } },
+        { name: "Platoșă runică",    lvl: 10, price: 2200, stats: { hp: 1700 } },
+        { name: "Armura Infernului", lvl: 20, price: 7000, crystals: 2, stats: { hp: 3200 } }
+    ] },
+    helmet: { label: "Căști", tiers: [
+        { name: "Coif de piele",      lvl: 1,  price: 90,   stats: { hp: 150 } },
+        { name: "Coif de oțel",       lvl: 5,  price: 450,  stats: { hp: 400 } },
+        { name: "Coif runic",         lvl: 10, price: 1700, stats: { hp: 850 } },
+        { name: "Coroana Infernului", lvl: 20, price: 5500, crystals: 2, stats: { hp: 1600 } }
+    ] },
+    boots: { label: "Cizme", tiers: [
+        { name: "Cizme de piele",     lvl: 1,  price: 90,   stats: { speed: 0.02, hp: 80 } },
+        { name: "Cizme întărite",     lvl: 5,  price: 420,  stats: { speed: 0.04, hp: 200 } },
+        { name: "Cizme runice",       lvl: 10, price: 1500, stats: { speed: 0.06, hp: 400 } },
+        { name: "Cizmele Infernului", lvl: 20, price: 5000, crystals: 2, stats: { speed: 0.09, hp: 800 } }
+    ] },
+    amulet: { label: "Amulete", tiers: [
+        { name: "Amuletă de bronz",  lvl: 1,  price: 300,   stats: { mp: 100, crit: 0.02 } },
+        { name: "Amuletă de argint", lvl: 5,  price: 1200,  stats: { mp: 250, crit: 0.04 } },
+        { name: "Amuletă de aur",    lvl: 12, price: 4000,  stats: { mp: 500, crit: 0.07 } },
+        { name: "Inima Infernului",  lvl: 20, price: 12000, crystals: 5, stats: { mp: 900, crit: 0.12 } }
+    ] }
+};
+
+function shopItem(slot, tierIdx) {
+    const t = SHOP[slot].tiers[tierIdx];
+    return sanitizeItem({ uid: newUid(), slot: slot, rarity: RARITY[tierIdx], name: t.name, lvl: t.lvl, ilvl: t.lvl, stats: t.stats });
+}
+
+function panelOpen() { return shopOpen || lbOpen || invOpen || charOpen; }
 
 function closePanels() {
     closeShop();
     closeLeaderboard();
+    closeInventory();
+    closeCharacter();
+    hideItemTip();
 }
 
 function toggleShop() { if (shopOpen) closeShop(); else openShop(); }
+function toggleInventory() { if (invOpen) closeInventory(); else openInventory(); }
+function toggleCharacter() { if (charOpen) closeCharacter(); else openCharacter(); }
 
 function openShop() {
     if (!gameStarted || playerDead) return;
     closeLeaderboard();
     shopOpen = true;
-    if (document.pointerLockElement) document.exitPointerLock();
     document.getElementById("shop-panel").style.display = "block";
     renderShop();
     sndClick();
 }
-
 function closeShop() {
     if (!shopOpen) return;
     shopOpen = false;
     document.getElementById("shop-panel").style.display = "none";
 }
 
-function tierBonusText(slot, t) {
-    if (slot === "weapon") return "+" + Math.round(t.dmg * 100) + "% daune";
-    if (slot === "armor") return "+" + t.hp + " viață";
-    return "+" + t.mp + " mană, +" + Math.round(t.crit * 100) + "% șansă critică";
+function openInventory() {
+    if (!gameStarted) return;
+    invOpen = true;
+    document.getElementById("inv-window").style.display = "block";
+    renderInventory();
+    sndClick();
+}
+function closeInventory() {
+    if (!invOpen) return;
+    invOpen = false;
+    invSel = -1;
+    document.getElementById("inv-window").style.display = "none";
+    hideItemTip();
 }
 
+function openCharacter() {
+    if (!gameStarted) return;
+    charOpen = true;
+    document.getElementById("char-panel").style.display = "block";
+    renderCharacter();
+    sndClick();
+}
+function closeCharacter() {
+    if (!charOpen) return;
+    charOpen = false;
+    document.getElementById("char-panel").style.display = "none";
+}
+
+/* ---------- magazin ---------- */
 function renderShop() {
     const body = document.getElementById("shop-body");
-    document.getElementById("shop-gold").textContent = "💰 " + gold + "    💎 " + crystals;
+    document.getElementById("shop-gold").textContent = "💰 " + gold + "    💎 " + crystals + "    🎒 " + freeSlots() + " locuri libere";
     document.querySelectorAll("#shop-tabs button").forEach(function(b) {
         b.classList.toggle("active", b.dataset.tab === shopTab);
     });
 
     let html = "";
-    if (EQUIP[shopTab]) {
-        EQUIP[shopTab].tiers.forEach(function(t, i) {
-            const tier = i + 1;
-            let state;
-            if (tier < equip[shopTab]) {
-                state = '<span class="shop-tag">Înlocuit</span>';
-            } else if (tier === equip[shopTab]) {
-                state = '<span class="shop-tag ok">✔ Echipat</span>';
-            } else if (tier === equip[shopTab] + 1) {
-                const need = [];
-                if (playerLevel < t.lvl) need.push("nivel " + t.lvl);
-                if (gold < t.price) need.push("aur");
-                if ((t.crystals || 0) > crystals) need.push("cristale");
-                state = need.length
-                    ? '<button class="shop-btn" disabled>Necesită: ' + need.join(", ") + '</button>'
-                    : '<button class="shop-btn" data-act="buy" data-slot="' + shopTab + '">Cumpără</button>';
-            } else {
-                state = '<span class="shop-tag lock">🔒 Treapta anterioară întâi</span>';
-            }
+    if (SHOP[shopTab]) {
+        SHOP[shopTab].tiers.forEach(function(t, i) {
+            const need = [];
+            if (playerLevel < t.lvl) need.push("nivel " + t.lvl);
+            if (gold < t.price) need.push("aur");
+            if ((t.crystals || 0) > crystals) need.push("cristale");
+            if (freeSlots() === 0) need.push("loc în inventar");
+            const state = need.length
+                ? '<button class="shop-btn" disabled>Necesită: ' + need.join(", ") + '</button>'
+                : '<button class="shop-btn" data-act="buy" data-slot="' + shopTab + '" data-tier="' + i + '">Cumpără</button>';
             const price = t.price + " aur" + (t.crystals ? " + " + t.crystals + " 💎" : "");
-            html += '<div class="shop-row"><div><b>' + t.name + '</b><small>' + tierBonusText(shopTab, t) +
-                    ' · nivel ' + t.lvl + '</small></div><div class="shop-price">' + price + '</div><div>' + state + '</div></div>';
+            html += '<div class="shop-row"><div><b style="color:' + RARITY_INFO[RARITY[i]].color + '">' + t.name + '</b><small>' +
+                    statLines(t.stats).join(", ") + ' · nivel ' + t.lvl + '</small></div><div class="shop-price">' + price + '</div><div>' + state + '</div></div>';
         });
+        html += '<div class="shop-row"><div><small>Obiectele cumpărate ajung în inventar (I), de unde le echipezi.</small></div></div>';
     } else if (shopTab === "potions") {
         html += '<div class="shop-row"><div><b>🧪 Poțiune de viață</b><small>Vindecă 35% din viață · ai ' + hpPotions + '</small></div>' +
                 '<div class="shop-price">' + POTION_PRICE + ' aur</div><div>' +
@@ -2553,33 +2854,24 @@ function renderShop() {
         html += '<div class="shop-row"><div><b>💎 Cristal</b><small>Ai ' + crystals + ' · cristalele sunt necesare pentru echipamentul Infernului</small></div>' +
                 '<div class="shop-price">' + CRYSTAL_SELL + ' aur</div><div>' +
                 '<button class="shop-btn" data-act="sell"' + (crystals < 1 ? " disabled" : "") + '>Vinde 1</button></div></div>';
+        html += '<div class="shop-row"><div><small>Echipamentul din inventar îl vinzi din fereastra Inventar (I), cu butonul „Vinde”.</small></div></div>';
     }
     body.innerHTML = html;
 }
 
-function buyTier(slot) {
-    const def = EQUIP[slot];
-    if (!def) return;
-    const tier = equip[slot] + 1;
-    const t = def.tiers[tier - 1];
+function buyShopItem(slot, tierIdx) {
+    const def = SHOP[slot];
+    const t = def && def.tiers[tierIdx];
     if (!t) return;
-    if (playerLevel < t.lvl || gold < t.price || (t.crystals || 0) > crystals) { sndError(); return; }
-
-    const oldHP = maxHP, oldMP = maxMP;
+    if (playerLevel < t.lvl || gold < t.price || (t.crystals || 0) > crystals || freeSlots() === 0) { sndError(); return; }
+    const item = shopItem(slot, tierIdx);
     gold -= t.price;
     crystals -= (t.crystals || 0);
-    equip[slot] = tier;
-    recalcStats(false);
-    myHP = Math.min(maxHP, myHP + Math.max(0, maxHP - oldHP));
-    myMP = Math.min(maxMP, myMP + Math.max(0, maxMP - oldMP));
-    updateMyHpUI();
-    updateMyMpUI();
+    addToBag(item);
     updateInvUI();
-    sendHp();
     sndBuy();
-    addChat("🛒 Ai cumpărat: " + t.name + " (" + tierBonusText(slot, t) + ")", "#ffd966");
+    addChat("🛒 Ai cumpărat: " + item.name + ". Îl găsești în inventar (I).", RARITY_INFO[item.rarity].color);
     saveNow();
-    renderShop();
 }
 
 function buyPotion(kind, n) {
@@ -2590,7 +2882,6 @@ function buyPotion(kind, n) {
     updateInvUI();
     sndBuy();
     saveNow();
-    renderShop();
 }
 
 function sellCrystal() {
@@ -2600,7 +2891,6 @@ function sellCrystal() {
     updateInvUI();
     sndCoin();
     saveNow();
-    renderShop();
 }
 
 function onShopClick(e) {
@@ -2611,9 +2901,447 @@ function onShopClick(e) {
     if (!b || b.disabled) return;
     const act = b.dataset.act;
     if (act === "close") closeShop();
-    else if (act === "buy") buyTier(b.dataset.slot);
+    else if (act === "buy") buyShopItem(b.dataset.slot, Math.floor(Number(b.dataset.tier)));
     else if (act === "potion") buyPotion(b.dataset.kind, Math.max(1, Math.min(5, Number(b.dataset.n) || 1)));
     else if (act === "sell") sellCrystal();
+}
+
+/* ---------- inventar ---------- */
+function changeGear(fn) {
+    const oldHP = maxHP, oldMP = maxMP;
+    fn();
+    recalcStats(false);
+    myHP = Math.min(maxHP, myHP + Math.max(0, maxHP - oldHP));
+    myMP = Math.min(maxMP, myMP + Math.max(0, maxMP - oldMP));
+    updateMyHpUI();
+    updateMyMpUI();
+    sendHp();
+    updateInvUI();
+    saveNow();
+}
+
+function sndEquip() {
+    sndTone(1800, 0.09, { type: "sine", vol: 0.1 });
+    sndTone(2700, 0.12, { type: "sine", vol: 0.06, delay: 0.03 });
+    sndNoise(0.06, { filter: "highpass", freq: 3000, vol: 0.05 });
+}
+
+function equipFromBag(idx) {
+    const it = bag[idx];
+    if (!it) return false;
+    if (playerLevel < it.lvl) {
+        addChat("Ai nevoie de nivel " + it.lvl + " pentru " + it.name + ".", "#e74c3c");
+        sndError();
+        return false;
+    }
+    changeGear(function() {
+        bag[idx] = equipped[it.slot];     // ce purtai trece în rucsac, pe același loc
+        equipped[it.slot] = it;
+        invSel = -1;
+    });
+    sndEquip();
+    return true;
+}
+
+function unequipSlot(slot, toIdx) {
+    const it = equipped[slot];
+    if (!it) return false;
+    let idx = (toIdx !== undefined && !bag[toIdx]) ? toIdx : -1;
+    if (idx < 0) {
+        for (let i = 0; i < BAG_SIZE; i++) if (!bag[i]) { idx = i; break; }
+    }
+    if (idx < 0) {
+        addChat("🎒 Inventarul este plin!", "#e74c3c");
+        sndError();
+        return false;
+    }
+    changeGear(function() {
+        bag[idx] = it;
+        equipped[slot] = null;
+    });
+    sndEquip();
+    return true;
+}
+
+function sellFromBag(idx) {
+    const it = bag[idx];
+    if (!it) return;
+    const p = sellPrice(it);
+    gold += p;
+    bag[idx] = null;
+    invSel = -1;
+    sndCoin();
+    addChat("💰 Ai vândut " + it.name + " pentru " + p + " aur.", "#ffd34d");
+    updateInvUI();
+    saveNow();
+}
+
+function moveInBag(a, b) {
+    if (a === b || a < 0 || b < 0 || a >= BAG_SIZE || b >= BAG_SIZE) return;
+    const t = bag[a];
+    bag[a] = bag[b];
+    bag[b] = t;
+    if (invSel === a) invSel = b; else if (invSel === b) invSel = a;
+    sndClick();
+    renderInventory();
+    saveGame();
+}
+
+function handleDrop(src, dst) {
+    if (!src || !dst) return;
+    const sp = src.split(":"), dp = dst.split(":");
+    if (sp[0] === "bag" && dp[0] === "bag") moveInBag(Number(sp[1]), Number(dp[1]));
+    else if (sp[0] === "bag" && dp[0] === "eq") {
+        const it = bag[Number(sp[1])];
+        if (it && it.slot === dp[1]) equipFromBag(Number(sp[1])); else sndError();
+    } else if (sp[0] === "eq" && dp[0] === "bag") {
+        const j = Number(dp[1]);
+        const cur = equipped[sp[1]];
+        if (!cur) return;
+        if (!bag[j]) unequipSlot(sp[1], j);
+        else if (bag[j].slot === sp[1]) equipFromBag(j);
+        else unequipSlot(sp[1]);
+    }
+}
+
+function itemTipHtml(it) {
+    const ri = RARITY_INFO[it.rarity];
+    return '<b style="color:' + ri.color + '">' + escapeHtml(it.name) + '</b><br>' +
+           '<span style="color:#a8957a">' + SLOT_INFO[it.slot].label + ' · ' + ri.label + '</span><br>' +
+           statLines(it.stats).map(function(l) { return '<span style="color:#9fe39f">' + l + '</span>'; }).join("<br>") + '<br>' +
+           '<span style="color:' + (playerLevel >= it.lvl ? "#ccc" : "#ff6b6b") + '">Nivel necesar: ' + it.lvl + '</span><br>' +
+           '<span style="color:#ffd34d">Vânzare: ' + sellPrice(it) + ' aur</span>';
+}
+
+function showItemTip(it, x, y) {
+    const tip = document.getElementById("item-tip");
+    tip.innerHTML = itemTipHtml(it);
+    tip.style.display = "block";
+    tip.style.left = Math.min(window.innerWidth - 260, x + 16) + "px";
+    tip.style.top = Math.min(window.innerHeight - 160, y + 12) + "px";
+}
+
+function hideItemTip() {
+    const tip = document.getElementById("item-tip");
+    if (tip) tip.style.display = "none";
+}
+
+function renderInventory() {
+    if (!invOpen) return;
+    let h = "";
+    SLOTS.forEach(function(sl) {
+        const it = equipped[sl];
+        h += '<div class="equip-slot" data-eq="' + sl + '" data-drop="eq:' + sl + '"' +
+             (it ? ' draggable="true" style="border-color:' + RARITY_INFO[it.rarity].color + '"' : '') + '>' +
+             '<span class="ico">' + (it ? SLOT_INFO[sl].icon : '<span class="faded">' + SLOT_INFO[sl].icon + '</span>') + '</span>' +
+             '<small>' + (it ? escapeHtml(it.name) : SLOT_INFO[sl].label) + '</small></div>';
+    });
+    document.getElementById("inv-equip").innerHTML = h;
+
+    h = "";
+    for (let i = 0; i < BAG_SIZE; i++) {
+        const it = bag[i];
+        h += '<div class="slot' + (i === invSel ? " sel" : "") + '" data-bag="' + i + '" data-drop="bag:' + i + '"' +
+             (it ? ' draggable="true" style="border-color:' + RARITY_INFO[it.rarity].color + '"' : '') + '>' +
+             (it ? SLOT_INFO[it.slot].icon : "") + '</div>';
+    }
+    document.getElementById("inv-bag").innerHTML = h;
+    document.getElementById("inv-free").textContent = freeSlots() + " / " + BAG_SIZE + " locuri libere";
+
+    document.getElementById("inv-cons").innerHTML =
+        "💰 " + gold + " &nbsp; 🧪 ×" + hpPotions + ' <button data-act="use-hp"' + (hpPotions < 1 ? " disabled" : "") + '>Folosește</button>' +
+        " &nbsp; 💧 ×" + mpPotions + ' <button data-act="use-mp"' + (mpPotions < 1 ? " disabled" : "") + '>Folosește</button>' +
+        " &nbsp; 💎 ×" + crystals;
+
+    const sel = invSel >= 0 ? bag[invSel] : null;
+    document.getElementById("inv-actions").innerHTML = sel
+        ? '<b style="color:' + RARITY_INFO[sel.rarity].color + '">' + escapeHtml(sel.name) + '</b> · ' + statLines(sel.stats).join(", ") +
+          '<br><button data-act="equip">Echipează</button><button data-act="sell">Vinde (' + sellPrice(sel) + ' aur)</button>'
+        : "Click pe un obiect pentru detalii · dublu-click sau click dreapta = echipează · trage obiectele ca să le muți.";
+}
+
+function itemAtEvent(e) {
+    const b = e.target.closest("[data-bag]");
+    if (b) return bag[Number(b.dataset.bag)];
+    const q = e.target.closest("[data-eq]");
+    if (q) return equipped[q.dataset.eq];
+    return null;
+}
+
+(function setupInventoryEvents() {
+    const win = document.getElementById("inv-window");
+    if (!win) return;
+
+    win.addEventListener("click", function(e) {
+        e.stopPropagation();
+        const act = e.target.closest("[data-act]");
+        if (act && !act.disabled) {
+            const a = act.dataset.act;
+            if (a === "close") closeInventory();
+            else if (a === "use-hp") usePotion("hp");
+            else if (a === "use-mp") usePotion("mp");
+            else if (a === "equip") equipFromBag(invSel);
+            else if (a === "sell") sellFromBag(invSel);
+            return;
+        }
+        const b = e.target.closest("[data-bag]");
+        if (b) {
+            const i = Number(b.dataset.bag);
+            invSel = (bag[i] && invSel !== i) ? i : -1;
+            sndClick();
+            renderInventory();
+            return;
+        }
+        const q = e.target.closest("[data-eq]");
+        if (q && equipped[q.dataset.eq]) unequipSlot(q.dataset.eq);
+    });
+
+    win.addEventListener("dblclick", function(e) {
+        const b = e.target.closest("[data-bag]");
+        if (b) equipFromBag(Number(b.dataset.bag));
+    });
+
+    win.addEventListener("contextmenu", function(e) {
+        e.preventDefault();
+        const b = e.target.closest("[data-bag]");
+        if (b) { equipFromBag(Number(b.dataset.bag)); return; }
+        const q = e.target.closest("[data-eq]");
+        if (q) unequipSlot(q.dataset.eq);
+    });
+
+    win.addEventListener("mousemove", function(e) {
+        const it = itemAtEvent(e);
+        if (it) showItemTip(it, e.clientX, e.clientY); else hideItemTip();
+    });
+    win.addEventListener("mouseleave", hideItemTip);
+
+    win.addEventListener("dragstart", function(e) {
+        const b = e.target.closest("[data-bag]"), q = e.target.closest("[data-eq]");
+        const src = b ? "bag:" + b.dataset.bag : (q ? "eq:" + q.dataset.eq : null);
+        if (!src || !e.dataTransfer) return;
+        e.dataTransfer.setData("text/plain", src);
+        e.dataTransfer.effectAllowed = "move";
+        hideItemTip();
+    });
+    win.addEventListener("dragover", function(e) {
+        if (e.target.closest("[data-drop]")) e.preventDefault();
+    });
+    win.addEventListener("drop", function(e) {
+        const d = e.target.closest("[data-drop]");
+        if (!d || !e.dataTransfer) return;
+        e.preventDefault();
+        handleDrop(e.dataTransfer.getData("text/plain"), d.dataset.drop);
+    });
+})();
+
+/* ---------- puncte de caracter ---------- */
+const STAT_INFO = [
+    { key: "str", name: "Putere",       desc: "+1,5% daune pe punct" },
+    { key: "vit", name: "Vitalitate",   desc: "+45 viață pe punct" },
+    { key: "int", name: "Inteligență",  desc: "+25 mană și +1,5% daune la vrajă pe punct" },
+    { key: "agi", name: "Agilitate",    desc: "+0,35% șansă critică și +0,25% viteză pe punct" }
+];
+
+function addStat(key, n) {
+    n = Math.max(1, n || 1);
+    if (!(key in stats) || statPoints < n) { sndError(); return; }
+    changeGear(function() {
+        stats[key] += n;
+        statPoints -= n;
+    });
+    sndClick();
+}
+
+function resetCost() { return 100 * playerLevel; }
+
+function resetStats() {
+    const spent = stats.str + stats.vit + stats.int + stats.agi;
+    if (spent === 0) { sndError(); return; }
+    const cost = resetCost();
+    if (gold < cost) { addChat("Ai nevoie de " + cost + " aur pentru resetarea punctelor.", "#e74c3c"); sndError(); return; }
+    changeGear(function() {
+        gold -= cost;
+        statPoints += spent;
+        stats.str = stats.vit = stats.int = stats.agi = 0;
+    });
+    sndCoin();
+    addChat("🔄 Punctele de caracter au fost resetate (" + cost + " aur).", "#ffd966");
+}
+
+function renderCharacter() {
+    if (!charOpen) return;
+    document.getElementById("char-points").textContent = statPoints > 0 ? "✨ " + statPoints + " puncte libere" : "";
+    let h = '<div style="margin-bottom:8px;color:#d8c28a;font-size:13px">' + escapeHtml(heroName) + ' · Nivel ' + playerLevel +
+            '<br>XP ' + playerXP + ' / ' + xpForLevel(playerLevel) + '</div>';
+    STAT_INFO.forEach(function(si) {
+        h += '<div class="stat-row"><div><b>' + si.name + '</b><small>' + si.desc + '</small></div>' +
+             '<span class="stat-val">' + stats[si.key] + '</span>' +
+             '<span><button data-act="stat" data-key="' + si.key + '" data-n="1"' + (statPoints < 1 ? " disabled" : "") + '>+1</button> ' +
+             '<button data-act="stat" data-key="' + si.key + '" data-n="5"' + (statPoints < 5 ? " disabled" : "") + '>+5</button></span></div>';
+    });
+    const g = gearTotals();
+    h += '<div class="derived">' +
+         '❤️ Viață maximă: <b>' + maxHP + '</b><br>' +
+         '💧 Mană maximă: <b>' + maxMP + '</b><br>' +
+         '⚔️ Daune: <b>×' + damageMult.toFixed(2) + '</b> · vrajă: <b>×' + spellMult.toFixed(2) + '</b><br>' +
+         '🎯 Șansă critică: <b>' + pct(critChance) + '%</b><br>' +
+         '👟 Viteză de mișcare: <b>+' + pct(moveMult - 1) + '%</b><br>' +
+         '<span style="color:#8a7a66">Din echipament: ' + (statLines(g).join(", ") || "nimic") + '</span></div>';
+    h += '<div style="margin-top:10px"><button class="shop-btn" data-act="reset-stats">Resetează punctele (' + resetCost() + ' aur)</button></div>';
+    document.getElementById("char-body").innerHTML = h;
+}
+
+(function setupCharacterEvents() {
+    const panel = document.getElementById("char-panel");
+    if (!panel) return;
+    panel.addEventListener("click", function(e) {
+        e.stopPropagation();
+        const b = e.target.closest("[data-act]");
+        if (!b || b.disabled) return;
+        const a = b.dataset.act;
+        if (a === "close") closeCharacter();
+        else if (a === "stat") addStat(b.dataset.key, Number(b.dataset.n) || 1);
+        else if (a === "reset-stats") resetStats();
+    });
+})();
+
+/* ====================== CURSOR ȘI ȚINTIRE (stil MMORPG) ====================== */
+function svgCursor(svg, x, y) {
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") ' + x + ' ' + y + ', auto';
+}
+
+const CURSORS = {
+    "default": svgCursor("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>" +
+        "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#fff1c1'/><stop offset='1' stop-color='#c9892b'/></linearGradient></defs>" +
+        "<path d='M3 2 L3 25 L9 19.5 L13.5 29 L18 27 L13.7 18 L22 18 Z' fill='url(#g)' stroke='#24140a' stroke-width='1.8' stroke-linejoin='round'/>" +
+        "<path d='M3 2 L3 25 L9 19.5' fill='none' stroke='#ffffff' stroke-opacity='.4' stroke-width='.8'/></svg>", 3, 2),
+    attack: svgCursor("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>" +
+        "<path d='M27 3 L30 6 L15 21 L12 18 Z' fill='#e8eef5' stroke='#1b1b1b' stroke-width='1.6' stroke-linejoin='round'/>" +
+        "<path d='M9 17 L15 23 L13.2 25 L7.2 19 Z' fill='#d9a441' stroke='#1b1b1b' stroke-width='1.6' stroke-linejoin='round'/>" +
+        "<path d='M8.4 23.6 L4.5 29 L2.8 27.4 L8 22.6 Z' fill='#7a4a2a' stroke='#1b1b1b' stroke-width='1.6' stroke-linejoin='round'/>" +
+        "<circle cx='28' cy='4' r='2.2' fill='#ff3b3b' fill-opacity='.85'/></svg>", 28, 4),
+    loot: svgCursor("<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'>" +
+        "<path d='M16 6 C10 6 7 12 7 18 C7 24 11 28 16 28 C21 28 25 24 25 18 C25 12 22 6 16 6 Z' fill='#c9892b' stroke='#24140a' stroke-width='1.8'/>" +
+        "<path d='M12 4 L20 4 L19 9 L13 9 Z' fill='#7a4a2a' stroke='#24140a' stroke-width='1.5'/>" +
+        "<circle cx='16' cy='18' r='4.2' fill='#ffd34d' stroke='#24140a' stroke-width='1.2'/></svg>", 16, 16)
+};
+
+let hoverKind = "";
+let hoverTimer = 0;
+let selectedTarget = null;
+let targetRing = null;
+const hoverRay = new THREE.Raycaster();
+
+function setCursor(kind) {
+    if (kind === hoverKind) return;
+    hoverKind = kind;
+    document.body.style.cursor = CURSORS[kind] || CURSORS["default"];
+}
+setCursor("default");
+
+function pickAt(clientX, clientY) {
+    if (!camera || !scene) return null;
+    hoverRay.setFromCamera(new THREE.Vector2(clientX / window.innerWidth * 2 - 1, -(clientY / window.innerHeight) * 2 + 1), camera);
+    const list = [];
+    for (const m of monsters) if (m.alive && m.root.visible) list.push(m.root);
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (rp.mesh && rp.hp > 0) list.push(rp.mesh);
+    }
+    for (const id in lootItems) list.push(lootItems[id].group);
+    const hits = hoverRay.intersectObjects(list, true);
+    for (const hit of hits) {
+        let o = hit.object;
+        while (o) {
+            if (o.userData && o.userData.pickType) return { kind: o.userData.pickType, id: o.userData.pickId };
+            o = o.parent;
+        }
+    }
+    return null;
+}
+
+function selectTarget(kind, id) {
+    selectedTarget = { kind: kind, id: id };
+    sndClick();
+    updateTarget(0);
+}
+
+function clearTarget() {
+    selectedTarget = null;
+    updateTarget(0);
+}
+
+function targetInfo() {
+    if (!selectedTarget) return null;
+    if (selectedTarget.kind === "monster") {
+        const m = monsterById[selectedTarget.id];
+        if (!m || !m.alive) return null;
+        return { x: m.x, y: m.y, z: m.z, hp: m.hp, max: m.maxHp, name: m.name, scale: m.scale };
+    }
+    const rp = remotePlayers[selectedTarget.id];
+    if (!rp || !rp.mesh || rp.hp <= 0) return null;
+    return {
+        x: rp.rx !== undefined ? rp.rx : rp.x, y: rp.mesh.position.y, z: rp.rz !== undefined ? rp.rz : rp.z,
+        hp: rp.hp, max: rp.maxHp || 1500, name: (rp.name || "Erou") + " Lv." + (rp.level || 1), scale: 1
+    };
+}
+
+function targetNearest() {
+    const cands = [];
+    for (const m of monsters) {
+        if (!m.alive) continue;
+        const d = Math.hypot(m.x - myPos.x, m.z - myPos.z);
+        if (d < 45) cands.push({ kind: "monster", id: m.id, d: d });
+    }
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh || rp.hp <= 0) continue;
+        const d = Math.hypot((rp.rx !== undefined ? rp.rx : rp.x) - myPos.x, (rp.rz !== undefined ? rp.rz : rp.z) - myPos.z);
+        if (d < 45) cands.push({ kind: "player", id: id, d: d });
+    }
+    if (!cands.length) { clearTarget(); return; }
+    cands.sort(function(a, b) { return a.d - b.d; });
+    let next = cands[0];
+    if (selectedTarget && cands[0].kind === selectedTarget.kind && cands[0].id === selectedTarget.id && cands.length > 1) next = cands[1];
+    selectTarget(next.kind, next.id);
+}
+
+function worldClick(x, y) {
+    const p = pickAt(x, y);
+    if (p && (p.kind === "monster" || p.kind === "player")) selectTarget(p.kind, p.id);
+    if (!p || p.kind !== "loot") useSkill(1);
+}
+
+function updateTarget(delta) {
+    const frame = document.getElementById("target-frame");
+    const info = targetInfo();
+    if (info && Math.hypot(info.x - myPos.x, info.z - myPos.z) > 80) { selectedTarget = null; }
+    const ti = selectedTarget ? info : null;
+
+    if (!targetRing && scene) {
+        targetRing = new THREE.Mesh(
+            new THREE.RingGeometry(0.9, 1.1, 40),
+            new THREE.MeshBasicMaterial({ color: 0xff4040, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })
+        );
+        targetRing.rotation.x = -Math.PI / 2;
+        targetRing.visible = false;
+        scene.add(targetRing);
+    }
+    if (targetRing) {
+        targetRing.visible = !!ti;
+        if (ti) {
+            targetRing.position.set(ti.x, ti.y + 0.12, ti.z);
+            targetRing.scale.setScalar(ti.scale * (1 + 0.06 * Math.sin(performance.now() / 150)));
+        }
+    }
+    if (frame) {
+        frame.style.display = ti ? "block" : "none";
+        if (ti) {
+            document.getElementById("target-name").textContent = ti.name;
+            document.getElementById("target-fill").style.width = Math.max(0, ti.hp / ti.max * 100) + "%";
+            document.getElementById("target-text").textContent = Math.max(0, Math.round(ti.hp)) + " / " + ti.max;
+        }
+    }
 }
 
 /* ====================== CLASAMENT ====================== */
@@ -2655,7 +3383,6 @@ function openLeaderboard() {
     if (!gameStarted) return;
     closeShop();
     lbOpen = true;
-    if (document.pointerLockElement) document.exitPointerLock();
     document.getElementById("lb-panel").style.display = "block";
     sendStats();
     requestLeaderboard();
@@ -2847,7 +3574,7 @@ function drawMinimap() {
     for (const id in lootItems) {
         const it = lootItems[id];
         const p = toMap(it.x, it.z);
-        ctx.fillStyle = "#" + (LOOT_COLORS[it.type] || 0xffffff).toString(16).padStart(6, "0");
+        ctx.fillStyle = "#" + lootColor(it).toString(16).padStart(6, "0");
         ctx.fillRect(p[0] - 1.5, p[1] - 1.5, 3, 3);
     }
 
@@ -2947,6 +3674,7 @@ function startGame() {
     document.getElementById("minimap-wrap").style.display = "block";
     sndInit();
     updateAudioButtons();
+    updateInvUI();
     initGame();
 }
 
@@ -3094,6 +3822,7 @@ function spawnRemotePlayerMesh(id) {
     rp.mixer = rMixer;
 
     rMesh.rotation.order = "YXZ";
+    rMesh.userData = { pickType: "player", pickId: id };
     const bar = makeBarSprite(remoteLabel(rp));
     bar.sprite.position.set(0, PLAYER_HEIGHT + 0.6, 0);
     rMesh.add(bar.sprite);
@@ -3252,11 +3981,13 @@ function setupControls() {
             if (e.code === "KeyL") { toggleLeaderboard(); e.preventDefault(); return; }
             if (e.code === "KeyM") { toggleMusic(); return; }
             if (e.code === "KeyN") { toggleSfx(); return; }
-            if (e.code === "Escape" && panelOpen()) { closePanels(); return; }
+            if (e.code === "KeyI") { toggleInventory(); e.preventDefault(); return; }
+            if (e.code === "KeyP") { toggleCharacter(); e.preventDefault(); return; }
+            if (e.code === "Tab") { targetNearest(); e.preventDefault(); return; }
+            if (e.code === "Escape") { if (panelOpen()) closePanels(); else clearTarget(); return; }
         }
         if (e.code === "Equal" || e.code === "NumpadAdd") { minimapZoom(-8); return; }
         if (e.code === "Minus" || e.code === "NumpadSubtract") { minimapZoom(8); return; }
-        if (panelOpen()) return;
 
         if (!e.repeat) {
             if (e.code === "Digit1") useSkill(1);
@@ -3285,27 +4016,58 @@ function updateOnlineCount() {
 
 function setupCamera() {
     const container = document.getElementById("game-container");
-    container.addEventListener("click", function() {
-        if (document.activeElement === document.getElementById("chat-input")) return;
-        if (container.requestPointerLock) container.requestPointerLock();
-    });
+    const chatInput = document.getElementById("chat-input");
+    let rightDown = false;
 
     document.addEventListener("pointerlockchange", function() {
         isPointerLocked = document.pointerLockElement === container;
     });
 
-    window.addEventListener("mousemove", function(e) {
-        if (!isPointerLocked) return;
-        cameraAngle += e.movementX * 0.004;
-        cameraPitch += e.movementY * 0.004;
-        cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
+    // click dreapta ținut + mișcare = rotești camera (ca în MMORPG-urile 3D)
+    window.addEventListener("mousedown", function(e) {
+        if (!gameStarted || !renderer || e.target !== renderer.domElement) return;
+        if (document.activeElement === chatInput) chatInput.blur();
+        if (e.button === 2) {
+            rightDown = true;
+            if (container.requestPointerLock) { try { container.requestPointerLock(); } catch (err) {} }
+        } else if (e.button === 0) {
+            worldClick(e.clientX, e.clientY);
+        }
     });
 
-    window.addEventListener("mousedown", function(e) {
-        if (isPointerLocked && e.button === 0) useSkill(1);
+    window.addEventListener("mouseup", function(e) {
+        if (e.button === 2) {
+            rightDown = false;
+            if (document.pointerLockElement) document.exitPointerLock();
+        }
+    });
+
+    window.addEventListener("blur", function() {
+        rightDown = false;
+        if (document.pointerLockElement) document.exitPointerLock();
+    });
+
+    window.addEventListener("contextmenu", function(e) {
+        if (renderer && e.target === renderer.domElement) e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", function(e) {
+        if (isPointerLocked || rightDown) {
+            cameraAngle += (e.movementX || 0) * 0.004;
+            cameraPitch += (e.movementY || 0) * 0.004;
+            cameraPitch = Math.max(0.1, Math.min(1.2, cameraPitch));
+            return;
+        }
+        const t = performance.now();
+        if (t - hoverTimer < 40) return;
+        hoverTimer = t;
+        if (!renderer || e.target !== renderer.domElement) { setCursor("default"); return; }
+        const p = pickAt(e.clientX, e.clientY);
+        setCursor(!p ? "default" : (p.kind === "loot" ? "loot" : "attack"));
     });
 
     window.addEventListener("wheel", function(e) {
+        if (!renderer || e.target !== renderer.domElement) return;
         cameraDistance += e.deltaY * 0.05;
         cameraDistance = Math.max(2.0, Math.min(20, cameraDistance));
     });
@@ -3360,7 +4122,7 @@ function update() {
     const right = (keys["KeyD"] || keys["d"] || keys["ArrowRight"]) ? 1 : 0;
 
     const running = !!(keys["ShiftLeft"] || keys["ShiftRight"] || keys["shift"]);
-    const speed = (running ? myPos.runSpeed : myPos.walkSpeed) * (now < attackUntil ? 0.4 : 1);
+    const speed = (running ? myPos.runSpeed : myPos.walkSpeed) * (now < attackUntil ? 0.4 : 1) * moveMult;
 
     const forwardX = -Math.sin(cameraAngle);
     const forwardZ = -Math.cos(cameraAngle);
