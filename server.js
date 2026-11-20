@@ -175,12 +175,9 @@ function initWorld(points, boss) {
         monsters.push(m);
         monsterById[m.id] = m;
     }
-    const b = makeMonster('boss', 'boss', bossPoint);
-    monsters.push(b);
-    monsterById[b.id] = b;
 
     worldReady = true;
-    console.log(`Lumea a fost creată: ${MONSTER_COUNT} monștri + boss, ${points.length} puncte de apariție.`);
+    console.log(`Lumea a fost creată: ${MONSTER_COUNT} monștri, ${points.length} puncte de apariție.`);
     io.emit('worldState', worldSnapshot());
 }
 
