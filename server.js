@@ -135,7 +135,7 @@ function makeMonster(id, type, point) {
         id: id,
         type: type,
         name: boss ? 'Alfa Vârcolac' : 'Vârcolac',
-        scale: boss ? 2.2 : 1,
+        scale: boss ? 1.5 : 1.2,
         x: point.x, z: point.z,
         spawnX: point.x, spawnZ: point.z,
         hp: boss ? 4000 : 300,
