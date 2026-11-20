@@ -637,6 +637,16 @@ function attachWerewolfToMonster(m) {
     clone.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
     clone.updateMatrixWorld(true);
 
+    const finalBounds = new THREE.Box3().setFromObject(clone);
+    const finalSize = finalBounds.getSize(new THREE.Vector3());
+    if (m.id === "m0") {
+        const report = "Diagnostic vârcolac: înălțime GLB=" + size.y.toFixed(3) +
+            " | factor=" + factor.toFixed(5) +
+            " | înălțime după scalare=" + finalSize.y.toFixed(3);
+        console.log(report, { originalScale: werewolfGLTF.scene.scale.toArray(), cloneScale: clone.scale.toArray() });
+        addChat(report, "#ffcc66");
+    }
+
     const visualRoot = new THREE.Group();
     visualRoot.add(clone);
     const materials = [];
