@@ -436,6 +436,8 @@ canvas { display: block; width: 100%; height: 100%; }
         <button onclick="toggleLeaderboard()">🏆 Clasament (L)</button>
         <button id="btn-music" onclick="toggleMusic()">🎵</button>
         <button id="btn-sfx" onclick="toggleSfx()">🔊</button>
+        <button id="btn-audio-test" onclick="sndTest()">🔊 TEST SUNET</button>
+        <span id="audio-test-status" style="font-size:11px;color:#ffd700;margin-left:4px"></span>
     </div>
 
     <div id="minimap-wrap"><canvas id="minimap" width="170" height="170"></canvas></div>
@@ -2131,6 +2133,53 @@ function sndResume() {
         sndCtx.resume().catch(function(e) {
             console.warn("Nu s-a putut porni sunetul:", e);
         });
+    }
+}
+
+// Test direct al motorului audio: ocolește setările muzicii și efectelor.
+function sndTest() {
+    const status = document.getElementById("audio-test-status");
+    try {
+        sndInit();
+        if (!sndCtx || !sndMaster) {
+            if (status) status.textContent = "AudioContext indisponibil";
+            return;
+        }
+
+        const playTestTone = function() {
+            try {
+                const osc = sndCtx.createOscillator();
+                const gain = sndCtx.createGain();
+                const now = sndCtx.currentTime;
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, now);
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.25, now + 0.03);
+                gain.gain.setValueAtTime(0.25, now + 0.35);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+                osc.connect(gain);
+                gain.connect(sndMaster);
+                osc.start(now);
+                osc.stop(now + 0.7);
+                if (status) status.textContent = "Test trimis (" + sndCtx.state + ")";
+            } catch (e) {
+                console.error("Test audio eșuat:", e);
+                if (status) status.textContent = "Eroare: " + e.message;
+            }
+        };
+
+        if (sndCtx.state === "running") {
+            playTestTone();
+        } else {
+            if (status) status.textContent = "Pornesc motorul audio...";
+            sndCtx.resume().then(playTestTone).catch(function(e) {
+                console.error("AudioContext resume eșuat:", e);
+                if (status) status.textContent = "Nu pornește: " + e.message;
+            });
+        }
+    } catch (e) {
+        console.error("Test audio eșuat:", e);
+        if (status) status.textContent = "Eroare: " + e.message;
     }
 }
 
