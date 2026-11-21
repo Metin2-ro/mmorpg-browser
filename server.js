@@ -246,7 +246,9 @@ function stepMonster(m, now, dt, targets) {
 
     const fromSpawn = Math.hypot(m.x - m.spawnX, m.z - m.spawnZ);
     if (target && best <= m.aggro) m.aggroOn = true;
-    if (m.aggroOn && (!target || best > m.leash || fromSpawn > m.leash)) m.aggroOn = false;
+    // Nu întrerupem urmărirea doar fiindcă monstrul s-a îndepărtat de spawn;
+    // oprim aggro-ul numai când jucătorul chiar iese din raza de urmărire.
+    if (m.aggroOn && (!target || best > m.leash)) m.aggroOn = false;
 
     // atacul special al boss-ului: lovitură în sol
     if (m.type === 'boss') {
