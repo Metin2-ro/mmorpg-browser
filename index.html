@@ -436,6 +436,21 @@ input, textarea { cursor: text !important; }
 .derived { margin-top: 10px; font-size: 12px; color: #d8c28a; line-height: 1.7; }
 #toolbar button.alert { border-color: #ffd700; box-shadow: 0 0 10px #ffb300; animation: pulse 1.2s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 2px #ffb300; } }
+
+.equip-col { display: grid !important; grid-template-columns: repeat(2, 92px); gap: 6px; align-content: start; }
+.sk-lv { position: absolute; top: 1px; left: 3px; font-size: 9px; color: #ffd700; font-weight: bold; text-shadow: 1px 1px #000; pointer-events: none; }
+.skill-slot.locked { opacity: 0.38; filter: grayscale(0.7); }
+#skill-panel { width: 640px; }
+.skill-note { font-size: 11px; color: #a8957a; margin-bottom: 8px; line-height: 1.5; }
+.sk-row { display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; padding: 8px 2px; border-bottom: 1px solid #2c1f15; }
+.sk-ico { font-size: 28px; text-align: center; }
+.sk-name { font-size: 13px; color: #ffd700; font-weight: bold; }
+.sk-name .rk { margin-left: 8px; font-size: 12px; }
+.sk-desc { font-size: 11px; color: #a8957a; margin: 2px 0 4px; }
+.sk-bar { height: 5px; background: #1c120c; border: 1px solid #3a2a1c; border-radius: 3px; overflow: hidden; }
+.sk-bar i { display: block; height: 100%; }
+.rk-n { color: #cfcfcf; } .rk-m { color: #4da6ff; } .rk-g { color: #c77dff; } .rk-p { color: #ff9a1f; }
+#buff-indicator { position: absolute; top: 212px; left: 20px; font-size: 12px; color: #ffcc66; text-shadow: 1px 1px #000; z-index: 12; pointer-events: none; }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -488,6 +503,7 @@ input, textarea { cursor: text !important; }
     </div>
 
     <div id="toolbar">
+        <button id="btn-skill" onclick="toggleSkills()">⚡ Abilități (K)</button>
         <button onclick="toggleInventory()">🎒 Inventar (I)</button>
         <button id="btn-char" onclick="toggleCharacter()">👤 Personaj (P)</button>
         <button onclick="toggleShop()">🛒 Magazin (B)</button>
@@ -506,10 +522,13 @@ input, textarea { cursor: text !important; }
         </div>
         <div id="shop-tabs">
             <button data-tab="weapon">⚔️ Arme</button>
-            <button data-tab="armor">🛡️ Armuri</button>
+            <button data-tab="armor">🥋 Armuri</button>
             <button data-tab="helmet">⛑️ Căști</button>
-            <button data-tab="boots">👢 Cizme</button>
-            <button data-tab="amulet">📿 Amulete</button>
+            <button data-tab="shield">🛡️ Scuturi</button>
+            <button data-tab="bracelet">🔗 Brățări</button>
+            <button data-tab="necklace">📿 Coliere</button>
+            <button data-tab="earring">🌙 Cercei</button>
+            <button data-tab="boots">👟 Papuci</button>
             <button data-tab="potions">🧪 Poțiuni</button>
             <button data-tab="sell">💎 Vinde</button>
         </div>
@@ -548,6 +567,17 @@ input, textarea { cursor: text !important; }
         <div id="char-body"></div>
     </div>
 
+    <div id="skill-panel" class="modal-panel">
+        <div class="panel-head">
+            <h3>⚡ Abilități</h3>
+            <span class="wallet" id="skill-points"></span>
+            <button class="panel-close" data-act="close">✕</button>
+        </div>
+        <div id="skill-body"></div>
+    </div>
+
+    <div id="buff-indicator"></div>
+
     <div id="item-tip"></div>
 
     <div id="target-frame">
@@ -566,7 +596,7 @@ input, textarea { cursor: text !important; }
     </div>
 
     <div id="boss-bar">
-        <div id="boss-name">Alfa Vârcolac</div>
+        <div id="boss-name">Lordul Infernului</div>
         <div class="bar-container">
             <div class="hp-fill" id="boss-fill" style="width:100%"></div>
             <div class="bar-text" id="boss-text"></div>
@@ -576,20 +606,13 @@ input, textarea { cursor: text !important; }
     <div id="chat-container">
         <div id="chat-messages">
             <div style="color:#ff9900">
-                <b>[System]:</b> Mouse: ține <b>click dreapta</b> și mișcă mouse-ul ca să rotești camera, <b>click stânga</b> pe monștri = țintă + atac. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând! <b>B</b> magazin, <b>L</b> clasament, <b>M/N</b> muzică/sunete, <b>+/−</b> zoom hartă, <b>I</b> inventar, <b>P</b> personaj, <b>Tab</b> țintă apropiată.
+                <b>[System]:</b> Mouse: ține <b>click dreapta</b> și mișcă mouse-ul ca să rotești camera, <b>click stânga</b> pe monștri = țintă + atac. Folosește <b>WASD</b> pentru mișcare, <b>Shift</b> pentru alergare, <b>1</b> atac (sau click stâng), <b>2</b> învârtire (100 mana), <b>3</b> scut (50 mană), <b>4</b> vrajă la distanță (80 mană), <b>C</b> rostogolire, <b>Space</b> săritură, <b>Q/E</b> poțiuni! Prinde combo: 3 lovituri la rând! <b>B</b> magazin, <b>L</b> clasament, <b>M/N</b> muzică/sunete, <b>+/−</b> zoom hartă, <b>I</b> inventar, <b>P</b> personaj, <b>Tab</b> țintă apropiată, <b>K</b> abilități: <b>1</b> sabie, <b>2</b> vârtej, <b>3</b> scut, <b>4</b> sferă, <b>5</b> strigăt de luptă, <b>6</b> lovitură seismică, <b>7</b> fulger.
             </div>
         </div>
         <input id="chat-input" type="text" placeholder="Scrie un mesaj..." autocomplete="off">
     </div>
 
-    <div id="action-bar">
-        <div class="skill-slot" onclick="useSkill(1)">⚔️<div class="cd-overlay" id="cd1"></div><span class="skill-key">1</span></div>
-        <div class="skill-slot" onclick="useSkill(2)">🌪️<div class="cd-overlay" id="cd2"></div><span class="skill-key">2</span></div>
-        <div class="skill-slot" onclick="triggerDefense3D()">🛡️<div class="cd-overlay" id="cd3"></div><span class="skill-key">3</span></div>
-        <div class="skill-slot" onclick="useSpell()">🔮<div class="cd-overlay" id="cd4"></div><span class="skill-key">4</span></div>
-        <div class="skill-slot" onclick="doRoll()">💨<div class="cd-overlay" id="cd5"></div><span class="skill-key">C</span></div>
-        <div class="skill-slot" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>
-    </div>
+    <div id="action-bar"></div>
 </div>
 
 <div id="death-overlay"><span>AI MURIT</span><small id="death-text">Revii în 4 secunde...</small></div>
@@ -601,106 +624,6 @@ input, textarea { cursor: text !important; }
 
 const CHARACTER_FILE = "./Knight.glb";
 const MAP_FILE = "./map.glb";
-
-const WEREWOLF_FILE = "./werewolf-rigged.glb";
-let werewolfGLTF = null;
-
-function setMonsterAction(m, action, oneShot) {
-    if (!m || !m.mixer || !action || m.currentAction === action) return;
-    action.reset();
-    action.enabled = true;
-    action.setEffectiveTimeScale(1);
-    action.setEffectiveWeight(1);
-    action.setLoop(oneShot ? THREE.LoopOnce : THREE.LoopRepeat, oneShot ? 1 : Infinity);
-    action.clampWhenFinished = !!oneShot;
-    action.play();
-    if (m.currentAction) m.currentAction.crossFadeTo(action, 0.18, true);
-    m.currentAction = action;
-}
-
-function attachWerewolfToMonster(m) {
-    if (!werewolfGLTF || !m || m.werewolfAttached) return;
-    const clone = THREE.SkeletonUtils.clone(werewolfGLTF.scene);
-    clone.position.set(0, 0, 0);
-    clone.rotation.set(0, 0, 0);
-    // Păstrăm scara originală din GLB; unele modele au scalare definită în scena exportată.
-    clone.updateMatrixWorld(true);
-
-    const bounds = new THREE.Box3().setFromObject(clone);
-    const size = bounds.getSize(new THREE.Vector3());
-    const center = bounds.getCenter(new THREE.Vector3());
-    const targetHeight = 1.0 * (m.scale || 1);
-    const factor = size.y > 0.001 ? targetHeight / size.y : 1;
-
-    // Corecția se înmulțește cu scara GLB, nu o înlocuiește.
-    clone.scale.multiplyScalar(factor);
-    clone.position.set(-center.x * factor, -bounds.min.y * factor, -center.z * factor);
-    clone.updateMatrixWorld(true);
-
-    const finalBounds = new THREE.Box3().setFromObject(clone);
-    const finalSize = finalBounds.getSize(new THREE.Vector3());
-    if (m.id === "m0") {
-        const report = "Diagnostic vârcolac: înălțime GLB=" + size.y.toFixed(3) +
-            " | factor=" + factor.toFixed(5) +
-            " | înălțime după scalare=" + finalSize.y.toFixed(3);
-        console.log(report, { originalScale: werewolfGLTF.scene.scale.toArray(), cloneScale: clone.scale.toArray() });
-        addChat(report, "#ffcc66");
-    }
-
-    const visualRoot = new THREE.Group();
-    visualRoot.add(clone);
-    const materials = [];
-    clone.traverse(function(node) {
-        if (!node.isMesh) return;
-        node.castShadow = true;
-        node.receiveShadow = true;
-        node.frustumCulled = false;
-        const isArray = Array.isArray(node.material);
-        const mats = isArray ? node.material : [node.material];
-        const copies = mats.map(function(mat) {
-            const copy = mat.clone();
-            copy.needsUpdate = true;
-            materials.push({ material: copy, emissive: copy.emissive ? copy.emissive.clone() : null });
-            return copy;
-        });
-        node.material = isArray ? copies : copies[0];
-    });
-
-    if (m.model) m.root.remove(m.model);
-    m.model = visualRoot;
-    m.root.add(visualRoot);
-    m.materials = materials;
-    m.bodyMat = null;
-    m.mixer = new THREE.AnimationMixer(clone);
-    m.actions = { idle: null, walk: null, attack: null, death: null };
-    const clips = werewolfGLTF.animations || [];
-    clips.forEach(function(clip) {
-        const name = (clip.name || "").toLowerCase();
-        const action = m.mixer.clipAction(clip);
-        if (!m.actions.idle && /(idle|stand|breath)/.test(name)) m.actions.idle = action;
-        else if (!m.actions.walk && /(walk|run|locomotion)/.test(name)) m.actions.walk = action;
-        else if (!m.actions.attack && /(attack|bite|claw|hit|strike)/.test(name)) m.actions.attack = action;
-        else if (!m.actions.death && /(death|die|dead)/.test(name)) m.actions.death = action;
-    });
-    if (!m.actions.idle && clips.length) m.actions.idle = m.mixer.clipAction(clips[0]);
-    if (!m.actions.walk) m.actions.walk = m.actions.idle;
-    m.werewolfAttached = true;
-    setMonsterAction(m, m.actions.idle, false);
-    console.log("Werewolf atasat:", m.id, clips.map(a => a.name));
-}
-
-function loadWerewolfModel() {
-    const loader = new THREE.GLTFLoader();
-    loader.load(WEREWOLF_FILE, function(gltf) {
-        werewolfGLTF = gltf;
-        for (const m of monsters) attachWerewolfToMonster(m);
-        addChat("Modelul Werewolf a fost încărcat pentru toți monștrii.", "#2ecc71");
-    }, undefined, function(error) {
-        console.error("Nu s-a putut încărca werewolf-rigged.glb:", error);
-        addChat("Modelul Werewolf nu s-a încărcat; folosesc modelul de rezervă.", "#ff9966");
-    });
-}
-
 
 /* ================= SETĂRI DE MĂRIME (modifică aici) ================= */
 const PLAYER_HEIGHT = 1.8;    // înălțimea personajului; mai mic = personaj mai mic
@@ -1058,7 +981,7 @@ function autoFaceNearest(range) {
 
 let comboStage = 0, comboLast = -10;
 function useSkill(n) {
-    if (!characterLoaded || playerDead || !SKILLS[n] || n === 4 || nowSec() < rollUntil) return;
+    if (!characterLoaded || playerDead || !SKILLS[n] || n > 2 || !skillLearned(n) || nowSec() < rollUntil) return;
     const cfg = SKILLS[n];
     const now = nowSec();
     if (now < cfg.readyAt) return;
@@ -1101,7 +1024,9 @@ function useSkill(n) {
 
 function rollDamage(cfg, mult) {
     const crit = Math.random() < critChance;
-    let dmg = (cfg.min + Math.random() * (cfg.max - cfg.min)) * damageMult * (mult || 1);
+    const sp = cfg.id ? skillPowerForLevel(skillLv[cfg.id] || 1) : 1;
+    const buff = nowSec() < buffUntil ? 1 + buffAmount : 1;
+    let dmg = (cfg.min + Math.random() * (cfg.max - cfg.min)) * damageMult * sp * buff * (mult || 1);
     if (crit) dmg *= 1.8;
     return { dmg: Math.max(1, Math.round(dmg)), crit: crit };
 }
@@ -1150,7 +1075,7 @@ function triggerAttack3D() { useSkill(1); }
 function triggerSkill2() { useSkill(2); }
 
 function triggerDefense3D() {
-    if (!characterLoaded || playerDead) return;
+    if (!characterLoaded || playerDead || !skillLearned(3)) return;
     const now = nowSec();
     if (now < DEFENSE.readyAt) return;
     if (myMP < DEFENSE.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
@@ -1159,7 +1084,7 @@ function triggerDefense3D() {
     isDefending = true;
     addChat("🛡️ Scut activat! (-70% daune)", "#3498db");
     sndShield();
-    setTimeout(function() { isDefending = false; }, DEFENSE.duration * 1000);
+    setTimeout(function() { isDefending = false; }, (2 + 0.12 * skillLv[3]) * 1000);
 }
 
 /* ---------- vrajă la distanță + rostogolire ---------- */
@@ -1303,7 +1228,7 @@ function fireSpell() {
 }
 
 function useSpell() {
-    if (!characterLoaded || playerDead || !spellAction || nowSec() < rollUntil) return;
+    if (!characterLoaded || playerDead || !spellAction || !skillLearned(4) || nowSec() < rollUntil) return;
     const cfg = SKILLS[4];
     const now = nowSec();
     if (now < cfg.readyAt) return;
@@ -1361,6 +1286,7 @@ function takeDamage(amount, attackerId) {
         return;
     }
     amount = Math.min(300, Math.round(amount));
+    if (defense > 0) amount = Math.max(1, Math.round(amount * (1 - defense)));
     if (isDefending) amount = Math.max(1, Math.round(amount * 0.3));
     myHP -= amount;
     lastHitTime = nowSec();
@@ -1496,12 +1422,11 @@ function damageMonster(m, dmg, crit, kind) {
 
 function updateMonsters(delta, now) {
     for (const m of monsters) {
-        if (m.mixer) m.mixer.update(delta);
         if (!m.alive) {
-            if (m.deathT < (m.deathDuration || 1.4)) {
+            if (m.deathT < 1.4) {
                 m.deathT += delta;
-                if (!m.actions || !m.actions.death) m.model.rotation.x = -Math.min(1.45, m.deathT * 3);
-                if (m.deathT >= (m.deathDuration || 1.4)) m.root.visible = false;
+                m.model.rotation.x = -Math.min(1.45, m.deathT * 3);
+                if (m.deathT >= 1.4) m.root.visible = false;
             }
             continue;
         }
@@ -1533,30 +1458,17 @@ function updateMonsters(delta, now) {
             m.attackSeen = m.attackCount;
             m.attackT = 0.0001;
             sndMonsterAttack(dist, m.boss);
-            if (m.actions && m.actions.attack) setMonsterAction(m, m.actions.attack, true);
         }
         if (m.attackT > 0) {
             m.attackT += delta / 0.5;
             if (m.attackT >= 1) m.attackT = 0;
         }
 
-        if (m.actions && m.werewolfAttached && m.attackT <= 0) {
-            setMonsterAction(m, moving ? m.actions.walk : m.actions.idle, false);
-        }
-        m.model.position.y = moving && !(m.actions && m.actions.walk) ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
-        if (!m.werewolfAttached) m.model.position.z = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) * 0.6 * m.scale : 0;
+        m.model.position.y = moving ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
+        m.model.position.z = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) * 0.6 * m.scale : 0;
 
         m.flash -= delta;
-        if (m.bodyMat && m.bodyMat.emissive) {
-            m.bodyMat.emissive.setHex(m.flash > 0 ? 0xff5522 : (m.boss ? 0x551100 : 0x220000));
-        } else if (m.materials) {
-            for (const entry of m.materials) {
-                if (entry.material.emissive) {
-                    if (m.flash > 0) entry.material.emissive.setHex(0xff5522);
-                    else if (entry.emissive) entry.material.emissive.copy(entry.emissive);
-                }
-            }
-        }
+        m.bodyMat.emissive.setHex(m.flash > 0 ? 0xff5522 : (m.boss ? 0x551100 : 0x220000));
 
         m.root.position.set(m.x, m.y, m.z);
     }
@@ -1586,7 +1498,12 @@ function updateCombat(delta, now) {
         cd("cd2", SKILLS[2].readyAt, SKILLS[2].cd);
         cd("cd3", DEFENSE.readyAt, DEFENSE.cd);
         cd("cd4", SKILLS[4].readyAt, SKILLS[4].cd);
-        cd("cd5", ROLL.readyAt, ROLL.cd);
+        cd("cd5", SKILLS[5].readyAt, SKILLS[5].cd);
+        cd("cd6", SKILLS[6].readyAt, SKILLS[6].cd);
+        cd("cd7", SKILLS[7].readyAt, SKILLS[7].cd);
+        cd("cdroll", ROLL.readyAt, ROLL.cd);
+        const bi = document.getElementById("buff-indicator");
+        if (bi) bi.textContent = now < buffUntil ? "📣 Strigăt de Luptă: +" + pct(buffAmount) + "% daune (" + Math.ceil(buffUntil - now) + "s)" : "";
 
         // bara boss-ului
         const boss = monsterById["boss"];
@@ -1619,6 +1536,7 @@ function updateCombat(delta, now) {
     updateEffects(delta);
     updateProjectiles(delta);
     updateParticles(delta);
+    updateBolts(delta);
     updateTelegraphs(delta);
     updateLoot(delta, now);
     updateFloatingTexts(delta);
@@ -1675,6 +1593,16 @@ function loadGame() {
             statPoints = 3 * (playerLevel - 1);
         }
 
+        // abilități (salvările vechi aveau abilitățile 1-4 deja disponibile)
+        if (Array.isArray(d.skillLv)) {
+            for (let n = 1; n <= 7; n++) skillLv[n] = num(d.skillLv[n], 0, SKILL_MAX_LV, 0);
+            if (skillLv[1] < 1) skillLv[1] = 1;
+            skillPoints = num(d.skillPoints, 0, 9999, 0);
+        } else {
+            for (let n = 1; n <= 7; n++) skillLv[n] = n <= 4 ? 1 : 0;
+            skillPoints = Math.max(0, 2 * (playerLevel - 1) + bossKills);
+        }
+
         // echipament și rucsac
         bag = new Array(BAG_SIZE).fill(null);
         if (Array.isArray(d.bag)) {
@@ -1683,14 +1611,14 @@ function loadGame() {
         SLOTS.forEach(function(sl) { equipped[sl] = null; });
         if (d.equipped && typeof d.equipped === "object") {
             SLOTS.forEach(function(sl) {
-                const it = sanitizeItem(d.equipped[sl]);
+                const it = sanitizeItem(d.equipped[sl] || (sl === "necklace" ? d.equipped.amulet : null));
                 if (it && it.slot === sl) equipped[sl] = it;
             });
         } else if (d.equip && typeof d.equip === "object") {
             // format vechi: trepte cumpărate -> obiecte echipate
-            ["weapon", "armor", "amulet"].forEach(function(sl) {
-                const tier = num(d.equip[sl], 0, 4, 0);
-                if (tier > 0) equipped[sl] = shopItem(sl, tier - 1);
+            [["weapon", "weapon"], ["armor", "armor"], ["amulet", "necklace"]].forEach(function(p) {
+                const tier = num(d.equip[p[0]], 0, 4, 0);
+                if (tier > 0) equipped[p[1]] = shopItem(p[1], tier - 1);
             });
         }
     } catch (e) {
@@ -1705,7 +1633,8 @@ function saveNow() {
             name: heroName, level: playerLevel, xp: playerXP, gold: gold,
             hpPotions: hpPotions, mpPotions: mpPotions, crystals: crystals,
             monsterKills: monsterKills, bossKills: bossKills, pvpKills: pvpKills,
-            stats: stats, statPoints: statPoints, bag: bag, equipped: equipped
+            stats: stats, statPoints: statPoints, bag: bag, equipped: equipped,
+            skillLv: skillLv, skillPoints: skillPoints
         }));
     } catch (e) {}
 }
@@ -1733,6 +1662,7 @@ function recalcStats(fullHeal) {
     critChance = Math.min(0.75, 0.15 + g.crit + stats.agi * 0.0035);
     moveMult = 1 + Math.min(0.35, g.speed + stats.agi * 0.0025);
     spellMult = 1 + stats.int * 0.015;
+    defense = Math.min(0.45, g.def);
     if (fullHeal) { myHP = maxHP; myMP = maxMP; }
     else { myHP = Math.min(myHP, maxHP); myMP = Math.min(myMP, maxMP); }
 }
@@ -1754,9 +1684,13 @@ function updateInvUI() {
     document.getElementById("inv-crystal").textContent = crystals;
     const b = document.getElementById("btn-char");
     if (b) b.classList.toggle("alert", statPoints > 0);
+    const bs = document.getElementById("btn-skill");
+    if (bs) bs.classList.toggle("alert", skillPoints > 0);
+    updateSkillBar();
     if (invOpen) renderInventory();
     if (charOpen) renderCharacter();
     if (shopOpen) renderShop();
+    if (skillOpen) renderSkills();
 }
 
 function sendHp() {
@@ -1791,10 +1725,11 @@ function gainXP(amount) {
     if (playerLevel >= MAX_LEVEL) playerXP = Math.min(playerXP, xpForLevel(MAX_LEVEL) - 1);
     if (gained) {
         statPoints += 3 * gained;
+        skillPoints += 2 * gained;
         recalcStats(true);
         levelUpEffect();
         addChat("⭐ Nivel " + playerLevel + "! Viață, mană și daune au crescut.", "#ffd700");
-        addChat("✨ Ai primit " + (3 * gained) + " puncte de caracter. Apasă P ca să le folosești.", "#ffd700");
+        addChat("✨ Ai primit " + (3 * gained) + " puncte de caracter (P) și " + (2 * gained) + " puncte de abilitate (K).", "#ffd700");
         updateNameUI();
         if (socket && socket.connected) {
             socket.emit("levelUpdate", { level: playerLevel });
@@ -2066,7 +2001,7 @@ function clearMonsters() {
 }
 
 function addMonsterFromServer(info) {
-    if (!info || info.type === "boss" || info.id === "boss" || monsterById[info.id] || !scene) return;
+    if (!info || monsterById[info.id] || !scene) return;
     const boss = info.type === "boss";
     const scale = info.scale || 1;
     const built = createMonsterMesh(boss ? 0x8a1414 : MONSTER_TINTS[monsters.length % MONSTER_TINTS.length], scale, boss);
@@ -2087,8 +2022,7 @@ function addMonsterFromServer(info) {
         face: 0, hp: info.hp, maxHp: info.maxHp, shownHp: info.hp,
         alive: info.alive !== false,
         attackCount: 0, attackSeen: 0, attackT: 0, flash: 0, deathT: 0,
-        groundTimer: Math.random() * 0.1, phase: Math.random() * 6, needGround: !mapLoaded,
-        materials: [], mixer: null, actions: null, currentAction: null, werewolfAttached: false, deathDuration: 1.4
+        groundTimer: Math.random() * 0.1, phase: Math.random() * 6, needGround: !mapLoaded
     };
     m.bar.draw(m.hp / m.maxHp);
     if (!m.alive) {
@@ -2098,15 +2032,12 @@ function addMonsterFromServer(info) {
     }
     monsters.push(m);
     monsterById[m.id] = m;
-    if (werewolfGLTF) attachWerewolfToMonster(m);
 }
 
 function killMonsterVisual(m) {
     sndMonsterDie(Math.hypot(m.x - myPos.x, m.z - myPos.z), m.boss);
     m.alive = false;
     m.deathT = 0;
-    m.deathDuration = m.actions && m.actions.death ? Math.max(1.4, m.actions.death.getClip().duration) : 1.4;
-    if (m.actions && m.actions.death) setMonsterAction(m, m.actions.death, true);
     m.bar.sprite.visible = false;
     if (m.boss && Math.hypot(m.x - myPos.x, m.z - myPos.z) < 80) addShake(0.4);
 }
@@ -2122,11 +2053,6 @@ function respawnMonsterVisual(m, s) {
     m.deathT = 0;
     m.root.visible = true;
     m.model.rotation.x = 0;
-    if (m.mixer) {
-        m.mixer.stopAllAction();
-        m.currentAction = null;
-        setMonsterAction(m, m.actions && m.actions.idle, false);
-    }
     m.bar.sprite.visible = true;
     m.bar.draw(1);
     m.gy = getGroundHeight(m.x, m.z, m.y);
@@ -2269,7 +2195,16 @@ function setupSocket() {
         socket.on("playerAttacked", function(data) {
             const rp = remotePlayers[data && data.id];
             if (!rp || !rp.mesh) return;
-            if (data.skill === 4) {
+            if (data.skill === 5) {
+                spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, 0, 2);
+            } else if (data.skill === 6) {
+                const ry6 = rp.mesh.rotation.y;
+                spawnShockwave(rp.mesh.position.x + Math.sin(ry6) * 3.5, rp.mesh.position.z + Math.cos(ry6) * 3.5, SKILLS[6].range);
+            } else if (data.skill === 7) {
+                const ry7 = rp.mesh.rotation.y;
+                const from = new THREE.Vector3(rp.mesh.position.x, rp.mesh.position.y + 1.4, rp.mesh.position.z);
+                spawnBolt(from, new THREE.Vector3(from.x + Math.sin(ry7) * 10, from.y - 0.2, from.z + Math.cos(ry7) * 10));
+            } else if (data.skill === 4) {
                 const ry = rp.mesh.rotation.y;
                 spawnProjectile(rp.mesh.position.x + Math.sin(ry) * 0.9, rp.mesh.position.y + 1.3, rp.mesh.position.z + Math.cos(ry) * 0.9,
                     Math.sin(ry), Math.cos(ry), false);
@@ -2304,7 +2239,12 @@ function setupSocket() {
             if (!d) return;
             if (d.killed) {
                 monsterKills++;
-                if (d.boss) bossKills++;
+                if (d.boss) {
+                    bossKills++;
+                    skillPoints++;
+                    addChat("✨ +1 punct de abilitate pentru boss (K).", "#ffd700");
+                    updateInvUI();
+                }
                 updateKillUI();
             }
             gainXP(Number(d.xp) || 0);
@@ -2334,32 +2274,40 @@ const RARITY_INFO = {
     epic:      { label: "Epic",        color: "#c77dff", mult: 2.6 },
     legendary: { label: "Legendar",    color: "#ff9a1f", mult: 3.6 }
 };
-const SLOTS = ["weapon", "armor", "helmet", "boots", "amulet"];
+const SLOTS = ["weapon", "armor", "helmet", "shield", "bracelet", "necklace", "earring", "boots"];
 const SLOT_INFO = {
-    weapon: { label: "Armă",    icon: "⚔️" },
-    armor:  { label: "Armură",  icon: "🛡️" },
-    helmet: { label: "Coif",    icon: "⛑️" },
-    boots:  { label: "Cizme",   icon: "👢" },
-    amulet: { label: "Amuletă", icon: "📿" }
+    weapon:   { label: "Armă",     icon: "⚔️" },
+    armor:    { label: "Armură",   icon: "🥋" },
+    helmet:   { label: "Coif",     icon: "⛑️" },
+    shield:   { label: "Scut",     icon: "🛡️" },
+    bracelet: { label: "Brățară",  icon: "🔗" },
+    necklace: { label: "Colier",   icon: "📿" },
+    earring:  { label: "Cercei",   icon: "🌙" },
+    boots:    { label: "Papuci",   icon: "👟" }
 };
 const GEAR_NAMES = {
-    weapon: [["Sabie ruginită", "Spadă de fier"], ["Sabie de oțel", "Paloș călit"], ["Sabie runică", "Iatagan sângeriu"], ["Lama Umbrei", "Sabia Furtunii"], ["Sabia Infernului", "Zdrobitorul de Suflete"]],
-    armor:  [["Armură de piele", "Haină întărită"], ["Zale de oțel", "Platoșă ușoară"], ["Platoșă runică", "Armura Santinelei"], ["Armura Întunecată", "Veșmântul Nopții"], ["Armura Infernului", "Egida Eternă"]],
-    helmet: [["Coif de piele", "Cască simplă"], ["Coif de oțel", "Coif cu vizieră"], ["Coif runic", "Coiful Santinelei"], ["Coroana Umbrei", "Masca Nopții"], ["Coroana Infernului", "Diadema Veșnică"]],
-    boots:  [["Cizme de piele", "Încălțări uzate"], ["Cizme întărite", "Cizme de marș"], ["Cizme runice", "Cizmele Vântului"], ["Cizmele Umbrei", "Pași de Fantomă"], ["Cizmele Infernului", "Pașii Furtunii"]],
-    amulet: [["Amuletă de bronz", "Pandantiv șters"], ["Amuletă de argint", "Talisman de jad"], ["Amuletă de aur", "Ochiul Vulturului"], ["Amuleta Umbrei", "Inima Nopții"], ["Inima Infernului", "Ochiul Veșniciei"]]
+    weapon:   [["Sabie ruginită", "Spadă de fier"], ["Sabie de oțel", "Paloș călit"], ["Sabie runică", "Iatagan sângeriu"], ["Lama Umbrei", "Sabia Furtunii"], ["Sabia Infernului", "Zdrobitorul de Suflete"]],
+    armor:    [["Armură de piele", "Haină întărită"], ["Zale de oțel", "Platoșă ușoară"], ["Platoșă runică", "Armura Santinelei"], ["Armura Întunecată", "Veșmântul Nopții"], ["Armura Infernului", "Egida Eternă"]],
+    helmet:   [["Coif de piele", "Cască simplă"], ["Coif de oțel", "Coif cu vizieră"], ["Coif runic", "Coiful Santinelei"], ["Coroana Umbrei", "Masca Nopții"], ["Coroana Infernului", "Diadema Veșnică"]],
+    shield:   [["Scut de lemn", "Pavăză crăpată"], ["Scut de fier", "Scut întărit"], ["Scut runic", "Pavăza Santinelei"], ["Scutul Umbrei", "Bastionul Nopții"], ["Egida Infernului", "Zidul Veșniciei"]],
+    bracelet: [["Brățară de cupru", "Lanț uzat"], ["Brățară de oțel", "Cătușă de luptă"], ["Brățară runică", "Brățara Vânătorului"], ["Brățara Umbrei", "Lanțul Nopții"], ["Brățara Infernului", "Cătușa Furiei"]],
+    necklace: [["Colier de bronz", "Pandantiv șters"], ["Colier de argint", "Talisman de jad"], ["Colier de aur", "Ochiul Vulturului"], ["Colierul Umbrei", "Inima Nopții"], ["Inima Infernului", "Ochiul Veșniciei"]],
+    earring:  [["Cercei de bronz", "Cercei simpli"], ["Cercei de argint", "Cercei de jad"], ["Cercei de aur", "Cerceii Vânătorului"], ["Cerceii Umbrei", "Lacrimile Nopții"], ["Cerceii Infernului", "Scânteile Furiei"]],
+    boots:    [["Papuci de piele", "Papuci uzați"], ["Papuci întăriți", "Papuci de marș"], ["Papuci runici", "Papucii Vântului"], ["Papucii Umbrei", "Pași de Fantomă"], ["Papucii Infernului", "Pașii Furtunii"]]
 };
 const BAG_SIZE = 24;
 const POTION_PRICE = 40;
 const CRYSTAL_SELL = 200;
 
 let bag = new Array(BAG_SIZE).fill(null);
-let equipped = { weapon: null, armor: null, helmet: null, boots: null, amulet: null };
+let equipped = {};
+SLOTS.forEach(function(sl) { equipped[sl] = null; });
 let statPoints = 0;
 const stats = { str: 0, vit: 0, int: 0, agi: 0 };
 let critChance = 0.15;
 let moveMult = 1;
 let spellMult = 1;
+let defense = 0;
 let bossKills = 0;
 let uidCounter = 0;
 
@@ -2388,24 +2336,38 @@ function makeGear(slot, rarity, ilvl, seed) {
     const m = RARITY_INFO[rarity].mult;
     const v = function() { return 0.9 + rnd() * 0.2; };
     const st = {};
-    if (slot === "weapon") st.dmg = r3((0.03 + ilvl * 0.006) * m * v());
-    else if (slot === "armor") st.hp = Math.round((60 + ilvl * 25) * m * v());
-    else if (slot === "helmet") st.hp = Math.round((30 + ilvl * 12) * m * v());
-    else if (slot === "boots") {
-        st.speed = r3(Math.min(0.12, (0.01 + ilvl * 0.0008) * m * v()));
-        st.hp = Math.round((20 + ilvl * 6) * m * v());
-    } else {
+    if (slot === "weapon") {
+        st.dmg = r3((0.03 + ilvl * 0.006) * m * v());
+    } else if (slot === "armor") {
+        st.hp = Math.round((60 + ilvl * 25) * m * v());
+    } else if (slot === "helmet") {
+        st.hp = Math.round((30 + ilvl * 12) * m * v());
+        st.mp = Math.round((10 + ilvl * 3) * m * v());
+    } else if (slot === "shield") {
+        st.def = r3(Math.min(0.18, (0.015 + ilvl * 0.0014) * m * v()));
+        st.hp = Math.round((25 + ilvl * 8) * m * v());
+    } else if (slot === "bracelet") {
+        st.crit = r3((0.004 + ilvl * 0.001) * m * v());
+        st.hp = Math.round((20 + ilvl * 7) * m * v());
+    } else if (slot === "necklace") {
         st.mp = Math.round((40 + ilvl * 10) * m * v());
         st.crit = r3((0.005 + ilvl * 0.0012) * m * v());
+    } else if (slot === "earring") {
+        st.dmg = r3((0.008 + ilvl * 0.0016) * m * v());
+        st.mp = Math.round((20 + ilvl * 6) * m * v());
+    } else {
+        st.speed = r3(Math.min(0.12, (0.01 + ilvl * 0.0008) * m * v()));
+        st.hp = Math.round((20 + ilvl * 6) * m * v());
     }
     if (ri >= 3) {
         // epic și legendar primesc și o proprietate în plus
-        const pool = ["dmg", "hp", "mp", "crit"].filter(function(k) { return !(k in st); });
+        const pool = ["dmg", "hp", "mp", "crit", "def"].filter(function(k) { return !(k in st); });
         const k = pool[Math.floor(rnd() * pool.length)];
         const f = ri - 2;
         if (k === "dmg") st.dmg = r3((0.01 + ilvl * 0.002) * f);
         else if (k === "hp") st.hp = Math.round((20 + ilvl * 8) * f);
         else if (k === "mp") st.mp = Math.round((20 + ilvl * 6) * f);
+        else if (k === "def") st.def = r3(0.01 * f + ilvl * 0.0006);
         else st.crit = r3(0.004 * f + ilvl * 0.0004);
     }
     return {
@@ -2417,15 +2379,16 @@ function makeGear(slot, rarity, ilvl, seed) {
 
 function sanitizeItem(it) {
     if (!it || typeof it !== "object") return null;
-    if (SLOTS.indexOf(it.slot) < 0 || !RARITY_INFO[it.rarity]) return null;
+    const slot = it.slot === "amulet" ? "necklace" : it.slot;   // salvările vechi aveau "amuletă"
+    if (SLOTS.indexOf(slot) < 0 || !RARITY_INFO[it.rarity]) return null;
     const st = {};
-    ["dmg", "hp", "mp", "crit", "speed"].forEach(function(k) {
+    ["dmg", "hp", "mp", "crit", "speed", "def"].forEach(function(k) {
         const v = Number(it.stats && it.stats[k]);
         if (Number.isFinite(v) && v > 0) st[k] = Math.min(v, (k === "hp" || k === "mp") ? 100000 : 3);
     });
     const lvl = Math.max(1, Math.min(50, Math.floor(Number(it.lvl)) || 1));
     return {
-        uid: String(it.uid || newUid()).slice(0, 40), slot: it.slot, rarity: it.rarity,
+        uid: String(it.uid || newUid()).slice(0, 40), slot: slot, rarity: it.rarity,
         name: String(it.name || "Obiect").slice(0, 40), lvl: lvl,
         ilvl: Math.max(1, Math.min(50, Math.floor(Number(it.ilvl)) || lvl)), stats: st
     };
@@ -2438,6 +2401,7 @@ function statLines(st) {
     if (st.mp) out.push("+" + st.mp + " mană");
     if (st.crit) out.push("+" + pct(st.crit) + "% șansă critică");
     if (st.speed) out.push("+" + pct(st.speed) + "% viteză");
+    if (st.def) out.push("+" + pct(st.def) + "% apărare");
     return out;
 }
 
@@ -2453,7 +2417,7 @@ function addToBag(item) {
 }
 
 function gearTotals() {
-    const g = { dmg: 0, hp: 0, mp: 0, crit: 0, speed: 0 };
+    const g = { dmg: 0, hp: 0, mp: 0, crit: 0, speed: 0, def: 0 };
     SLOTS.forEach(function(sl) {
         const it = equipped[sl];
         if (!it) return;
@@ -2842,6 +2806,448 @@ function toggleSfx() {
     if (sfxOn) sndClick();
 }
 
+/* ====================== ABILITĂȚI (tastele 1–7) ====================== */
+const SKILL_COUNT = 7;
+const SKILL_MAX_LV = 38;                        // 1-17 Normal, 18-27 M1-M10, 28-37 G1-G10, 38 = P
+const CRYSTAL_STEPS = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
+const SKILL_DEFS = {
+    1: { name: "Lovitura Sabiei",     icon: "⚔️", desc: "Atac cu sabia. Trei lovituri la rând fac combo." },
+    2: { name: "Vârtej de Lame",      icon: "🌪️", desc: "Te învârți și lovești toți dușmanii din jur." },
+    3: { name: "Scut Divin",          icon: "🛡️", desc: "Reduce cu 70% daunele primite. Durează mai mult la nivel mare." },
+    4: { name: "Sfera de Energie",    icon: "🔮", desc: "Lansezi o sferă de energie la distanță." },
+    5: { name: "Strigăt de Luptă",    icon: "📣", desc: "Crește temporar daunele tuturor atacurilor tale." },
+    6: { name: "Lovitura Seismică",   icon: "💥", desc: "Lovești pământul și rănești dușmanii din fața ta." },
+    7: { name: "Fulger în Lanț",      icon: "⚡", desc: "Un fulger care sare între până la 4 dușmani." }
+};
+let skillLv = [0, 1, 0, 0, 0, 0, 0, 0];
+let skillPoints = 3;
+let skillOpen = false;
+let buffUntil = 0, buffAmount = 0;
+const bolts = [];
+
+SKILLS[1].id = 1;
+SKILLS[2].id = 2;
+SKILLS[4].id = 4;
+SKILLS[5] = { id: 5, cd: 30, mp: 120, readyAt: 0 };
+SKILLS[6] = { id: 6, cd: 8,  mp: 140, range: 6.5, min: 140, max: 200, readyAt: 0 };
+SKILLS[7] = { id: 7, cd: 6,  mp: 160, range: 28,  min: 100, max: 150, readyAt: 0 };
+
+function skillLearned(n) { return (skillLv[n] || 0) >= 1; }
+
+function skillRank(lv) {
+    if (lv <= 0) return "—";
+    if (lv <= 17) return "Nv." + lv;
+    if (lv <= 27) return "M" + (lv - 17);
+    if (lv <= 37) return "G" + (lv - 27);
+    return "P";
+}
+
+function skillRankClass(lv) {
+    return lv <= 17 ? "rk-n" : (lv <= 27 ? "rk-m" : (lv <= 37 ? "rk-g" : "rk-p"));
+}
+
+function skillPowerForLevel(lv) {
+    if (lv <= 0) return 1;
+    if (lv <= 17) return 1 + 0.04 * (lv - 1);
+    if (lv <= 27) return 1.64 + 0.05 * (lv - 17);
+    if (lv <= 37) return 2.14 + 0.05 * (lv - 27);
+    return 3.0;
+}
+
+function skillGoldCost(step) { return 150 * step + 40 * step * step; }
+
+// ce îți cere următoarea treaptă
+function skillUpgradeInfo(lv) {
+    if (lv < 17) return { type: "point", cost: 1 };
+    if (lv === 17) return { type: "promote", cost: 0 };
+    if (lv < 28) return { type: "gold", cost: skillGoldCost(lv - 17) };
+    if (lv < SKILL_MAX_LV) return { type: "crystal", cost: CRYSTAL_STEPS[lv - 28] };
+    return { type: "max", cost: 0 };
+}
+
+function upgradeSkill(id) {
+    if (!SKILL_DEFS[id]) return false;
+    const lv = skillLv[id] || 0;
+    const info = skillUpgradeInfo(lv);
+    if (info.type === "max") return false;
+    if (info.type === "point") {
+        if (skillPoints < 1) { addChat("Nu ai puncte de abilitate libere.", "#e74c3c"); sndError(); return false; }
+        skillPoints--;
+    } else if (info.type === "gold") {
+        if (gold < info.cost) { addChat("Ai nevoie de " + info.cost + " aur ca să antrenezi " + SKILL_DEFS[id].name + ".", "#e74c3c"); sndError(); return false; }
+        gold -= info.cost;
+    } else if (info.type === "crystal") {
+        if (crystals < info.cost) { addChat("Ai nevoie de " + info.cost + " cristale ca să antrenezi " + SKILL_DEFS[id].name + ".", "#e74c3c"); sndError(); return false; }
+        crystals -= info.cost;
+    }
+    skillLv[id] = lv + 1;
+    const rank = skillRank(skillLv[id]);
+    if (skillLv[id] === 18) addChat("🌟 " + SKILL_DEFS[id].name + " a devenit Master (M1)!", "#4da6ff");
+    else if (skillLv[id] === 28) addChat("🌟 " + SKILL_DEFS[id].name + " a devenit Grand Master (G1)!", "#c77dff");
+    else if (skillLv[id] === SKILL_MAX_LV) addChat("🌟 " + SKILL_DEFS[id].name + " este acum PERFECT (P)!", "#ff9a1f");
+    else addChat("⚡ " + SKILL_DEFS[id].name + " → " + rank, "#ffd966");
+    if (skillLv[id] >= 18) sndLevelUp(); else sndClick();
+    updateInvUI();
+    saveNow();
+    return true;
+}
+
+function resetSkills() {
+    const cost = 150 * playerLevel;
+    let refund = 0;
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        const lv = skillLv[n] || 0;
+        if (lv >= 1 && lv <= 17) refund += lv - (n === 1 ? 1 : 0);
+    }
+    if (refund === 0) { sndError(); return; }
+    if (gold < cost) { addChat("Ai nevoie de " + cost + " aur ca să resetezi abilitățile.", "#e74c3c"); sndError(); return; }
+    gold -= cost;
+    skillPoints += refund;
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        if ((skillLv[n] || 0) >= 1 && skillLv[n] <= 17) skillLv[n] = n === 1 ? 1 : 0;
+    }
+    sndCoin();
+    addChat("🔄 Abilitățile (până la nivelul 17) au fost resetate. Ai recuperat " + refund + " puncte. Abilitățile M, G și P rămân neschimbate.", "#ffd966");
+    updateInvUI();
+    saveNow();
+}
+
+function useSlot(n) {
+    if (!characterLoaded || playerDead || !SKILL_DEFS[n]) return;
+    if (!skillLearned(n)) {
+        addChat("Nu ai învățat încă „" + SKILL_DEFS[n].name + "”. Apasă K și cheltuiește un punct de abilitate.", "#e67e22");
+        sndError();
+        return;
+    }
+    if (n === 1 || n === 2) useSkill(n);
+    else if (n === 3) triggerDefense3D();
+    else if (n === 4) useSpell();
+    else if (n === 5) useWarCry();
+    else if (n === 6) useSlam();
+    else if (n === 7) useChain();
+}
+
+function buildActionBar() {
+    const bar = document.getElementById("action-bar");
+    let h = "";
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        h += '<div class="skill-slot" data-skill="' + n + '" onclick="useSlot(' + n + ')">' + SKILL_DEFS[n].icon +
+             '<div class="cd-overlay" id="cd' + n + '"></div><span class="skill-key">' + n + '</span><span class="sk-lv" id="lv' + n + '"></span></div>';
+    }
+    h += '<div class="skill-slot" onclick="doRoll()">💨<div class="cd-overlay" id="cdroll"></div><span class="skill-key">C</span></div>';
+    h += '<div class="skill-slot" onclick="doJump()">⬆️<span class="skill-key">␣</span></div>';
+    bar.innerHTML = h;
+    updateSkillBar();
+}
+
+function updateSkillBar() {
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        const slot = document.querySelector('#action-bar [data-skill="' + n + '"]');
+        if (!slot) continue;
+        const lv = skillLv[n] || 0;
+        slot.classList.toggle("locked", lv < 1);
+        const el = document.getElementById("lv" + n);
+        if (el) el.textContent = lv >= 1 ? skillRank(lv) : "";
+        slot.title = SKILL_DEFS[n].name + (lv >= 1 ? " — " + skillRank(lv) : " (neînvățată)");
+    }
+}
+
+/* ---------- Strigăt de Luptă (5) ---------- */
+function sndWarCry() {
+    sndTone(110, 0.9, { type: "sawtooth", to: 90, vol: 0.2, attack: 0.08 });
+    sndTone(165, 0.9, { type: "sawtooth", to: 130, vol: 0.12, attack: 0.08 });
+    sndNoise(0.6, { filter: "bandpass", freq: 500, to: 1500, q: 1, vol: 0.16 });
+}
+
+function useWarCry() {
+    if (!characterLoaded || playerDead || !skillLearned(5) || nowSec() < rollUntil) return;
+    const cfg = SKILLS[5], now = nowSec();
+    if (now < cfg.readyAt) return;
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    myMP -= cfg.mp;
+    cfg.readyAt = now + cfg.cd;
+
+    buffAmount = 0.15 + 0.01 * skillLv[5];
+    buffUntil = now + 10;
+    if (spellAction) {
+        playOneShot(spellAction, 1.3);
+        attackStart = now;
+        attackUntil = now + spellAction.getClip().duration / 1.3;
+        attackProcedural = false;
+        attackType = 5;
+    }
+    sndWarCry();
+    spawnSlashEffect(myPos.x, myPos.y, myPos.z, 0, 2);
+    for (let k = 0; k < 20; k++) {
+        const a = Math.random() * Math.PI * 2;
+        spawnParticle(myPos.x, myPos.y + 0.6, myPos.z, Math.cos(a) * 3, 2 + Math.random() * 2, Math.sin(a) * 3, 0xffcc44, 0.2, 0.8);
+    }
+    spawnFloatingText("+" + pct(buffAmount) + "% daune", "#ffcc66",
+        new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1.0, myPos.z), true);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: 5 });
+}
+
+/* ---------- Lovitura Seismică (6) ---------- */
+function sndSlam() {
+    sndTone(80, 0.6, { type: "sine", to: 30, vol: 0.5 });
+    sndNoise(0.5, { filter: "lowpass", freq: 900, to: 80, vol: 0.4 });
+}
+
+function useSlam() {
+    if (!characterLoaded || playerDead || !skillLearned(6) || nowSec() < rollUntil) return;
+    const cfg = SKILLS[6], now = nowSec();
+    if (now < cfg.readyAt) return;
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    myMP -= cfg.mp;
+    cfg.readyAt = now + cfg.cd;
+    autoFaceNearest(12);
+
+    if (attackActions.length) {
+        const a = attackActions[0];
+        playOneShot(a, 1.4);
+        attackUntil = now + Math.min(a.getClip().duration / 1.4, 1.1);
+        attackProcedural = false;
+    } else {
+        attackUntil = now + 0.7;
+        attackProcedural = true;
+    }
+    attackStart = now;
+    attackType = 1;
+    sndSwing(2);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: 6 });
+    setTimeout(applySlam, 380);
+}
+
+function applySlam() {
+    if (playerDead) return;
+    const cfg = SKILLS[6];
+    const cx = myPos.x + Math.sin(myPos.rotY) * 3.5, cz = myPos.z + Math.cos(myPos.rotY) * 3.5;
+    spawnShockwave(cx, cz, cfg.range);
+    sndSlam();
+    for (const m of monsters) {
+        if (!m.alive) continue;
+        if (Math.hypot(m.x - cx, m.z - cz) <= cfg.range + (m.boss ? 2 : 0)) {
+            const r = rollDamage(cfg);
+            damageMonster(m, r.dmg, r.crit, "melee");
+        }
+    }
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh || rp.hp <= 0) continue;
+        const x = rp.rx !== undefined ? rp.rx : rp.x, z = rp.rz !== undefined ? rp.rz : rp.z;
+        if (Math.hypot(x - cx, z - cz) > cfg.range) continue;
+        const r = rollDamage(cfg);
+        spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
+            new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
+        if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
+        sndHit(r.crit, 0);
+        setRemoteHp(id, rp.hp - r.dmg);
+    }
+}
+
+/* ---------- Fulger în Lanț (7) ---------- */
+function sndLightning() {
+    sndNoise(0.35, { filter: "highpass", freq: 3000, vol: 0.25 });
+    sndTone(1800, 0.25, { type: "sawtooth", to: 300, vol: 0.08 });
+    sndNoise(0.12, { filter: "highpass", freq: 5000, vol: 0.15, delay: 0.08 });
+    sndNoise(0.1, { filter: "highpass", freq: 4000, vol: 0.12, delay: 0.16 });
+}
+
+function spawnBolt(a, b) {
+    if (!scene) return;
+    for (let strand = 0; strand < 3; strand++) {
+        const pts = [];
+        const seg = 9;
+        for (let i = 0; i <= seg; i++) {
+            const p = a.clone().lerp(b, i / seg);
+            if (i > 0 && i < seg) {
+                const j = strand === 0 ? 0.25 : 0.6;
+                p.x += (Math.random() - 0.5) * j;
+                p.y += (Math.random() - 0.5) * j;
+                p.z += (Math.random() - 0.5) * j;
+            }
+            pts.push(p);
+        }
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const mat = new THREE.LineBasicMaterial({ color: strand === 0 ? 0xffffff : 0x8fd0ff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+        const line = new THREE.Line(geo, mat);
+        scene.add(line);
+        bolts.push({ line: line, geo: geo, mat: mat, life: 0, max: 0.3 });
+    }
+}
+
+function updateBolts(delta) {
+    for (let i = bolts.length - 1; i >= 0; i--) {
+        const b = bolts[i];
+        b.life += delta;
+        b.mat.opacity = Math.max(0, 1 - b.life / b.max);
+        if (b.life >= b.max) {
+            scene.remove(b.line);
+            b.geo.dispose();
+            b.mat.dispose();
+            bolts.splice(i, 1);
+        }
+    }
+}
+
+function enemyList() {
+    const list = [];
+    for (const m of monsters) {
+        if (m.alive) list.push({ kind: "monster", id: m.id, x: m.x, y: m.y, z: m.z, ref: m });
+    }
+    for (const id in remotePlayers) {
+        const rp = remotePlayers[id];
+        if (!rp.mesh || rp.hp <= 0) continue;
+        list.push({ kind: "player", id: id, x: rp.rx !== undefined ? rp.rx : rp.x, y: rp.mesh.position.y, z: rp.rz !== undefined ? rp.rz : rp.z, ref: rp });
+    }
+    return list;
+}
+
+function chainStart(range) {
+    const all = enemyList();
+    let first = null;
+    if (selectedTarget) {
+        first = all.find(function(e) {
+            return e.kind === selectedTarget.kind && e.id === selectedTarget.id && Math.hypot(e.x - myPos.x, e.z - myPos.z) <= range;
+        }) || null;
+    }
+    if (!first) {
+        let best = range;
+        for (const e of all) {
+            const d = Math.hypot(e.x - myPos.x, e.z - myPos.z);
+            if (d < best) { best = d; first = e; }
+        }
+    }
+    return first;
+}
+
+function useChain() {
+    if (!characterLoaded || playerDead || !spellAction || !skillLearned(7) || nowSec() < rollUntil) return;
+    const cfg = SKILLS[7], now = nowSec();
+    if (now < cfg.readyAt) return;
+    const first = chainStart(cfg.range);
+    if (!first) { addChat("⚡ Nu există nicio țintă în rază.", "#e67e22"); return; }
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    myMP -= cfg.mp;
+    cfg.readyAt = now + cfg.cd;
+    myPos.rotY = Math.atan2(first.x - myPos.x, first.z - myPos.z);
+
+    playOneShot(spellAction, SPELL_ANIM_SPEED);
+    attackStart = now;
+    attackUntil = now + spellAction.getClip().duration / SPELL_ANIM_SPEED;
+    attackProcedural = false;
+    attackType = 4;
+    sndSpellCast();
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: 7 });
+    setTimeout(fireChain, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
+}
+
+function fireChain() {
+    if (playerDead) return;
+    const cfg = SKILLS[7];
+    const all = enemyList().filter(function(e) { return Math.hypot(e.x - myPos.x, e.z - myPos.z) <= 34; });
+    let cur = chainStart(cfg.range);
+    if (!cur) return;
+    const used = {};
+    const chain = [];
+    for (let i = 0; i < 4 && cur; i++) {
+        chain.push(cur);
+        used[cur.kind + ":" + cur.id] = true;
+        let next = null, best = 9;
+        for (const e of all) {
+            if (used[e.kind + ":" + e.id]) continue;
+            const d = Math.hypot(e.x - cur.x, e.z - cur.z);
+            if (d < best) { best = d; next = e; }
+        }
+        cur = next;
+    }
+
+    let prev = new THREE.Vector3(myPos.x + Math.sin(myPos.rotY) * 0.6, myPos.y + 1.4, myPos.z + Math.cos(myPos.rotY) * 0.6);
+    chain.forEach(function(e, i) {
+        const pt = new THREE.Vector3(e.x, e.y + 1.2, e.z);
+        spawnBolt(prev, pt);
+        prev = pt;
+        const r = rollDamage(cfg, Math.pow(0.75, i));
+        if (e.kind === "monster") {
+            damageMonster(e.ref, r.dmg, r.crit, "spell");
+        } else {
+            spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
+                new THREE.Vector3(e.x, e.y + PLAYER_HEIGHT + 1.0, e.z), r.crit);
+            if (socket && socket.connected) socket.emit("attackPlayer", { targetId: e.id, damage: r.dmg });
+            sndHit(r.crit, 0);
+            setRemoteHp(e.id, e.ref.hp - r.dmg);
+        }
+    });
+    sndLightning();
+}
+
+/* ---------- fereastra de abilități ---------- */
+function toggleSkills() { if (skillOpen) closeSkills(); else openSkills(); }
+
+function openSkills() {
+    if (!gameStarted) return;
+    skillOpen = true;
+    document.getElementById("skill-panel").style.display = "block";
+    renderSkills();
+    sndClick();
+}
+
+function closeSkills() {
+    if (!skillOpen) return;
+    skillOpen = false;
+    document.getElementById("skill-panel").style.display = "none";
+}
+
+function renderSkills() {
+    if (!skillOpen) return;
+    document.getElementById("skill-points").textContent = skillPoints > 0 ? "✨ " + skillPoints + " puncte de abilitate" : "Fără puncte libere";
+    let h = '<div class="skill-note">Pui puncte până la nivelul 17, apoi o promovezi la <b>M1</b> (Master). ' +
+            'De la <b>M1 până la G1</b> (Grand Master) antrenarea costă <b>aur</b>, iar de la <b>G1 până la P</b> (Perfect) costă <b>cristale</b>. ' +
+            'Primești 2 puncte la fiecare nivel și 1 punct pentru fiecare boss învins.</div>';
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        const d = SKILL_DEFS[n];
+        const lv = skillLv[n] || 0;
+        const info = skillUpgradeInfo(lv);
+        let btn;
+        if (info.type === "max") {
+            btn = '<span class="shop-tag ok">✦ PERFECT</span>';
+        } else if (info.type === "promote") {
+            btn = '<button class="shop-btn" data-act="skill-up" data-id="' + n + '">Promovează la M1</button>';
+        } else if (info.type === "point") {
+            btn = '<button class="shop-btn" data-act="skill-up" data-id="' + n + '"' + (skillPoints < 1 ? " disabled" : "") + '>' +
+                  (lv === 0 ? "Învață (1 punct)" : "+1 punct") + '</button>';
+        } else if (info.type === "gold") {
+            btn = '<button class="shop-btn" data-act="skill-up" data-id="' + n + '"' + (gold < info.cost ? " disabled" : "") + '>' +
+                  skillRank(lv) + ' → ' + skillRank(lv + 1) + ' · ' + info.cost + ' 💰</button>';
+        } else {
+            btn = '<button class="shop-btn" data-act="skill-up" data-id="' + n + '"' + (crystals < info.cost ? " disabled" : "") + '>' +
+                  skillRank(lv) + ' → ' + skillRank(lv + 1) + ' · ' + info.cost + ' 💎</button>';
+        }
+        const barColor = lv <= 17 ? "#cfcfcf" : (lv <= 27 ? "#4da6ff" : (lv <= 37 ? "#c77dff" : "#ff9a1f"));
+        h += '<div class="sk-row"><div class="sk-ico">' + d.icon + '</div><div>' +
+             '<div class="sk-name">' + n + '. ' + d.name + '<span class="rk ' + skillRankClass(lv) + '">' + (lv >= 1 ? skillRank(lv) + ' · putere ×' + skillPowerForLevel(lv).toFixed(2) : "neînvățată") + '</span></div>' +
+             '<div class="sk-desc">' + d.desc + '</div>' +
+             '<div class="sk-bar"><i style="width:' + (lv / SKILL_MAX_LV * 100) + '%;background:' + barColor + '"></i></div></div>' +
+             '<div>' + btn + '</div></div>';
+    }
+    h += '<div style="margin-top:10px"><button class="shop-btn" data-act="reset-skills">Resetează abilitățile până la Nv.17 (' + (150 * playerLevel) + ' aur)</button></div>';
+    document.getElementById("skill-body").innerHTML = h;
+}
+
+(function setupSkillEvents() {
+    const panel = document.getElementById("skill-panel");
+    if (!panel) return;
+    panel.addEventListener("click", function(e) {
+        e.stopPropagation();
+        const b = e.target.closest("[data-act]");
+        if (!b || b.disabled) return;
+        const a = b.dataset.act;
+        if (a === "close") closeSkills();
+        else if (a === "skill-up") upgradeSkill(Number(b.dataset.id));
+        else if (a === "reset-skills") resetSkills();
+    });
+})();
+
 /* ====================== PANOURI: MAGAZIN, INVENTAR, PERSONAJ ====================== */
 let shopOpen = false, lbOpen = false, invOpen = false, charOpen = false;
 let shopTab = "weapon", lbTimer = null, invSel = -1;
@@ -2860,22 +3266,40 @@ const SHOP = {
         { name: "Armura Infernului", lvl: 20, price: 7000, crystals: 2, stats: { hp: 3200 } }
     ] },
     helmet: { label: "Căști", tiers: [
-        { name: "Coif de piele",      lvl: 1,  price: 90,   stats: { hp: 150 } },
-        { name: "Coif de oțel",       lvl: 5,  price: 450,  stats: { hp: 400 } },
-        { name: "Coif runic",         lvl: 10, price: 1700, stats: { hp: 850 } },
-        { name: "Coroana Infernului", lvl: 20, price: 5500, crystals: 2, stats: { hp: 1600 } }
+        { name: "Coif de piele",      lvl: 1,  price: 90,   stats: { hp: 150, mp: 30 } },
+        { name: "Coif de oțel",       lvl: 5,  price: 450,  stats: { hp: 400, mp: 80 } },
+        { name: "Coif runic",         lvl: 10, price: 1700, stats: { hp: 850, mp: 160 } },
+        { name: "Coroana Infernului", lvl: 20, price: 5500, crystals: 2, stats: { hp: 1600, mp: 300 } }
     ] },
-    boots: { label: "Cizme", tiers: [
-        { name: "Cizme de piele",     lvl: 1,  price: 90,   stats: { speed: 0.02, hp: 80 } },
-        { name: "Cizme întărite",     lvl: 5,  price: 420,  stats: { speed: 0.04, hp: 200 } },
-        { name: "Cizme runice",       lvl: 10, price: 1500, stats: { speed: 0.06, hp: 400 } },
-        { name: "Cizmele Infernului", lvl: 20, price: 5000, crystals: 2, stats: { speed: 0.09, hp: 800 } }
+    shield: { label: "Scuturi", tiers: [
+        { name: "Scut de lemn",     lvl: 1,  price: 110,  stats: { def: 0.04, hp: 100 } },
+        { name: "Scut de fier",     lvl: 5,  price: 520,  stats: { def: 0.07, hp: 260 } },
+        { name: "Scut runic",       lvl: 10, price: 1900, stats: { def: 0.11, hp: 520 } },
+        { name: "Egida Infernului", lvl: 20, price: 6000, crystals: 2, stats: { def: 0.16, hp: 1000 } }
     ] },
-    amulet: { label: "Amulete", tiers: [
-        { name: "Amuletă de bronz",  lvl: 1,  price: 300,   stats: { mp: 100, crit: 0.02 } },
-        { name: "Amuletă de argint", lvl: 5,  price: 1200,  stats: { mp: 250, crit: 0.04 } },
-        { name: "Amuletă de aur",    lvl: 12, price: 4000,  stats: { mp: 500, crit: 0.07 } },
-        { name: "Inima Infernului",  lvl: 20, price: 12000, crystals: 5, stats: { mp: 900, crit: 0.12 } }
+    bracelet: { label: "Brățări", tiers: [
+        { name: "Brățară de cupru",    lvl: 1,  price: 140,  stats: { crit: 0.01, hp: 80 } },
+        { name: "Brățară de oțel",     lvl: 5,  price: 650,  stats: { crit: 0.02, hp: 200 } },
+        { name: "Brățară runică",      lvl: 10, price: 2000, stats: { crit: 0.035, hp: 420 } },
+        { name: "Brățara Infernului",  lvl: 20, price: 6500, crystals: 2, stats: { crit: 0.06, hp: 800 } }
+    ] },
+    necklace: { label: "Coliere", tiers: [
+        { name: "Colier de bronz",  lvl: 1,  price: 300,   stats: { mp: 100, crit: 0.02 } },
+        { name: "Colier de argint", lvl: 5,  price: 1200,  stats: { mp: 250, crit: 0.04 } },
+        { name: "Colier de aur",    lvl: 12, price: 4000,  stats: { mp: 500, crit: 0.07 } },
+        { name: "Inima Infernului", lvl: 20, price: 12000, crystals: 5, stats: { mp: 900, crit: 0.12 } }
+    ] },
+    earring: { label: "Cercei", tiers: [
+        { name: "Cercei de bronz",    lvl: 1,  price: 130,  stats: { dmg: 0.02, mp: 50 } },
+        { name: "Cercei de argint",   lvl: 5,  price: 600,  stats: { dmg: 0.04, mp: 130 } },
+        { name: "Cercei de aur",      lvl: 10, price: 2100, stats: { dmg: 0.07, mp: 260 } },
+        { name: "Cerceii Infernului", lvl: 20, price: 6800, crystals: 2, stats: { dmg: 0.11, mp: 480 } }
+    ] },
+    boots: { label: "Papuci", tiers: [
+        { name: "Papuci de piele",     lvl: 1,  price: 90,   stats: { speed: 0.02, hp: 80 } },
+        { name: "Papuci întăriți",     lvl: 5,  price: 420,  stats: { speed: 0.04, hp: 200 } },
+        { name: "Papuci runici",       lvl: 10, price: 1500, stats: { speed: 0.06, hp: 400 } },
+        { name: "Papucii Infernului",  lvl: 20, price: 5000, crystals: 2, stats: { speed: 0.09, hp: 800 } }
     ] }
 };
 
@@ -2884,13 +3308,14 @@ function shopItem(slot, tierIdx) {
     return sanitizeItem({ uid: newUid(), slot: slot, rarity: RARITY[tierIdx], name: t.name, lvl: t.lvl, ilvl: t.lvl, stats: t.stats });
 }
 
-function panelOpen() { return shopOpen || lbOpen || invOpen || charOpen; }
+function panelOpen() { return shopOpen || lbOpen || invOpen || charOpen || skillOpen; }
 
 function closePanels() {
     closeShop();
     closeLeaderboard();
     closeInventory();
     closeCharacter();
+    closeSkills();
     hideItemTip();
 }
 
@@ -3797,6 +4222,7 @@ function startGame() {
     document.getElementById("minimap-wrap").style.display = "block";
     sndInit();
     updateAudioButtons();
+    buildActionBar();
     updateInvUI();
     initGame();
 }
@@ -3827,7 +4253,6 @@ function initGame() {
 
     loadCharacter();
     loadMap();
-    loadWerewolfModel();
     setupControls();
     setupSocket();
     setupCamera();
@@ -4114,10 +4539,8 @@ function setupControls() {
         if (e.code === "Minus" || e.code === "NumpadSubtract") { minimapZoom(8); return; }
 
         if (!e.repeat) {
-            if (e.code === "Digit1") useSkill(1);
-            else if (e.code === "Digit2") useSkill(2);
-            else if (e.code === "Digit3") triggerDefense3D();
-            else if (e.code === "Digit4") useSpell();
+            if (/^Digit[1-7]$/.test(e.code)) useSlot(Number(e.code.slice(5)));
+            else if (e.code === "KeyK") { toggleSkills(); e.preventDefault(); }
             else if (e.code === "KeyC") doRoll();
             else if (e.code === "KeyQ") usePotion("hp");
             else if (e.code === "KeyE") usePotion("mp");
