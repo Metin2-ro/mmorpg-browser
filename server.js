@@ -134,8 +134,8 @@ function makeMonster(id, type, point) {
     return {
         id: id,
         type: type,
-        name: boss ? 'Alfa Vârcolac' : 'Vârcolac',
-        scale: boss ? 1.5 : 1.2,
+        name: boss ? 'Lordul Infernului' : 'Demon',
+        scale: boss ? 2.2 : 1,
         x: point.x, z: point.z,
         spawnX: point.x, spawnZ: point.z,
         hp: boss ? 4000 : 300,
@@ -175,9 +175,12 @@ function initWorld(points, boss) {
         monsters.push(m);
         monsterById[m.id] = m;
     }
+    const b = makeMonster('boss', 'boss', bossPoint);
+    monsters.push(b);
+    monsterById[b.id] = b;
 
     worldReady = true;
-    console.log(`Lumea a fost creată: ${MONSTER_COUNT} monștri, ${points.length} puncte de apariție.`);
+    console.log(`Lumea a fost creată: ${MONSTER_COUNT} monștri + boss, ${points.length} puncte de apariție.`);
     io.emit('worldState', worldSnapshot());
 }
 
@@ -319,7 +322,7 @@ function addLoot(type, amount, x, z, extra) {
     io.emit('lootDrop', item);
 }
 
-const GEAR_SLOTS = ['weapon', 'armor', 'helmet', 'boots', 'amulet'];
+const GEAR_SLOTS = ['weapon', 'armor', 'helmet', 'shield', 'bracelet', 'necklace', 'earring', 'boots'];
 
 function rollRarity(boss) {
     const r = Math.random() * 100;
@@ -505,7 +508,7 @@ io.on('connection', (socket) => {
 
         let dmg = Math.floor(Number(d.damage));
         if (!(dmg > 0)) return;
-        dmg = Math.min(dmg, Math.round(480 * (1 + 0.08 * (p.level - 1))));
+        dmg = Math.min(dmg, Math.round(6000 * (1 + 0.08 * (p.level - 1))));   // plafon larg: abilitățile Perfect + strigătul de luptă dau daune mari
 
         const pos = playerPos(p);
         const reach = (d.kind === 'spell' ? 36 : 10) + m.scale * 2;
