@@ -1381,6 +1381,10 @@ function buildWolfSwordAttackClip(targetRoot) {
         if (node.isBone) targetBones[node.name] = node;
     });
 
+    // Actualizăm matricile pentru a citi orientările de repaus în coordonate globale.
+    sharedCharacterScene.updateMatrixWorld(true);
+    targetRoot.updateMatrixWorld(true);
+
     const D = SWORD_ATTACK_DATA;
     const times = [];
     for (let i = 0; i < D.n; i++) times.push(i / D.fps);
@@ -1390,15 +1394,23 @@ function buildWolfSwordAttackClip(targetRoot) {
 
     Object.keys(D.q).forEach(function(sourceName) {
         const sourceBone = sourceBones[sourceName];
-        const targetName = sourceName.replace(/_\d+$/, "");
+        const targetName = sourceName.replace(/_\\d+$/, "");
         const targetBone = targetBones[targetName];
         if (!sourceBone || !targetBone) return;
 
         const values = D.q[sourceName];
         if (!values || values.length !== D.n * 4) return;
 
-        const inverseSourceRest = sourceBone.quaternion.clone().invert();
-        const targetRest = targetBone.quaternion.clone();
+        const sourceRestLocal = sourceBone.quaternion.clone();
+        const targetRestLocal = targetBone.quaternion.clone();
+        const inverseSourceRestLocal = sourceRestLocal.clone().invert();
+
+        // Conversia dintre axele locale ale osului King și cele ale osului Wolf.
+        const sourceRestWorld = sourceBone.getWorldQuaternion(new THREE.Quaternion());
+        const targetRestWorld = targetBone.getWorldQuaternion(new THREE.Quaternion());
+        const basisMap = targetRestWorld.clone().invert().multiply(sourceRestWorld);
+        const inverseBasisMap = basisMap.clone().invert();
+
         const retargeted = [];
 
         for (let i = 0; i < D.n; i++) {
@@ -1409,8 +1421,16 @@ function buildWolfSwordAttackClip(targetRoot) {
                 values[offset + 2],
                 values[offset + 3]
             );
-            const localDelta = inverseSourceRest.clone().multiply(sourceAnimated);
-            const targetAnimated = targetRest.clone().multiply(localDelta).normalize();
+
+            // Scoatem rotația de repaus, convertim axele, apoi reconstruim rotația Wolf.
+            const sourceDelta = inverseSourceRestLocal.clone().multiply(sourceAnimated);
+            const targetDelta = basisMap.clone()
+                .multiply(sourceDelta)
+                .multiply(inverseBasisMap);
+            const targetAnimated = targetRestLocal.clone()
+                .multiply(targetDelta)
+                .normalize();
+
             retargeted.push(
                 targetAnimated.x,
                 targetAnimated.y,
@@ -1426,7 +1446,6 @@ function buildWolfSwordAttackClip(targetRoot) {
         ));
         mapped++;
     });
-
     // Nu pornim o animație incompletă: sunt necesare trunchiul și ambele brațe.
     const required = ["Hips", "Spine", "Spine01", "Spine02", "LeftArm",
         "LeftForeArm", "RightArm", "RightForeArm"];
