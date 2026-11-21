@@ -1379,28 +1379,30 @@ function setupWolfAnimations(mixer, clips, scale) {
     };
     if (!mixer || !clips || !clips.length) return res;
 
-    const moveWords = ["run", "walk", "gallop", "sprint", "move", "locomotion"];
-    const attackWords = ["attack", "bite", "claw", "slash", "strike", "swipe", "roar", "howl"];
+    // Selectăm explicit WALK pentru deplasare; RUN nu este folosit la monștri.
+    const attackWords = ["attack", "atk", "bite", "claw", "slash", "strike", "swipe", "lunge", "maul", "pounce"];
     const deathWords = ["death", "die", "dead", "fall", "collapse"];
     const hitWords = ["hit", "hurt", "damage", "flinch", "stagger"];
 
     clips.forEach(function(clip) {
         const action = mixer.clipAction(clip);
         const n = (clip.name || "").toLowerCase();
-        if (!res.idleAction && (n.includes("idle") || n.includes("stand") || n.includes("breath"))) {
-            res.idleAction = action;
-        } else if (!res.moveAction && moveWords.some(function(w) { return n.includes(w); })) {
-            res.moveAction = action;
-        } else if (!res.attackAction && attackWords.some(function(w) { return n.includes(w); })) {
+
+        if (!res.attackAction && attackWords.some(function(w) { return n.includes(w); })) {
             res.attackAction = action;
         } else if (!res.deathAction && deathWords.some(function(w) { return n.includes(w); })) {
             res.deathAction = action;
         } else if (!res.hitAction && hitWords.some(function(w) { return n.includes(w); })) {
             res.hitAction = action;
+        } else if (!res.idleAction && (n.includes("idle") || n.includes("stand") || n.includes("breath"))) {
+            res.idleAction = action;
+        } else if (!res.moveAction && n.includes("walk")) {
+            res.moveAction = action;
         }
     });
 
     if (!res.idleAction) res.idleAction = mixer.clipAction(clips[0]);
+    // Dacă modelul nu are WALK, rămâne pe idle în loc să pornească RUN.
     if (!res.moveAction) res.moveAction = res.idleAction;
 
     if (res.attackAction) {
@@ -1663,7 +1665,8 @@ function updateMonsters(delta, now) {
         }
 
         if (m.anim && m.anim.mixer) {
-            if (m.attackT <= 0 && (!m.anim.hitAction || !m.anim.hitAction.isRunning())) {
+            const attackPlaying = m.anim.attackAction && m.anim.attackAction.isRunning();
+            if (m.attackT <= 0 && !attackPlaying && (!m.anim.hitAction || !m.anim.hitAction.isRunning())) {
                 playWolfAction(m.anim, moving ? m.anim.moveAction : m.anim.idleAction, 0.15);
             }
             m.anim.mixer.update(delta);
