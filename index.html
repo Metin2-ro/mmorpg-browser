@@ -1367,6 +1367,87 @@ function removeRemotePlayer(id) {
     updateOnlineCount();
 }
 
+/* ---------- retarget atac King -> Werewolf ---------- */
+function buildWolfSwordAttackClip(targetRoot) {
+    if (!sharedCharacterScene || !targetRoot || !SWORD_ATTACK_DATA) return null;
+
+    const sourceBones = Object.create(null);
+    const targetBones = Object.create(null);
+
+    sharedCharacterScene.traverse(function(node) {
+        if (node.isBone) sourceBones[node.name] = node;
+    });
+    targetRoot.traverse(function(node) {
+        if (node.isBone) targetBones[node.name] = node;
+    });
+
+    const D = SWORD_ATTACK_DATA;
+    const times = [];
+    for (let i = 0; i < D.n; i++) times.push(i / D.fps);
+
+    const tracks = [];
+    let mapped = 0;
+
+    Object.keys(D.q).forEach(function(sourceName) {
+        const sourceBone = sourceBones[sourceName];
+        const targetName = sourceName.replace(/_\d+$/, "");
+        const targetBone = targetBones[targetName];
+        if (!sourceBone || !targetBone) return;
+
+        const values = D.q[sourceName];
+        if (!values || values.length !== D.n * 4) return;
+
+        const inverseSourceRest = sourceBone.quaternion.clone().invert();
+        const targetRest = targetBone.quaternion.clone();
+        const retargeted = [];
+
+        for (let i = 0; i < D.n; i++) {
+            const offset = i * 4;
+            const sourceAnimated = new THREE.Quaternion(
+                values[offset],
+                values[offset + 1],
+                values[offset + 2],
+                values[offset + 3]
+            );
+            const localDelta = inverseSourceRest.clone().multiply(sourceAnimated);
+            const targetAnimated = targetRest.clone().multiply(localDelta).normalize();
+            retargeted.push(
+                targetAnimated.x,
+                targetAnimated.y,
+                targetAnimated.z,
+                targetAnimated.w
+            );
+        }
+
+        tracks.push(new THREE.QuaternionKeyframeTrack(
+            targetName + ".quaternion",
+            times,
+            retargeted
+        ));
+        mapped++;
+    });
+
+    // Nu pornim o animație incompletă: sunt necesare trunchiul și ambele brațe.
+    const required = ["Hips", "Spine", "Spine01", "Spine02", "LeftArm",
+        "LeftForeArm", "RightArm", "RightForeArm"];
+    const hasRequired = required.every(function(name) {
+        return !!targetBones[name] && tracks.some(function(track) {
+            return track.name === name + ".quaternion";
+        });
+    });
+    if (!hasRequired || mapped < 12) {
+        console.warn("Retarget atac King -> Werewolf incomplet. Oase mapate:", mapped);
+        return null;
+    }
+
+    console.info("Atac King adaptat pentru Werewolf. Oase mapate:", mapped);
+    return new THREE.AnimationClip(
+        "KingSwordAttack_Werewolf",
+        times[times.length - 1],
+        tracks
+    );
+}
+
 /* ---------- monștri ---------- */
 function setupWolfAnimations(mixer, clips, scale) {
     const res = {
@@ -1404,6 +1485,10 @@ function setupWolfAnimations(mixer, clips, scale) {
     if (!res.idleAction) res.idleAction = mixer.clipAction(clips[0]);
     // Dacă modelul nu are WALK, rămâne pe idle în loc să pornească RUN.
     if (!res.moveAction) res.moveAction = res.idleAction;
+
+    // Preferăm atacul lui King, retargetat pe scheletul vârcolacului.
+    const kingAttackClip = buildWolfSwordAttackClip(mixer.getRoot());
+    if (kingAttackClip) res.attackAction = mixer.clipAction(kingAttackClip);
 
     if (res.attackAction) {
         res.attackAction.setLoop(THREE.LoopOnce, 1);
@@ -1674,9 +1759,10 @@ function updateMonsters(delta, now) {
             m.model.position.y = moving ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
         }
 
-        // Modelul are doar Walk și Run, fără clip Attack: simulăm o mușcătură
-        // scurtă printr-un pas înainte și o înclinare a corpului.
-        const attackPulse = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) : 0;
+        // Mișcarea procedurală rămâne doar ca rezervă dacă retargetarea nu reușește.
+        const useProceduralAttack = !m.anim || !m.anim.attackAction;
+        const attackPulse = useProceduralAttack && m.attackT > 0
+            ? Math.sin(Math.min(1, m.attackT) * Math.PI) : 0;
         const poseTargetX = -0.22 * attackPulse;
         const poseTargetZ = 0.38 * attackPulse;
         m.model.rotation.x += (poseTargetX - m.model.rotation.x) * Math.min(1, 18 * delta);
