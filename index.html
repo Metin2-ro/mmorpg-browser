@@ -1674,6 +1674,14 @@ function updateMonsters(delta, now) {
             m.model.position.y = moving ? Math.abs(Math.sin(now * 9 + m.phase)) * 0.12 : 0;
         }
 
+        // Modelul are doar Walk și Run, fără clip Attack: simulăm o mușcătură
+        // scurtă printr-un pas înainte și o înclinare a corpului.
+        const attackPulse = m.attackT > 0 ? Math.sin(Math.min(1, m.attackT) * Math.PI) : 0;
+        const poseTargetX = -0.22 * attackPulse;
+        const poseTargetZ = 0.38 * attackPulse;
+        m.model.rotation.x += (poseTargetX - m.model.rotation.x) * Math.min(1, 18 * delta);
+        m.model.position.z += (poseTargetZ - m.model.position.z) * Math.min(1, 18 * delta);
+
         m.flash -= delta;
         const flashActive = m.flash > 0;
         const baseEmissive = m.boss ? 0x3a0800 : 0x111111;
