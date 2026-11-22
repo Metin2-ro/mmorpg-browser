@@ -451,6 +451,40 @@ input, textarea { cursor: text !important; }
 .sk-bar i { display: block; height: 100%; }
 .rk-n { color: #cfcfcf; } .rk-m { color: #4da6ff; } .rk-g { color: #c77dff; } .rk-p { color: #ff9a1f; }
 #buff-indicator { position: absolute; top: 212px; left: 20px; font-size: 12px; color: #ffcc66; text-shadow: 1px 1px #000; z-index: 12; pointer-events: none; }
+
+#loading-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at 50% 40%, #2a1710 0%, #0b0706 70%);
+    transition: opacity 0.6s ease;
+}
+#loading-screen.done { opacity: 0; pointer-events: none; }
+.ld-box { width: 480px; max-width: 90vw; text-align: center; }
+.ld-title { font-size: 40px; font-weight: bold; color: #ffd700; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 22px #ff6600, 2px 2px #000; }
+.ld-sub { margin: 6px 0 26px; color: #b9a583; letter-spacing: 2px; font-size: 13px; }
+.ld-bar {
+    position: relative; height: 28px; border: 2px solid #8c6239; border-radius: 4px; overflow: hidden;
+    background: #120c08; box-shadow: 0 0 18px rgba(255, 120, 20, 0.25), inset 0 0 8px #000;
+}
+.ld-fill {
+    height: 100%; width: 0%; transition: width 0.1s linear;
+    background: linear-gradient(90deg, #7a1d12, #e0661a 55%, #ffd34d);
+    box-shadow: 0 0 14px rgba(255, 160, 40, 0.7);
+    position: relative; overflow: hidden;
+}
+.ld-fill::after {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 60px; left: -60px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent);
+    animation: ld-shine 1.4s linear infinite;
+}
+@keyframes ld-shine { to { left: 100%; } }
+.ld-pct { position: absolute; inset: 0; line-height: 28px; font-weight: bold; font-size: 14px; color: #fff; text-shadow: 1px 1px 2px #000; }
+.ld-step { margin-top: 14px; color: #ffcf8a; font-size: 14px; min-height: 20px; }
+.ld-tip { margin-top: 26px; color: #8f8068; font-size: 12px; line-height: 1.6; min-height: 38px; font-style: italic; }
 </style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -613,6 +647,16 @@ input, textarea { cursor: text !important; }
     </div>
 
     <div id="action-bar"></div>
+</div>
+
+<div id="loading-screen">
+    <div class="ld-box">
+        <div class="ld-title">MU Dark Fantasy</div>
+        <div class="ld-sub">SE PREGĂTEȘTE LUMEA TA</div>
+        <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div><div class="ld-pct" id="ld-pct">0%</div></div>
+        <div class="ld-step" id="ld-step">Se încarcă...</div>
+        <div class="ld-tip" id="ld-tip"></div>
+    </div>
 </div>
 
 <div id="death-overlay"><span>AI MURIT</span><small id="death-text">Revii în 4 secunde...</small></div>
@@ -1016,7 +1060,9 @@ function useSkill(n) {
     autoFaceNearest(cfg.range + 3);
     startAttackAnim(visual);
     sndSwing(visual);
-    spawnSlashEffect(myPos.x, myPos.y, myPos.z, myPos.rotY, visual, tilt);
+    if (visual === 2) spawnBladeVortex(myPos.x, myPos.y, myPos.z, function() { return myPos; });
+    else spawnSwordSlash(myPos.x, myPos.y, myPos.z, myPos.rotY, tilt);
+    if (n === 2) castText(2);
     if (socket && socket.connected) socket.emit("playerAttack", { skill: visual });
 
     setTimeout(function() { applyAttackDamage(n, opts); }, opts.delay * 1000);
@@ -1084,6 +1130,7 @@ function triggerDefense3D() {
     isDefending = true;
     addChat("🛡️ Scut activat! (-70% daune)", "#3498db");
     sndShield();
+    castText(3);
     setTimeout(function() { isDefending = false; }, (2 + 0.12 * skillLv[3]) * 1000);
 }
 
@@ -1127,40 +1174,6 @@ function updateParticles(delta) {
     }
 }
 
-function explodeAt(x, y, z) {
-    sndImpact(Math.hypot(x - myPos.x, z - myPos.z));
-    for (let k = 0; k < 16; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const up = (Math.random() - 0.3) * 4;
-        const sp = 3 + Math.random() * 4;
-        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, 0x7fd0ff, 0.2, 0.5);
-    }
-}
-
-function spawnProjectile(x, y, z, dx, dz, mine) {
-    if (!scene) return;
-    const group = new THREE.Group();
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0xdff4ff });
-    const haloMat = new THREE.MeshBasicMaterial({ color: 0x3a9bff, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
-    const core = new THREE.Mesh(PARTICLE_GEO, coreMat);
-    core.scale.setScalar(0.28);
-    const halo = new THREE.Mesh(PARTICLE_GEO, haloMat);
-    halo.scale.setScalar(0.65);
-    group.add(core);
-    group.add(halo);
-    group.position.set(x, y, z);
-    scene.add(group);
-    projectiles.push({ group: group, halo: halo, coreMat: coreMat, haloMat: haloMat, dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine });
-}
-
-function removeProjectile(i) {
-    const p = projectiles[i];
-    scene.remove(p.group);
-    p.coreMat.dispose();
-    p.haloMat.dispose();
-    projectiles.splice(i, 1);
-}
-
 function updateProjectiles(delta) {
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
@@ -1174,11 +1187,15 @@ function updateProjectiles(delta) {
         const gy = getGroundHeight(pos.x, pos.z, NaN);
         if (Number.isFinite(gy)) pos.y += (gy + 1.3 - pos.y) * Math.min(1, 10 * delta);
 
-        p.halo.scale.setScalar(0.6 + 0.12 * Math.sin(p.t * 30));
+        p.halo.scale.setScalar(2.4 + 0.4 * Math.sin(p.t * 24));
+        p.rings[0].rotation.x += 9 * delta;
+        p.rings[1].rotation.z += 11 * delta;
+        p.shell.scale.setScalar(0.44 + 0.05 * Math.sin(p.t * 30));
         p.trail -= delta;
         if (p.trail <= 0) {
-            p.trail = 0.03;
-            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, 0x6ec6ff, 0.2, 0.35);
+            p.trail = 0.025;
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, 0xb44cff, 0.26, 0.5);
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 0xff7bf0, 0.14, 0.4);
         }
 
         let hit = false;
@@ -1240,6 +1257,8 @@ function useSpell() {
 
     playOneShot(spellAction, SPELL_ANIM_SPEED);
     sndSpellCast();
+    spawnRuneCircle(myPos.x, myPos.y, myPos.z, "#c060ff", 1, 2.5, 0.9, 2.5);
+    castText(4);
     attackStart = now;
     attackUntil = now + spellAction.getClip().duration / SPELL_ANIM_SPEED;
     attackProcedural = false;
@@ -1273,6 +1292,7 @@ function doRoll() {
     hitUntil = 0;
     playOneShot(rollAction, ROLL.animSpeed);
     sndRoll();
+    spawnDust(myPos.x, myPos.y, myPos.z, 8, 0.8);
     rollUntil = now + rollAction.getClip().duration / ROLL.animSpeed;
 }
 
@@ -1287,7 +1307,7 @@ function takeDamage(amount, attackerId) {
     }
     amount = Math.min(300, Math.round(amount));
     if (defense > 0) amount = Math.max(1, Math.round(amount * (1 - defense)));
-    if (isDefending) amount = Math.max(1, Math.round(amount * 0.3));
+    if (isDefending) { amount = Math.max(1, Math.round(amount * 0.3)); shieldFlash = 1; }
     myHP -= amount;
     lastHitTime = nowSec();
     sndHurt();
@@ -1524,12 +1544,11 @@ function updateCombat(delta, now) {
         if (socket && socket.connected && Math.round(myHP) !== lastHpSent) sendHp();
     }
 
-    if (shieldMesh) {
-        shieldMesh.visible = isDefending;
-        if (isDefending) {
-            shieldMesh.material.opacity = 0.25 + 0.1 * Math.sin(now * 12);
-            shieldMesh.rotation.y += delta * 2;
-        }
+    updateShieldFx(delta, now);
+    updateWarAura(delta, now);
+    if (now < rollUntil) {
+        rollDustTimer -= delta;
+        if (rollDustTimer <= 0) { rollDustTimer = 0.07; spawnDust(myPos.x, myPos.y, myPos.z, 2, 0.5); }
     }
 
     updateMonsters(delta, now);
@@ -1537,6 +1556,7 @@ function updateCombat(delta, now) {
     updateProjectiles(delta);
     updateParticles(delta);
     updateBolts(delta);
+    updateFx(delta);
     updateTelegraphs(delta);
     updateLoot(delta, now);
     updateFloatingTexts(delta);
@@ -1785,6 +1805,7 @@ function doJump() {
     jumpVel = JUMP_SPEED;
     jumpOffset = 0.001;
     sndJump();
+    spawnDust(myPos.x, myPos.y, myPos.z, 5, 0.6);
     if (jumpAction && nowSec() >= attackUntil) playOneShot(jumpAction, 1);
 }
 
@@ -2066,6 +2087,7 @@ function handleWorldState(data) {
     clearLoot();
     for (const info of (data.monsters || [])) addMonsterFromServer(info);
     for (const l of (data.loot || [])) addLootItem(l);
+    setLoad("world", 1);
 }
 
 function handleMonsterSnapshot(arr) {
@@ -2102,7 +2124,7 @@ function trySendSpawnPoints() {
         if (p && Math.hypot(p.x, p.z) > MAP_TARGET_SIZE * 0.22) boss = { x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 };
     }
     if (!boss && points.length) boss = points[0];
-    if (points.length >= 5) socket.emit("spawnPoints", { points: points, boss: boss });
+    if (points.length >= 5) { socket.emit("spawnPoints", { points: points, boss: boss }); setLoad("world", 0.6); }
     else addChat("Nu am găsit suficiente puncte valide pe hartă pentru monștri.", "#e74c3c");
 }
 
@@ -2139,12 +2161,16 @@ function setupSocket() {
     try {
         if (typeof io === "undefined") {
             addChat("Serverul nu răspunde: fără monștri și multiplayer.", "#e74c3c");
+            setLoad("server", 1);
+            setLoad("world", 1);
             return;
         }
         socket = io();
+        setLoad("server", 0.2);
 
         socket.on("connect", function() {
             addChat("Conectat la server.", "#2ecc71");
+            setLoad("server", 1);
             sendJoin();
         });
         socket.on("disconnect", function() {
@@ -2196,10 +2222,10 @@ function setupSocket() {
             const rp = remotePlayers[data && data.id];
             if (!rp || !rp.mesh) return;
             if (data.skill === 5) {
-                spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, 0, 2);
+                spawnWarCryFx(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z);
             } else if (data.skill === 6) {
                 const ry6 = rp.mesh.rotation.y;
-                spawnShockwave(rp.mesh.position.x + Math.sin(ry6) * 3.5, rp.mesh.position.z + Math.cos(ry6) * 3.5, SKILLS[6].range);
+                spawnEarthSlam(rp.mesh.position.x + Math.sin(ry6) * 3.5, rp.mesh.position.z + Math.cos(ry6) * 3.5, SKILLS[6].range);
             } else if (data.skill === 7) {
                 const ry7 = rp.mesh.rotation.y;
                 const from = new THREE.Vector3(rp.mesh.position.x, rp.mesh.position.y + 1.4, rp.mesh.position.z);
@@ -2209,7 +2235,8 @@ function setupSocket() {
                 spawnProjectile(rp.mesh.position.x + Math.sin(ry) * 0.9, rp.mesh.position.y + 1.3, rp.mesh.position.z + Math.cos(ry) * 0.9,
                     Math.sin(ry), Math.cos(ry), false);
             } else {
-                spawnSlashEffect(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, rp.mesh.rotation.y, data.skill || 1);
+                if (data.skill === 2) spawnBladeVortex(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, null);
+                else spawnSwordSlash(rp.mesh.position.x, rp.mesh.position.y, rp.mesh.position.z, rp.mesh.rotation.y, 0);
             }
         });
         socket.on("pvpKill", function() {
@@ -2224,6 +2251,7 @@ function setupSocket() {
         // ---- lumea (monștri, boss, drop-uri) ----
         socket.on("needSpawnPoints", function() {
             wantSpawnPoints = true;
+            setLoad("world", 0.3);
             trySendSpawnPoints();
         });
         socket.on("worldState", handleWorldState);
@@ -2806,6 +2834,730 @@ function toggleSfx() {
     if (sfxOn) sndClick();
 }
 
+/* ====================== ECRAN DE ÎNCĂRCARE ====================== */
+const loadState = { map: 0, char: 0, server: 0, world: 0, scan: 0 };
+const LOAD_WEIGHTS = { map: 0.5, char: 0.15, server: 0.1, world: 0.2, scan: 0.05 };
+const LOAD_LABELS = {
+    map: "Se încarcă harta lumii", char: "Se încarcă eroul", server: "Se conectează la server",
+    world: "Se creează monștrii și boss-ul", scan: "Se desenează harta mică"
+};
+const LOAD_ORDER = ["map", "char", "server", "world", "scan"];
+const LOAD_TIPS = [
+    "Ține apăsat click dreapta și mișcă mouse-ul ca să rotești camera.",
+    "Apasă K ca să cheltui punctele de abilitate: Nv.17 → M1 → G1 → P.",
+    "Lordul Infernului lasă cristale rare și echipament puternic.",
+    "Rostogolește-te (C) ca să scapi de lovitura în sol a boss-ului.",
+    "Apasă I pentru inventar și P pentru punctele de caracter.",
+    "Trei lovituri la rând cu tasta 1 fac un combo cu daune mari.",
+    "Cristalele sunt necesare pentru abilitățile G → P și pentru echipamentul Infernului.",
+    "Apasă Tab ca să ții ținta cel mai apropiat dușman."
+];
+let loadingActive = false, loadShown = 0, loadStartT = 0, loadTimer = null, loadTipIdx = 0, loadTipT = 0;
+
+function setLoad(key, v) {
+    if (!(key in loadState)) return;
+    v = Math.max(0, Math.min(1, Number(v) || 0));
+    if (v > loadState[key]) loadState[key] = v;
+}
+
+// fracția descărcată; dacă serverul nu trimite mărimea totală, estimăm
+function loadFraction(loaded, total, estimate) {
+    if (total > 0) return Math.min(1, loaded / total);
+    return loaded / (loaded + (estimate || 8e6));
+}
+
+function loadingTarget() {
+    let t = 0;
+    for (const k in LOAD_WEIGHTS) t += LOAD_WEIGHTS[k] * loadState[k];
+    return t;
+}
+
+function startLoading() {
+    loadingActive = true;
+    loadShown = 0;
+    loadStartT = performance.now();
+    loadTipT = loadStartT;
+    for (const k in loadState) loadState[k] = 0;
+    const el = document.getElementById("loading-screen");
+    el.classList.remove("done");
+    el.style.display = "flex";
+    loadTipIdx = Math.floor(Math.random() * LOAD_TIPS.length);
+    document.getElementById("ld-tip").textContent = LOAD_TIPS[loadTipIdx];
+    if (loadTimer) clearInterval(loadTimer);
+    loadTimer = setInterval(updateLoadingUI, 50);
+    updateLoadingUI();
+}
+
+function updateLoadingUI() {
+    if (!loadingActive) return;
+    const now = performance.now();
+    // dacă harta lipsește, scanarea ei nu poate porni: nu așteptăm degeaba
+    if (loadState.map >= 1 && loadState.char >= 1 && !mmScan && now - loadStartT > 2500) setLoad("scan", 1);
+
+    const target = loadingTarget();
+    loadShown += (target - loadShown) * 0.12 + 0.002;
+    if (loadShown > target) loadShown = target;
+    const p = Math.min(100, Math.round(loadShown * 100));
+    document.getElementById("ld-fill").style.width = p + "%";
+    document.getElementById("ld-pct").textContent = p + "%";
+
+    let label = "Aproape gata...";
+    for (const k of LOAD_ORDER) {
+        if (loadState[k] < 1) { label = LOAD_LABELS[k] + "..."; break; }
+    }
+    document.getElementById("ld-step").textContent = label;
+
+    if (now - loadTipT > 3500) {
+        loadTipT = now;
+        loadTipIdx = (loadTipIdx + 1) % LOAD_TIPS.length;
+        document.getElementById("ld-tip").textContent = LOAD_TIPS[loadTipIdx];
+    }
+
+    const elapsed = now - loadStartT;
+    const slow = elapsed > 45000;
+    if ((target >= 0.999 && loadShown >= 0.995 && elapsed > 1200) || slow) finishLoading(slow);
+}
+
+function finishLoading(slow) {
+    if (!loadingActive) return;
+    loadingActive = false;
+    if (loadTimer) { clearInterval(loadTimer); loadTimer = null; }
+    if (!slow) {
+        document.getElementById("ld-fill").style.width = "100%";
+        document.getElementById("ld-pct").textContent = "100%";
+    }
+    const el = document.getElementById("loading-screen");
+    el.classList.add("done");
+    setTimeout(function() { if (!loadingActive) el.style.display = "none"; }, 700);
+    addChat(slow ? "⚠️ Serverul răspunde greu; jocul continuă." : "Lumea s-a încărcat. Bun venit, " + heroName + "!", slow ? "#e67e22" : "#2ecc71");
+}
+
+/* ====================== EFECTE VIZUALE PENTRU ABILITĂȚI ====================== */
+// Fiecare abilitate are propria formă și propria culoare:
+// 1 semilună aurie · 2 vortex de lame albastre · 3 cupolă hexagonală aurie · 4 orb violet cu inele
+// 5 flăcări roșii · 6 crăpături de lavă, bolovani, praf · 7 trăsnete albastre groase
+const SKILL_COLORS = { 1: "#ffd36b", 2: "#9fd0ff", 3: "#ffe27a", 4: "#d08bff", 5: "#ff7a45", 6: "#e0a050", 7: "#7fe3ff" };
+const fx = [];
+let glowTex = null, dustTex = null;
+const runeTex = {};
+let shieldFx = null, shieldFlash = 0;
+let warAuraSprite = null, warAuraTimer = 0, rollDustTimer = 0;
+
+function addFx(max, update, dispose) {
+    fx.push({ life: 0, max: max, update: update, dispose: dispose || null });
+}
+
+function updateFx(delta) {
+    for (let i = fx.length - 1; i >= 0; i--) {
+        const f = fx[i];
+        f.life += delta;
+        const t = Math.min(1, f.life / f.max);
+        try { f.update(t, delta); } catch (e) { f.life = f.max; }
+        if (f.life >= f.max) {
+            if (f.dispose) { try { f.dispose(); } catch (e) {} }
+            fx.splice(i, 1);
+        }
+    }
+}
+
+function getGlowTex() {
+    if (glowTex) return glowTex;
+    const c = document.createElement("canvas");
+    c.width = 128; c.height = 128;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.25, "rgba(255,255,255,0.55)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    glowTex = new THREE.CanvasTexture(c);
+    return glowTex;
+}
+
+function getDustTex() {
+    if (dustTex) return dustTex;
+    const c = document.createElement("canvas");
+    c.width = 64; c.height = 64;
+    const g = c.getContext("2d");
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255,255,255,0.9)");
+    grad.addColorStop(0.5, "rgba(255,255,255,0.35)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    dustTex = new THREE.CanvasTexture(c);
+    return dustTex;
+}
+
+function makeGlowSprite(color, size, opacity) {
+    const mat = new THREE.SpriteMaterial({ map: getGlowTex(), color: color, transparent: true, opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+    const sp = new THREE.Sprite(mat);
+    sp.scale.setScalar(size);
+    return sp;
+}
+
+// cerc magic desenat pe canvas (steaua are 5, 6, 7 sau 8 colțuri după variantă)
+function getRuneTex(color, variant) {
+    const key = color + ":" + variant;
+    if (runeTex[key]) return runeTex[key];
+    const c = document.createElement("canvas");
+    c.width = 256; c.height = 256;
+    const g = c.getContext("2d");
+    g.translate(128, 128);
+    g.strokeStyle = color;
+    g.fillStyle = color;
+    g.lineCap = "round";
+    g.shadowColor = color;
+    g.shadowBlur = 10;
+    g.lineWidth = 5;
+    g.beginPath(); g.arc(0, 0, 120, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 2.5;
+    g.beginPath(); g.arc(0, 0, 104, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(0, 0, 70, 0, Math.PI * 2); g.stroke();
+    const n = [5, 6, 7, 8][variant % 4];
+    const skip = n === 8 ? 3 : 2;
+    g.lineWidth = 3;
+    g.beginPath();
+    for (let i = 0; i < n; i++) {
+        const a1 = -Math.PI / 2 + i / n * Math.PI * 2;
+        const a2 = -Math.PI / 2 + ((i + skip) % n) / n * Math.PI * 2;
+        g.moveTo(Math.cos(a1) * 104, Math.sin(a1) * 104);
+        g.lineTo(Math.cos(a2) * 104, Math.sin(a2) * 104);
+    }
+    g.stroke();
+    g.lineWidth = 2;
+    for (let i = 0; i < 24; i++) {
+        const a = i / 24 * Math.PI * 2;
+        const r1 = 106, r2 = i % 2 ? 114 : 119;
+        g.beginPath(); g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); g.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); g.stroke();
+    }
+    for (let i = 0; i < n; i++) {
+        const a = -Math.PI / 2 + i / n * Math.PI * 2;
+        g.beginPath(); g.arc(Math.cos(a) * 104, Math.sin(a) * 104, 5, 0, Math.PI * 2); g.fill();
+    }
+    g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); g.fill();
+    runeTex[key] = new THREE.CanvasTexture(c);
+    return runeTex[key];
+}
+
+function spawnRuneCircle(x, y, z, hexColor, variant, radius, dur, spin) {
+    if (!scene) return;
+    const mat = new THREE.MeshBasicMaterial({ map: getRuneTex(hexColor, variant), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const geo = new THREE.PlaneGeometry(radius * 2, radius * 2);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    const grp = new THREE.Group();
+    grp.position.set(x, y + 0.08, z);
+    grp.add(mesh);
+    scene.add(grp);
+    addFx(dur, function(t, dt) {
+        grp.rotation.y += spin * dt;
+        const env = t < 0.15 ? t / 0.15 : (t > 0.7 ? (1 - t) / 0.3 : 1);
+        mat.opacity = 0.95 * env;
+        grp.scale.setScalar(0.7 + 0.3 * Math.min(1, t * 4));
+    }, function() { scene.remove(grp); geo.dispose(); mat.dispose(); });
+}
+
+function spawnDust(x, y, z, count, spread, color) {
+    if (!scene) return;
+    const tex = getDustTex();
+    for (let i = 0; i < count; i++) {
+        const mat = new THREE.SpriteMaterial({ map: tex, color: color || 0x8a7a62, transparent: true, opacity: 0.5, depthWrite: false });
+        const sp = new THREE.Sprite(mat);
+        const a = Math.random() * Math.PI * 2, d = Math.random() * spread;
+        sp.position.set(x + Math.cos(a) * d, y + 0.2, z + Math.sin(a) * d);
+        const s0 = 0.6 + Math.random() * 0.5;
+        sp.scale.setScalar(s0);
+        scene.add(sp);
+        const vx = Math.cos(a) * (0.8 + Math.random()), vz = Math.sin(a) * (0.8 + Math.random()), vy = 0.6 + Math.random() * 0.8;
+        addFx(0.9 + Math.random() * 0.4, function(t, dt) {
+            sp.position.x += vx * dt;
+            sp.position.y += vy * dt * (1 - t);
+            sp.position.z += vz * dt;
+            sp.scale.setScalar(s0 * (1 + 2.2 * t));
+            mat.opacity = 0.5 * (1 - t);
+        }, function() { scene.remove(sp); mat.dispose(); });
+    }
+}
+
+function castText(n) {
+    spawnFloatingText(SKILL_DEFS[n].name + "!", SKILL_COLORS[n],
+        new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.8, myPos.z), false);
+}
+
+/* ---------- 1. Lovitura Sabiei: semilună aurie care taie aerul ---------- */
+const CRESCENT_VS = "varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
+const CRESCENT_FS = [
+    "varying vec2 vUv; uniform float uProgress; uniform float uFade; uniform vec3 uColA; uniform vec3 uColB;",
+    "void main() {",
+    "  float head = 1.0 - clamp((uProgress - vUv.x) * 2.5, 0.0, 1.0);",
+    "  float vis = step(vUv.x, uProgress);",
+    "  float edge = 1.0 - abs(vUv.y - 0.5) * 2.0;",
+    "  float a = vis * (0.2 + 0.8 * head) * pow(max(edge, 0.0), 0.6) * uFade;",
+    "  vec3 col = mix(uColA, uColB, head);",
+    "  gl_FragColor = vec4(col * (0.6 + 0.9 * head), a);",
+    "}"
+].join("\n");
+
+function crescentGeo(R, W, a0, a1) {
+    const N = 36, pos = [], uv = [], idx = [];
+    for (let i = 0; i <= N; i++) {
+        const t = i / N, a = a0 + (a1 - a0) * t;
+        const w = W * Math.pow(Math.sin(Math.PI * t), 0.75) / 2 + 0.02;
+        const c = Math.cos(a), sn = Math.sin(a);
+        pos.push((R - w) * c, (R - w) * sn, 0, (R + w) * c, (R + w) * sn, 0);
+        uv.push(t, 0, t, 1);
+        if (i < N) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    return g;
+}
+
+function crescentMat(colA, colB) {
+    return new THREE.ShaderMaterial({
+        uniforms: { uProgress: { value: 0 }, uFade: { value: 1 }, uColA: { value: new THREE.Color(colA) }, uColB: { value: new THREE.Color(colB) } },
+        vertexShader: CRESCENT_VS, fragmentShader: CRESCENT_FS,
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+}
+
+function spawnSwordSlash(x, y, z, rotY, tilt) {
+    if (!scene) return;
+    const diag = (tilt || 0) > 0;           // a doua lovitură din combo: oblică, portocalie
+    const dir = diag ? -1 : 1;
+    const geo = crescentGeo(2.7, 1.3, dir * 1.05, -dir * 1.05);
+    const mat = crescentMat(diag ? 0xff5a14 : 0xffbb33, diag ? 0xfff0c8 : 0xffffff);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    const tiltGroup = new THREE.Group();
+    tiltGroup.rotation.x = tilt || 0;
+    tiltGroup.add(mesh);
+    const group = new THREE.Group();
+    group.position.set(x, y + 1.0, z);
+    group.rotation.y = rotY - Math.PI / 2;
+    group.add(tiltGroup);
+    scene.add(group);
+    group.updateMatrixWorld(true);
+
+    for (let k = 0; k < 14; k++) {
+        const a = dir * 1.05 * (1 - 2 * k / 13);
+        const p = new THREE.Vector3(2.8 * Math.cos(a), 0, -2.8 * Math.sin(a)).applyMatrix4(tiltGroup.matrixWorld);
+        spawnParticle(p.x, p.y, p.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, diag ? 0xff8a3a : 0xffd45a, 0.1, 0.4);
+    }
+    addFx(0.3, function(t) {
+        mat.uniforms.uProgress.value = t * 1.5;
+        mat.uniforms.uFade.value = t < 0.55 ? 1 : (1 - t) / 0.45;
+        group.scale.setScalar(1 + 0.12 * t);
+    }, function() { scene.remove(group); geo.dispose(); mat.dispose(); });
+}
+
+/* ---------- 2. Vârtej de Lame: trei lame albastre care se rotesc ---------- */
+function spawnBladeVortex(x, y, z, follow) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    group.position.set(x, y + 0.9, z);
+    const mats = [], geos = [];
+    for (let i = 0; i < 3; i++) {
+        const geo = crescentGeo(2.9, 1.0, 0, 2.3);
+        const mat = crescentMat(0x58b0ff, 0xffffff);
+        mat.uniforms.uProgress.value = 2;
+        const m = new THREE.Mesh(geo, mat);
+        m.rotation.x = -Math.PI / 2;
+        const holder = new THREE.Group();
+        holder.rotation.y = i * Math.PI * 2 / 3;
+        holder.position.y = (i - 1) * 0.4;
+        holder.add(m);
+        group.add(holder);
+        mats.push(mat);
+        geos.push(geo);
+    }
+    scene.add(group);
+    spawnDust(x, y + 0.05, z, 12, 2.4, 0xaab8c8);
+    addFx(0.65, function(t, dt) {
+        if (follow) { const p = follow(); group.position.set(p.x, p.y + 0.9, p.z); }
+        group.rotation.y += 16 * dt;
+        const env = t < 0.12 ? t / 0.12 : (t > 0.65 ? (1 - t) / 0.35 : 1);
+        mats.forEach(function(m) { m.uniforms.uFade.value = env; });
+        group.scale.setScalar(0.7 + 0.5 * t);
+        for (let k = 0; k < 3; k++) {
+            const a = Math.random() * Math.PI * 2, r = 1.6 + Math.random() * 1.8;
+            spawnParticle(group.position.x + Math.cos(a) * r, group.position.y - 0.7 + Math.random() * 1.6, group.position.z + Math.sin(a) * r,
+                -Math.sin(a) * 5, 0.6, Math.cos(a) * 5, 0xcfe8ff, 0.14, 0.4);
+        }
+    }, function() { scene.remove(group); geos.forEach(function(g) { g.dispose(); }); mats.forEach(function(m) { m.dispose(); }); });
+}
+
+/* ---------- 3. Scut Divin: cupolă hexagonală aurie + cerc de rune ---------- */
+const DOME_VS = [
+    "varying vec3 vNormal; varying vec3 vView; varying vec3 vPos;",
+    "void main() {",
+    "  vNormal = normalize(normalMatrix * normal);",
+    "  vec4 mv = modelViewMatrix * vec4(position, 1.0);",
+    "  vView = normalize(-mv.xyz);",
+    "  vPos = position;",
+    "  gl_Position = projectionMatrix * mv;",
+    "}"
+].join("\n");
+const DOME_FS = [
+    "uniform float uTime; uniform float uOpacity; uniform float uFlash; uniform vec3 uColor;",
+    "varying vec3 vNormal; varying vec3 vView; varying vec3 vPos;",
+    "float hexd(vec2 uv) {",
+    "  vec2 r = vec2(1.0, 1.7320508); vec2 h = r * 0.5;",
+    "  vec2 a = mod(uv, r) - h; vec2 b = mod(uv - h, r) - h;",
+    "  vec2 gv = dot(a, a) < dot(b, b) ? a : b;",
+    "  vec2 q = abs(gv);",
+    "  return max(dot(q, normalize(vec2(1.0, 1.7320508))), q.x);",
+    "}",
+    "void main() {",
+    "  float fres = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.2);",
+    "  vec2 uv = vec2(atan(vPos.z, vPos.x) * 2.4, vPos.y * 2.6 - uTime * 0.25);",
+    "  float line = smoothstep(0.40, 0.5, hexd(uv));",
+    "  float pulse = 0.5 + 0.5 * sin(uTime * 3.0 + vPos.y * 4.0);",
+    "  float a = (0.06 + fres * 0.75 + line * 0.38 * (0.6 + 0.4 * pulse) + uFlash * (0.35 + fres)) * uOpacity;",
+    "  vec3 col = mix(uColor, vec3(1.0, 0.95, 0.8), clamp(fres * 0.6 + uFlash, 0.0, 1.0));",
+    "  gl_FragColor = vec4(col * (0.9 + uFlash), a);",
+    "}"
+].join("\n");
+
+function createShieldFx() {
+    const mat = new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 }, uOpacity: { value: 0 }, uFlash: { value: 0 }, uColor: { value: new THREE.Color(0xffd24a) } },
+        vertexShader: DOME_VS, fragmentShader: DOME_FS,
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+    });
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.75, 32, 20), mat);
+    dome.position.y = PLAYER_HEIGHT * 0.55;
+    const runeMat = new THREE.MeshBasicMaterial({ map: getRuneTex("#ffd24a", 1), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const rune = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), runeMat);
+    rune.rotation.x = -Math.PI / 2;
+    rune.position.y = 0.06;
+    const group = new THREE.Group();
+    group.add(dome);
+    group.add(rune);
+    group.visible = false;
+    return { group: group, dome: dome, rune: rune, mat: mat, runeMat: runeMat, level: 0 };
+}
+
+function updateShieldFx(delta, now) {
+    if (!shieldFx) return;
+    shieldFx.level += ((isDefending ? 1 : 0) - shieldFx.level) * Math.min(1, 9 * delta);
+    if (shieldFlash > 0) shieldFlash = Math.max(0, shieldFlash - delta * 3);
+    const lv = shieldFx.level;
+    shieldFx.group.visible = lv > 0.02;
+    if (!shieldFx.group.visible) return;
+    shieldFx.mat.uniforms.uTime.value = now;
+    shieldFx.mat.uniforms.uOpacity.value = lv;
+    shieldFx.mat.uniforms.uFlash.value = shieldFlash;
+    const sc = 0.8 + 0.2 * lv;
+    shieldFx.dome.scale.set(sc, sc * 1.15, sc);
+    shieldFx.rune.rotation.z += delta * 0.9;
+    shieldFx.runeMat.opacity = 0.8 * lv;
+}
+
+/* ---------- 4. Sfera de Energie: orb violet cu inele, urmă de cometă ---------- */
+function spawnProjectile(x, y, z, dx, dz, mine) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffe6ff });
+    const shellMat = new THREE.MeshBasicMaterial({ color: 0xb44cff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+    const core = new THREE.Mesh(PARTICLE_GEO, coreMat);
+    core.scale.setScalar(0.24);
+    const shell = new THREE.Mesh(PARTICLE_GEO, shellMat);
+    shell.scale.setScalar(0.46);
+    const glow = makeGlowSprite(0xa23cff, 2.6, 0.85);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff7bf0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ringGeo = new THREE.TorusGeometry(0.62, 0.03, 8, 28);
+    const ring1 = new THREE.Mesh(ringGeo, ringMat);
+    const ring2 = new THREE.Mesh(ringGeo, ringMat);
+    ring2.rotation.y = Math.PI / 2;
+    group.add(core);
+    group.add(shell);
+    group.add(glow);
+    group.add(ring1);
+    group.add(ring2);
+    group.position.set(x, y, z);
+    scene.add(group);
+    projectiles.push({
+        group: group, halo: glow, rings: [ring1, ring2], shell: shell,
+        mats: [coreMat, shellMat, glow.material, ringMat], geos: [ringGeo],
+        dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine
+    });
+}
+
+function removeProjectile(i) {
+    const p = projectiles[i];
+    scene.remove(p.group);
+    p.mats.forEach(function(m) { m.dispose(); });
+    p.geos.forEach(function(g) { g.dispose(); });
+    projectiles.splice(i, 1);
+}
+
+function explodeAt(x, y, z) {
+    sndImpact(Math.hypot(x - myPos.x, z - myPos.z));
+    if (!scene) return;
+    const flash = makeGlowSprite(0xd070ff, 1, 1);
+    flash.position.set(x, y, z);
+    scene.add(flash);
+    addFx(0.32, function(t) { flash.scale.setScalar(1.5 + 5.5 * t); flash.material.opacity = (1 - t) * (1 - t); },
+        function() { scene.remove(flash); flash.material.dispose(); });
+
+    const ringGeo = new THREE.RingGeometry(0.9, 1, 48);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff9cf5, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.set(x, y, z);
+    ring.rotation.x = -Math.PI / 2;
+    scene.add(ring);
+    addFx(0.4, function(t) { ring.scale.setScalar(0.4 + 3.6 * t); ringMat.opacity = 0.9 * (1 - t); },
+        function() { scene.remove(ring); ringGeo.dispose(); ringMat.dispose(); });
+
+    for (let k = 0; k < 24; k++) {
+        const a = Math.random() * Math.PI * 2, up = (Math.random() - 0.3) * 5, sp = 3 + Math.random() * 5;
+        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, k % 3 ? 0xb44cff : 0xff7bf0, 0.2, 0.55);
+    }
+    for (let k = 0; k < 6; k++) {
+        const a = Math.random() * Math.PI * 2;
+        spawnParticle(x, y, z, Math.cos(a) * 7, 2 + Math.random() * 3, Math.sin(a) * 7, 0xffffff, 0.12, 0.35);
+    }
+}
+
+/* ---------- 5. Strigăt de Luptă: undă de sunet + flăcări roșii ---------- */
+function spawnWarCryFx(x, y, z) {
+    if (!scene) return;
+    spawnRuneCircle(x, y, z, "#ff5a2a", 2, 3.4, 1.1, -1.5);
+    const geo = new THREE.RingGeometry(0.93, 1, 64);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffd0a0, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, y + 0.6, z);
+    scene.add(ring);
+    addFx(0.5, function(t) { ring.scale.setScalar(0.5 + 8.5 * t); mat.opacity = 0.9 * (1 - t); },
+        function() { scene.remove(ring); geo.dispose(); mat.dispose(); });
+    for (let k = 0; k < 40; k++) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * 1.3;
+        spawnParticle(x + Math.cos(a) * r, y + 0.1, z + Math.sin(a) * r, Math.cos(a) * 0.8, 4 + Math.random() * 4, Math.sin(a) * 0.8,
+            k % 2 ? 0xff4a1a : 0xffb347, 0.2, 0.9);
+    }
+    addShake(0.35);
+}
+
+// cât timp strigătul e activ, în jurul eroului se ridică scântei roșii
+function updateWarAura(delta, now) {
+    const active = now < buffUntil && !playerDead && !!localPlayerMesh && !!scene;
+    if (active && !warAuraSprite) {
+        warAuraSprite = makeGlowSprite(0xff4a1a, 3.4, 0.2);
+        scene.add(warAuraSprite);
+    }
+    if (!warAuraSprite) return;
+    warAuraSprite.visible = active;
+    if (!active) return;
+    warAuraSprite.position.set(myPos.x, myPos.y + 1.0 + jumpOffset, myPos.z);
+    warAuraSprite.material.opacity = 0.2 + 0.1 * Math.sin(now * 8);
+    warAuraTimer -= delta;
+    if (warAuraTimer <= 0) {
+        warAuraTimer = 0.05;
+        const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.7;
+        spawnParticle(myPos.x + Math.cos(a) * r, myPos.y + 0.1 + jumpOffset, myPos.z + Math.sin(a) * r,
+            (Math.random() - 0.5) * 0.6, 2.2 + Math.random() * 1.5, (Math.random() - 0.5) * 0.6,
+            Math.random() < 0.5 ? 0xff5a1f : 0xffb347, 0.13, 0.7);
+    }
+}
+
+/* ---------- 6. Lovitura Seismică: crăpături de lavă, bolovani, praf ---------- */
+function ribbonGeo(points, width, ref, mode) {
+    const n = points.length, pos = new Float32Array(n * 6), idx = [];
+    for (let i = 0; i < n; i++) {
+        const p = points[i];
+        const q = points[Math.min(n - 1, i + 1)], o = points[Math.max(0, i - 1)];
+        const dir = new THREE.Vector3().subVectors(q, o).normalize();
+        const side = mode === "up"
+            ? new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0))
+            : new THREE.Vector3().crossVectors(dir, new THREE.Vector3().subVectors(ref, p));
+        if (side.lengthSq() < 1e-8) side.set(1, 0, 0);
+        side.normalize().multiplyScalar(width * 0.5 * (1 - 0.35 * Math.abs(i / Math.max(1, n - 1) * 2 - 1)));
+        pos[i * 6] = p.x - side.x; pos[i * 6 + 1] = p.y - side.y; pos[i * 6 + 2] = p.z - side.z;
+        pos[i * 6 + 3] = p.x + side.x; pos[i * 6 + 4] = p.y + side.y; pos[i * 6 + 5] = p.z + side.z;
+        if (i < n - 1) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    return g;
+}
+
+function spawnEarthSlam(cx, cz, r) {
+    if (!scene) return;
+    const y0 = getGroundHeight(cx, cz, myPos.y) + 0.12;
+    const group = new THREE.Group();
+    scene.add(group);
+    const matO = new THREE.MeshBasicMaterial({ color: 0xff6a12, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const matI = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const cracks = [];
+    const nCr = 9;
+    for (let i = 0; i < nCr; i++) {
+        const a = i / nCr * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+        const len = r * (0.7 + Math.random() * 0.45);
+        const pts = [];
+        let lat = 0;
+        for (let k = 0; k <= 9; k++) {
+            const d = len * k / 9;
+            lat += (Math.random() - 0.5) * 0.7;
+            pts.push(new THREE.Vector3(cx + Math.cos(a) * d - Math.sin(a) * lat * 0.5, y0, cz + Math.sin(a) * d + Math.cos(a) * lat * 0.5));
+        }
+        const go = ribbonGeo(pts, 0.42, null, "up"), gi = ribbonGeo(pts, 0.16, null, "up");
+        group.add(new THREE.Mesh(go, matO));
+        group.add(new THREE.Mesh(gi, matI));
+        cracks.push({ go: go, gi: gi, n: go.index.count });
+    }
+    const glowMat = new THREE.MeshBasicMaterial({ map: getGlowTex(), color: 0xff7a1a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const glowGeo = new THREE.PlaneGeometry(r * 2.4, r * 2.4);
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.set(cx, y0 + 0.02, cz);
+    group.add(glow);
+
+    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6b5030, roughness: 0.9, flatShading: true });
+    const rocks = [];
+    for (let i = 0; i < 14; i++) {
+        const m = new THREE.Mesh(rockGeo, rockMat);
+        const s0 = 0.14 + Math.random() * 0.2;
+        const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 4.5;
+        m.position.set(cx + Math.cos(a) * Math.random() * 1.5, y0 + 0.2, cz + Math.sin(a) * Math.random() * 1.5);
+        m.scale.setScalar(s0);
+        group.add(m);
+        rocks.push({ m: m, s: s0, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 5 + Math.random() * 5, rx: Math.random() * 8, ry: Math.random() * 8, landed: false });
+    }
+    addFx(1.5, function(t, dt) {
+        const reveal = Math.min(1, t * 5);
+        cracks.forEach(function(c) { c.go.setDrawRange(0, Math.floor(c.n * reveal)); c.gi.setDrawRange(0, Math.floor(c.n * reveal)); });
+        const fade = t < 0.45 ? 1 : (1 - t) / 0.55;
+        matO.opacity = 0.9 * fade;
+        matI.opacity = fade;
+        glowMat.opacity = 0.8 * (1 - t) * (1 - t);
+        rocks.forEach(function(rk) {
+            if (!rk.landed) {
+                rk.vy -= 22 * dt;
+                rk.m.position.x += rk.vx * dt;
+                rk.m.position.y += rk.vy * dt;
+                rk.m.position.z += rk.vz * dt;
+                rk.m.rotation.x += rk.rx * dt;
+                rk.m.rotation.y += rk.ry * dt;
+                if (rk.m.position.y <= y0 && rk.vy < 0) { rk.m.position.y = y0 + 0.05; rk.landed = true; }
+            }
+            rk.m.scale.setScalar(rk.s * (t > 0.7 ? Math.max(0.01, (1 - t) / 0.3) : 1));
+        });
+    }, function() {
+        scene.remove(group);
+        cracks.forEach(function(c) { c.go.dispose(); c.gi.dispose(); });
+        glowGeo.dispose(); glowMat.dispose(); rockGeo.dispose(); rockMat.dispose(); matO.dispose(); matI.dispose();
+    });
+
+    // undă de praf + nor de praf
+    const ringGeo = new THREE.RingGeometry(0.92, 1, 56);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xd9b27a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(cx, y0 + 0.05, cz);
+    scene.add(ring);
+    addFx(0.45, function(t) { ring.scale.setScalar(0.3 + r * t); ringMat.opacity = 0.8 * (1 - t); },
+        function() { scene.remove(ring); ringGeo.dispose(); ringMat.dispose(); });
+    spawnDust(cx, y0, cz, 16, r * 0.8, 0x8a7556);
+    if (Math.hypot(myPos.x - cx, myPos.z - cz) < 40) addShake(0.5);
+}
+
+/* ---------- 7. Fulger în Lanț: trăsnete albastre groase, cu ramificații ---------- */
+function jaggedPath(a, b, segs, jitter) {
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+        const t = i / segs;
+        const p = a.clone().lerp(b, t);
+        if (i > 0 && i < segs) {
+            const j = jitter * Math.sin(Math.PI * t) + 0.08;
+            p.x += (Math.random() - 0.5) * 2 * j;
+            p.y += (Math.random() - 0.5) * 2 * j;
+            p.z += (Math.random() - 0.5) * 2 * j;
+        }
+        pts.push(p);
+    }
+    return pts;
+}
+
+function spawnBolt(a, b) {
+    if (!scene) return;
+    const cam = camera ? camera.position : new THREE.Vector3(0, 10, 10);
+    const group = new THREE.Group();
+    const geos = [], mats = [], base = [];
+    function addRibbon(points, width, color, opacity) {
+        const geo = ribbonGeo(points, width, cam, "cam");
+        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        group.add(new THREE.Mesh(geo, mat));
+        geos.push(geo); mats.push(mat); base.push(opacity);
+    }
+    const main = jaggedPath(a, b, 10, 0.55);
+    addRibbon(main, 0.36, 0x2f8cff, 0.55);      // strălucire exterioară
+    addRibbon(main, 0.16, 0x9fe4ff, 0.9);
+    addRibbon(main, 0.06, 0xffffff, 1.0);       // miez alb
+    for (let k = 0; k < 3; k++) {                // ramificații
+        const from = main[2 + Math.floor(Math.random() * 6)];
+        const d = new THREE.Vector3(Math.random() - 0.5, (Math.random() - 0.5) * 0.6, Math.random() - 0.5).normalize().multiplyScalar(1.5 + Math.random() * 2);
+        addRibbon(jaggedPath(from, from.clone().add(d), 5, 0.3), 0.08, 0xbfeaff, 0.8);
+    }
+    const g1 = makeGlowSprite(0x7fd8ff, 2.6, 0.9);
+    g1.position.copy(b);
+    const g0 = makeGlowSprite(0xffffff, 1.4, 0.9);
+    g0.position.copy(a);
+    group.add(g1);
+    group.add(g0);
+    mats.push(g1.material, g0.material);
+    base.push(0.9, 0.9);
+    scene.add(group);
+    bolts.push({ group: group, geos: geos, mats: mats, base: base, life: 0, max: 0.35 });
+}
+
+function updateBolts(delta) {
+    for (let i = bolts.length - 1; i >= 0; i--) {
+        const b = bolts[i];
+        b.life += delta;
+        const t = b.life / b.max;
+        const flick = 0.7 + 0.3 * Math.random();
+        for (let k = 0; k < b.mats.length; k++) b.mats[k].opacity = b.base[k] * Math.max(0, 1 - t) * flick;
+        if (b.life >= b.max) {
+            scene.remove(b.group);
+            b.geos.forEach(function(g) { g.dispose(); });
+            b.mats.forEach(function(m) { m.dispose(); });
+            bolts.splice(i, 1);
+        }
+    }
+}
+
+// scântei electrice în jurul dușmanului lovit
+function spawnElectrify(x, y, z) {
+    if (!scene) return;
+    const N = 7;
+    const positions = new Float32Array(N * 6);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.LineBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    const lines = new THREE.LineSegments(geo, mat);
+    lines.frustumCulled = false;
+    scene.add(lines);
+    addFx(0.5, function(t) {
+        for (let i = 0; i < N; i++) {
+            const sx = x + (Math.random() - 0.5) * 1.2, sy = y + 0.4 + Math.random() * 1.6, sz = z + (Math.random() - 0.5) * 1.2;
+            positions.set([sx, sy, sz, sx + (Math.random() - 0.5) * 0.9, sy + (Math.random() - 0.5) * 0.9, sz + (Math.random() - 0.5) * 0.9], i * 6);
+        }
+        geo.attributes.position.needsUpdate = true;
+        mat.opacity = 1 - t;
+    }, function() { scene.remove(lines); geo.dispose(); mat.dispose(); });
+    for (let k = 0; k < 8; k++) {
+        spawnParticle(x, y + 1.2, z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0x9fe4ff, 0.1, 0.4);
+    }
+}
+
 /* ====================== ABILITĂȚI (tastele 1–7) ====================== */
 const SKILL_COUNT = 7;
 const SKILL_MAX_LV = 38;                        // 1-17 Normal, 18-27 M1-M10, 28-37 G1-G10, 38 = P
@@ -2977,11 +3729,8 @@ function useWarCry() {
         attackType = 5;
     }
     sndWarCry();
-    spawnSlashEffect(myPos.x, myPos.y, myPos.z, 0, 2);
-    for (let k = 0; k < 20; k++) {
-        const a = Math.random() * Math.PI * 2;
-        spawnParticle(myPos.x, myPos.y + 0.6, myPos.z, Math.cos(a) * 3, 2 + Math.random() * 2, Math.sin(a) * 3, 0xffcc44, 0.2, 0.8);
-    }
+    spawnWarCryFx(myPos.x, myPos.y, myPos.z);
+    castText(5);
     spawnFloatingText("+" + pct(buffAmount) + "% daune", "#ffcc66",
         new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1.0, myPos.z), true);
     if (socket && socket.connected) socket.emit("playerAttack", { skill: 5 });
@@ -3014,6 +3763,8 @@ function useSlam() {
     attackStart = now;
     attackType = 1;
     sndSwing(2);
+    castText(6);
+    spawnRuneCircle(myPos.x + Math.sin(myPos.rotY) * 3.5, myPos.y, myPos.z + Math.cos(myPos.rotY) * 3.5, "#e6a24a", 3, cfg.range, 0.55, 1.4);
     if (socket && socket.connected) socket.emit("playerAttack", { skill: 6 });
     setTimeout(applySlam, 380);
 }
@@ -3022,7 +3773,7 @@ function applySlam() {
     if (playerDead) return;
     const cfg = SKILLS[6];
     const cx = myPos.x + Math.sin(myPos.rotY) * 3.5, cz = myPos.z + Math.cos(myPos.rotY) * 3.5;
-    spawnShockwave(cx, cz, cfg.range);
+    spawnEarthSlam(cx, cz, cfg.range);
     sndSlam();
     for (const m of monsters) {
         if (!m.alive) continue;
@@ -3051,43 +3802,6 @@ function sndLightning() {
     sndTone(1800, 0.25, { type: "sawtooth", to: 300, vol: 0.08 });
     sndNoise(0.12, { filter: "highpass", freq: 5000, vol: 0.15, delay: 0.08 });
     sndNoise(0.1, { filter: "highpass", freq: 4000, vol: 0.12, delay: 0.16 });
-}
-
-function spawnBolt(a, b) {
-    if (!scene) return;
-    for (let strand = 0; strand < 3; strand++) {
-        const pts = [];
-        const seg = 9;
-        for (let i = 0; i <= seg; i++) {
-            const p = a.clone().lerp(b, i / seg);
-            if (i > 0 && i < seg) {
-                const j = strand === 0 ? 0.25 : 0.6;
-                p.x += (Math.random() - 0.5) * j;
-                p.y += (Math.random() - 0.5) * j;
-                p.z += (Math.random() - 0.5) * j;
-            }
-            pts.push(p);
-        }
-        const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        const mat = new THREE.LineBasicMaterial({ color: strand === 0 ? 0xffffff : 0x8fd0ff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
-        const line = new THREE.Line(geo, mat);
-        scene.add(line);
-        bolts.push({ line: line, geo: geo, mat: mat, life: 0, max: 0.3 });
-    }
-}
-
-function updateBolts(delta) {
-    for (let i = bolts.length - 1; i >= 0; i--) {
-        const b = bolts[i];
-        b.life += delta;
-        b.mat.opacity = Math.max(0, 1 - b.life / b.max);
-        if (b.life >= b.max) {
-            scene.remove(b.line);
-            b.geo.dispose();
-            b.mat.dispose();
-            bolts.splice(i, 1);
-        }
-    }
 }
 
 function enemyList() {
@@ -3138,6 +3852,8 @@ function useChain() {
     attackProcedural = false;
     attackType = 4;
     sndSpellCast();
+    spawnRuneCircle(myPos.x, myPos.y, myPos.z, "#59d9ff", 2, 2.5, 0.9, -2.5);
+    castText(7);
     if (socket && socket.connected) socket.emit("playerAttack", { skill: 7 });
     setTimeout(fireChain, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
 }
@@ -3166,6 +3882,7 @@ function fireChain() {
     chain.forEach(function(e, i) {
         const pt = new THREE.Vector3(e.x, e.y + 1.2, e.z);
         spawnBolt(prev, pt);
+        spawnElectrify(e.x, e.y, e.z);
         prev = pt;
         const r = rollDamage(cfg, Math.pow(0.75, i));
         if (e.kind === "monster") {
@@ -4012,6 +4729,7 @@ function stepMinimapScan() {
         S.h[S.i] = getGroundHeight(S.minX + (iu + 0.5) * S.cw, S.minZ + (iv + 0.5) * S.ch, NaN);
         S.i++;
     } while (S.i < total && performance.now() - t0 < 4);
+    setLoad("scan", S.i / total);
     if (S.i >= total) finishMinimapScan();
 }
 
@@ -4224,6 +4942,7 @@ function startGame() {
     updateAudioButtons();
     buildActionBar();
     updateInvUI();
+    startLoading();
     initGame();
 }
 
@@ -4324,6 +5043,7 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
 function loadCharacter() {
     const loader = new THREE.GLTFLoader();
     loader.load(selectedCharacterFile, function(gltf) {
+        setLoad("char", 0.97);
         sharedCharacterScene = gltf.scene;
         sharedAnimations = gltf.animations || [];
 
@@ -4332,13 +5052,8 @@ function loadCharacter() {
         characterModel = built.innerModel;
 
         localPlayerMesh.rotation.order = "YXZ";
-        shieldMesh = new THREE.Mesh(
-            new THREE.SphereGeometry(1.5, 24, 16),
-            new THREE.MeshBasicMaterial({ color: 0x44aaff, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending })
-        );
-        shieldMesh.position.y = PLAYER_HEIGHT * 0.5;
-        shieldMesh.visible = false;
-        localPlayerMesh.add(shieldMesh);
+        shieldFx = createShieldFx();
+        localPlayerMesh.add(shieldFx.group);
 
         scene.add(localPlayerMesh);
         localPlayerMesh.updateMatrixWorld(true);
@@ -4351,6 +5066,13 @@ function loadCharacter() {
             if (!remotePlayers[id].mesh) spawnRemotePlayerMesh(id);
         }
         addChat("Dark Knight încărcat cu succes!", "#2ecc71");
+        setLoad("char", 1);
+    }, function(xhr) {
+        if (xhr) setLoad("char", 0.95 * loadFraction(xhr.loaded, xhr.lengthComputable ? xhr.total : 0, 9e6));
+    }, function(err) {
+        console.warn("Personajul nu a putut fi încărcat:", err);
+        addChat("Eroul nu a putut fi încărcat (verifică Knight.glb).", "#e74c3c");
+        setLoad("char", 1);
     });
 }
 
@@ -4449,6 +5171,7 @@ function fadeToAction(action, duration = 0.18) {
 function loadMap() {
     const loader = new THREE.GLTFLoader();
     loader.load(MAP_FILE, function(gltf) {
+        setLoad("map", 0.97);
         const mapModel = gltf.scene;
 
         // Scalare uniformă, calculată automat, ca harta să aibă MAP_TARGET_SIZE
@@ -4480,8 +5203,12 @@ function loadMap() {
         mapMeshes.forEach(mesh => mesh.updateMatrixWorld(true));
         mapLoaded = true;
         placePlayerOnGround();
-    }, undefined, function() {
+        setLoad("map", 1);
+    }, function(xhr) {
+        if (xhr) setLoad("map", 0.95 * loadFraction(xhr.loaded, xhr.lengthComputable ? xhr.total : 0, 14e6));
+    }, function() {
         createFallbackFloor();
+        setLoad("map", 1);
     });
 }
 
@@ -4510,6 +5237,7 @@ function placePlayerOnGround() {
 
 function setupControls() {
     window.addEventListener("keydown", function(e) {
+        if (loadingActive) return;
         if (document.activeElement === document.getElementById("chat-input")) {
             if (e.key === "Enter") document.getElementById("chat-input").blur();
             return;
@@ -4572,7 +5300,7 @@ function setupCamera() {
 
     // click dreapta ținut + mișcare = rotești camera (ca în MMORPG-urile 3D)
     window.addEventListener("mousedown", function(e) {
-        if (!gameStarted || !renderer || e.target !== renderer.domElement) return;
+        if (!gameStarted || loadingActive || !renderer || e.target !== renderer.domElement) return;
         if (document.activeElement === chatInput) chatInput.blur();
         if (e.button === 2) {
             rightDown = true;
@@ -4705,7 +5433,7 @@ function update() {
     if (jumping) {
         jumpVel -= GRAVITY * delta;
         jumpOffset += jumpVel * delta;
-        if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; jumping = false; sndLand(); }
+        if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; jumping = false; sndLand(); spawnDust(myPos.x, myPos.y, myPos.z, 7, 0.8); }
     }
 
     const moving = Math.hypot(myPos.velocityX, myPos.velocityZ) > 0.005;
