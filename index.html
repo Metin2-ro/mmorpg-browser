@@ -33,6 +33,12 @@ canvas { display: block; width: 100%; height: 100%; }
     justify-content: center;
     z-index: 100;
     gap: 20px;
+    overflow-y: auto;
+    padding: 24px;
+}
+.char-select-screen {
+    overflow-y: auto;
+    padding: 24px;
 }
 #char-select-screen h1 {
     color: #ffd700;
@@ -41,7 +47,13 @@ canvas { display: block; width: 100%; height: 100%; }
     letter-spacing: 3px;
     text-transform: uppercase;
 }
-.char-cards-container { display: flex; gap: 20px; }
+.char-cards-container {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 1100px;
+}
 .char-card {
     width: 240px;
     background: linear-gradient(#261811,#0d0806);
@@ -494,13 +506,33 @@ input, textarea { cursor: text !important; }
 
 <body>
 
-<div id="char-select-screen">
+<div id="char-select-screen" class="char-select-screen">
     <h1>MU Online - PC Client Edition</h1>
     <div class="char-cards-container">
-        <div class="char-card selected">
+        <div class="char-card selected" data-file="./Knight.glb" data-name="Dark Knight">
             <div style="font-size:45px">⚔️</div>
             <h3>Dark Knight</h3>
-            <p>Clasă PC Optimizată • PvP & PvE</p>
+            <p>Luptător echilibrat • PvP & PvE</p>
+        </div>
+        <div class="char-card" data-file="./characters/ninja/ninja-rigged.glb" data-name="Ninja">
+            <div style="font-size:45px">🥷</div>
+            <h3>Ninja</h3>
+            <p>Rapid și agil • Lovituri precise</p>
+        </div>
+        <div class="char-card" data-file="./characters/samurai/samurai-rigged.glb" data-name="Samurai">
+            <div style="font-size:45px">⚔️</div>
+            <h3>Samurai</h3>
+            <p>Maestru al sabiei • Atac puternic</p>
+        </div>
+        <div class="char-card" data-file="./characters/viking/viking-rigged.glb" data-name="Viking">
+            <div style="font-size:45px">🪓</div>
+            <h3>Viking</h3>
+            <p>Războinic feroce • Rezistență ridicată</p>
+        </div>
+        <div class="char-card" data-file="./characters/wizard/wizard-rigged.glb" data-name="Wizard">
+            <div style="font-size:45px">🔮</div>
+            <h3>Wizard</h3>
+            <p>Magie și atacuri la distanță</p>
         </div>
     </div>
     <input id="hero-name" maxlength="14" placeholder="Numele eroului" autocomplete="off">
@@ -677,6 +709,15 @@ const CAMERA_TARGET_OFFSET = 1.2; // la ce înălțime privește camera (aprox. 
 
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
+
+document.querySelectorAll(".char-card").forEach(card => {
+    card.addEventListener("click", () => {
+        document.querySelectorAll(".char-card").forEach(c => c.classList.remove("selected"));
+        card.classList.add("selected");
+        selectedCharacterFile = card.dataset.file;
+        selectedCharacterName = card.dataset.name;
+    });
+});
 
 let scene, camera, renderer;
 let socket = null;
@@ -4921,7 +4962,7 @@ function startGame() {
     loadGame();
     const input = document.getElementById("hero-name");
     if (input && input.value.trim()) heroName = cleanHeroName(input.value);
-    selectedCharacterName = heroName;
+    heroName = cleanHeroName(input && input.value.trim() ? input.value : selectedCharacterName);
     gameStarted = true;
     recalcStats(true);
     updateNameUI();
