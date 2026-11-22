@@ -709,13 +709,86 @@ const CAMERA_TARGET_OFFSET = 1.2; // la ce înălțime privește camera (aprox. 
 
 let selectedCharacterFile = CHARACTER_FILE;
 let selectedCharacterName = "Dark Knight";
-
+const CLASS_CONFIG = {
+    "Dark Knight": {
+        stats: { hp: 1, mp: 1, damage: 1, crit: 0, speed: 1, defense: 0, spell: 1 },
+        colors: ["#ffd36b", "#9fd0ff", "#ffe27a", "#d08bff", "#ff7a45", "#e0a050", "#7fe3ff"],
+        skills: [
+            ["Lovitura Sabiei", "⚔️", "Atac cu sabia. Trei lovituri la rând fac combo."],
+            ["Vârtej de Lame", "🌪️", "Te învârți și lovești toți dușmanii din jur."],
+            ["Scut Divin", "🛡️", "Reduce cu 70% daunele primite. Durează mai mult la nivel mare."],
+            ["Sfera de Energie", "🔮", "Lansezi o sferă de energie la distanță."],
+            ["Strigăt de Luptă", "📣", "Crește temporar daunele tuturor atacurilor tale."],
+            ["Lovitura Seismică", "💥", "Lovești pământul și rănești dușmanii din fața ta."],
+            ["Fulger în Lanț", "⚡", "Un fulger care sare între până la 4 dușmani."]
+        ]
+    },
+    "Ninja": {
+        stats: { hp: 0.78, mp: 0.9, damage: 0.96, crit: 0.12, speed: 1.22, defense: 0, spell: 0.9 },
+        colors: ["#83f0c8", "#6c8cff", "#a7aeb8", "#62eaff", "#9be85e", "#d7e4ff", "#ff5470"],
+        skills: [
+            ["Lovitură Dublă", "🗡️", "Două lovituri rapide asupra dușmanilor din față.", "melee", 0.5, 0, 1.5, 1.3],
+            ["Pas din Umbră", "🌑", "Te deplasezi lângă ținta apropiată și o lovești.", "dash", 4, 35, 8, 1.8],
+            ["Văl de Fum", "💨", "Eviți complet atacurile pentru scurt timp.", "evade", 12, 30, 0, 0],
+            ["Shuriken", "✴️", "Arunci un shuriken la distanță.", "projectile", 1, 12, 32, 1.25],
+            ["Lamă Otrăvită", "☠️", "Aplică o otravă care provoacă daune în timp.", "poison", 8, 18, 4, 0.55],
+            ["Ploaie de Lame", "🌧️", "Lovește toți dușmanii din jur.", "aoe", 9, 24, 5.5, 1.7],
+            ["Asasinare", "🎯", "Atacă ținta din apropiere cu o lovitură uriașă.", "execute", 18, 45, 7, 4.2]
+        ]
+    },
+    "Samurai": {
+        stats: { hp: 1, mp: 1, damage: 1.28, crit: 0.08, speed: 1, defense: 0, spell: 1 },
+        colors: ["#ffca68", "#fff0cb", "#d8c59b", "#fb7769", "#ffe276", "#f2a45e", "#fff3c7"],
+        skills: [
+            ["Tăietura Katanei", "⚔️", "O tăietură puternică de katana.", "melee", 0.55, 0, 1.5, 1.7],
+            ["Iaido", "💨", "Atac rapid înainte, cu o scurtă eschivă.", "dash", 4, 16, 7, 2.1],
+            ["Gardă", "🛡️", "Reduce daunele primite pentru scurt timp.", "guard", 14, 20, 0, 0.55],
+            ["Undă de Sabie", "🌊", "Trimite o undă tăioasă la distanță.", "projectile", 2, 14, 30, 1.55],
+            ["Concentrare", "🎯", "Crește șansa de lovitură critică pentru o perioadă.", "critbuff", 18, 22, 0, 0.22],
+            ["Vânt Tăios", "🌬️", "O tăietură largă lovește dușmanii din jur.", "aoe", 8, 24, 5, 2.0],
+            ["Lovitura Dragonului", "🐉", "O lovitură devastatoare asupra țintei din față.", "execute", 18, 50, 7, 4.8]
+        ]
+    },
+    "Viking": {
+        stats: { hp: 1.72, mp: 0.82, damage: 1.1, crit: 0, speed: 0.88, defense: 0.16, spell: 0.82 },
+        colors: ["#d89a4c", "#ff8c42", "#8eb0bb", "#ffc66b", "#e54b32", "#c6a574", "#76d6df"],
+        skills: [
+            ["Lovitură de Topor", "🪓", "O lovitură grea de topor.", "melee", 0.7, 0, 1.5, 1.8],
+            ["Vârtej de Topor", "🌪️", "Te rotești și lovești dușmanii din jur.", "aoe", 5, 20, 5, 1.8],
+            ["Piele de Fier", "🛡️", "Întărește apărarea pentru o perioadă.", "guard", 16, 15, 0, 0.7],
+            ["Topor Aruncat", "🪓", "Arunci toporul către un dușman îndepărtat.", "projectile", 2, 12, 30, 1.6],
+            ["Furie Berserker", "🔥", "Crește daunele provocate pentru o perioadă.", "damagebuff", 20, 18, 0, 0.3],
+            ["Cutremur", "💥", "Lovește pământul și rănește dușmanii din jur.", "aoe", 9, 30, 6, 2.4],
+            ["Strigătul lui Odin", "⚡", "O undă de șoc lovește toți dușmanii din jur.", "aoe", 16, 40, 8, 3.0]
+        ]
+    },
+    "Wizard": {
+        stats: { hp: 0.72, mp: 1.85, damage: 0.85, crit: 0.02, speed: 1, defense: 0, spell: 1.55 },
+        colors: ["#70c8ff", "#9cecff", "#67b6ff", "#ff7448", "#d29aff", "#ffbc54", "#a1dcff"],
+        skills: [
+            ["Săgeată Magică", "➤", "Atacul de bază: proiectil magic la distanță.", "projectile", 0.35, 0, 34, 1.2],
+            ["Nova de Gheață", "❄️", "O explozie de gheață lovește dușmanii din jur.", "aoe", 5, 28, 5.5, 1.65],
+            ["Barieră de Mană", "🔷", "Reduce daunele primite cu o barieră magică.", "guard", 15, 22, 0, 0.6],
+            ["Minge de Foc", "🔥", "Lansează o minge de foc care explodează la impact.", "fireball", 3, 20, 30, 1.9],
+            ["Concentrare Arcană", "✨", "Amplifică vrăjile pentru o perioadă.", "spellbuff", 18, 24, 0, 0.35],
+            ["Meteorit", "☄️", "Cheamă un meteorit în zona din față.", "meteor", 12, 40, 26, 2.7],
+            ["Fulger în Lanț", "⚡", "Fulgerul sare între dușmani apropiați.", "chain", 8, 32, 30, 2.2]
+        ]
+    }
+};
+function getClassKey(name) { return String(name || "Dark Knight").toLowerCase().replace(/[^a-z0-9]+/g, "_"); }
+function getClassConfig() { return CLASS_CONFIG[selectedCharacterName] || CLASS_CONFIG["Dark Knight"]; }
 document.querySelectorAll(".char-card").forEach(card => {
     card.addEventListener("click", () => {
         document.querySelectorAll(".char-card").forEach(c => c.classList.remove("selected"));
         card.classList.add("selected");
         selectedCharacterFile = card.dataset.file;
         selectedCharacterName = card.dataset.name;
+        const savedInput = document.getElementById("hero-name");
+        try {
+            const profiles = JSON.parse(localStorage.getItem(CLASS_SAVE_KEY) || "{}");
+            if (savedInput) savedInput.value = profiles[getClassKey(selectedCharacterName)]?.name || "";
+        } catch (e) { if (savedInput) savedInput.value = ""; }
     });
 });
 
@@ -1203,10 +1276,13 @@ function useSkill(n) {
 }
 
 function rollDamage(cfg, mult) {
-    const crit = Math.random() < critChance;
+    const effectiveCrit = Math.min(0.95, critChance + (nowSec() < classBuffUntil && classBuffType === "critbuff" ? classBuffAmount : 0));
+    const crit = Math.random() < effectiveCrit;
     const sp = cfg.id ? skillPowerForLevel(skillLv[cfg.id] || 1) : 1;
     const buff = nowSec() < buffUntil ? 1 + buffAmount : 1;
     let dmg = (cfg.min + Math.random() * (cfg.max - cfg.min)) * damageMult * sp * buff * (mult || 1);
+    if (selectedCharacterName === "Wizard") dmg *= spellMult;
+    if (nowSec() < classBuffUntil && (classBuffType === "damagebuff" || classBuffType === "spellbuff")) dmg *= 1 + classBuffAmount;
     if (crit) dmg *= 1.8;
     return { dmg: Math.max(1, Math.round(dmg)), crit: crit };
 }
@@ -1328,8 +1404,8 @@ function updateProjectiles(delta) {
         p.trail -= delta;
         if (p.trail <= 0) {
             p.trail = 0.025;
-            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, 0xb44cff, 0.26, 0.5);
-            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 0xff7bf0, 0.14, 0.4);
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, p.color, 0.26, 0.5);
+            spawnParticle(pos.x, pos.y, pos.z, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, p.accent, 0.14, 0.4);
         }
 
         let hit = false;
@@ -1338,8 +1414,11 @@ function updateProjectiles(delta) {
                 if (!m.alive) continue;
                 const hitR = m.boss ? 3.0 : 1.4;
                 if (Math.hypot(m.x - pos.x, m.z - pos.z) < hitR && Math.abs(m.y + (m.boss ? 2.0 : 1.2) - pos.y) < (m.boss ? 4.0 : 2.6)) {
-                    const r = rollDamage(SKILLS[4], spellMult);
-                    damageMonster(m, r.dmg, r.crit, "spell");
+                    if (p.splash > 0) applyClassAreaDamage(pos.x, pos.z, p.splash, Math.PI * 2, p.mult, p.skillId);
+                    else {
+                        const r = rollDamage(SKILLS[p.skillId] || SKILLS[4], p.mult);
+                        damageMonster(m, r.dmg, r.crit, "spell");
+                    }
                     hit = true;
                     break;
                 }
@@ -1351,12 +1430,15 @@ function updateProjectiles(delta) {
                     const x = rp.rx !== undefined ? rp.rx : rp.x;
                     const z = rp.rz !== undefined ? rp.rz : rp.z;
                     if (Math.hypot(x - pos.x, z - pos.z) < 1.2 && Math.abs(rp.mesh.position.y + 1.0 - pos.y) < 2.4) {
-                        const r = rollDamage(SKILLS[4], spellMult);
-                        spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
-                            new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
-                        if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
-                        sndHit(r.crit, 0);
-                        setRemoteHp(id, rp.hp - r.dmg);
+                        if (p.splash > 0) applyClassAreaDamage(pos.x, pos.z, p.splash, Math.PI * 2, p.mult, p.skillId);
+                        else {
+                            const r = rollDamage(SKILLS[p.skillId] || SKILLS[4], p.mult);
+                            spawnFloatingText((r.crit ? "CRIT " : "") + r.dmg, r.crit ? "#ffdd33" : "#ffffff",
+                                new THREE.Vector3(x, rp.mesh.position.y + PLAYER_HEIGHT + 1.0, z), r.crit);
+                            if (socket && socket.connected) socket.emit("attackPlayer", { targetId: id, damage: r.dmg });
+                            sndHit(r.crit, 0);
+                            setRemoteHp(id, rp.hp - r.dmg);
+                        }
                         hit = true;
                         break;
                     }
@@ -1365,7 +1447,7 @@ function updateProjectiles(delta) {
         }
 
         if (hit || p.dist > SPELL_RANGE) {
-            explodeAt(pos.x, pos.y, pos.z);
+            explodeAt(pos.x, pos.y, pos.z, p.classColor);
             removeProjectile(i);
         }
     }
@@ -1439,6 +1521,12 @@ function doRoll() {
 /* ---------- daune primite / moarte / respawn ---------- */
 function takeDamage(amount, attackerId) {
     if (playerDead || amount <= 0) return;
+    if (nowSec() < classDodgeUntil) {
+        sndDodge();
+        spawnFloatingText("Eschivă!", getClassConfig().colors[2],
+            new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.4, myPos.z), false);
+        return;
+    }
     if (nowSec() < rollUntil) {
         sndDodge();
         spawnFloatingText("Esquivă!", "#7fdbff",
@@ -1447,7 +1535,11 @@ function takeDamage(amount, attackerId) {
     }
     amount = Math.min(300, Math.round(amount));
     if (defense > 0) amount = Math.max(1, Math.round(amount * (1 - defense)));
-    if (isDefending) { amount = Math.max(1, Math.round(amount * 0.3)); shieldFlash = 1; }
+    if (isDefending) {
+        const reduction = nowSec() < classGuardUntil ? classGuardReduction : 0.7;
+        amount = Math.max(1, Math.round(amount * (1 - reduction)));
+        shieldFlash = 1;
+    }
     myHP -= amount;
     lastHitTime = nowSec();
     sndHurt();
@@ -1656,7 +1748,8 @@ function updateCombat(delta, now) {
         };
         cd("cd1", SKILLS[1].readyAt, SKILLS[1].cd);
         cd("cd2", SKILLS[2].readyAt, SKILLS[2].cd);
-        cd("cd3", DEFENSE.readyAt, DEFENSE.cd);
+        cd("cd3", selectedCharacterName === "Dark Knight" ? DEFENSE.readyAt : SKILLS[3].readyAt,
+            selectedCharacterName === "Dark Knight" ? DEFENSE.cd : SKILLS[3].cd);
         cd("cd4", SKILLS[4].readyAt, SKILLS[4].cd);
         cd("cd5", SKILLS[5].readyAt, SKILLS[5].cd);
         cd("cd6", SKILLS[6].readyAt, SKILLS[6].cd);
@@ -1706,6 +1799,7 @@ function updateCombat(delta, now) {
 
 /* ====================== PROGRES, INVENTAR, SALVARE ====================== */
 const SAVE_KEY = "mu_dark_fantasy_save_v1";
+const CLASS_SAVE_KEY = "mu_dark_fantasy_class_saves_v1";
 const MAX_LEVEL = 50;
 let gameStarted = false;
 let heroName = "Dark Knight";
@@ -1721,11 +1815,25 @@ function cleanHeroName(v) {
     const t = String(v || "").replace(/[^\p{L}\p{N} _-]/gu, "").trim().slice(0, 14);
     return t || "Dark Knight";
 }
-
 function loadGame() {
     try {
-        const raw = localStorage.getItem(SAVE_KEY);
-        if (!raw) return;
+        const profiles = JSON.parse(localStorage.getItem(CLASS_SAVE_KEY) || "{}");
+        const key = getClassKey(selectedCharacterName);
+        let raw = profiles[key] ? JSON.stringify(profiles[key]) : null;
+        // Migrate the existing single-slot save to Dark Knight without ever
+        // assigning it to another class or deleting the original key.
+        if (!raw && selectedCharacterName === "Dark Knight") raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) {
+            heroName = selectedCharacterName;
+            playerLevel = 1; playerXP = 0; gold = 0;
+            hpPotions = 0; mpPotions = 0; crystals = 0;
+            monsterKills = 0; bossKills = 0; pvpKills = 0;
+            stats.str = 0; stats.vit = 0; stats.int = 0; stats.agi = 0; statPoints = 0;
+            skillLv = [0, 1, 0, 0, 0, 0, 0, 0]; skillPoints = 3;
+            bag = new Array(BAG_SIZE).fill(null);
+            SLOTS.forEach(function(sl) { equipped[sl] = null; });
+            return;
+        }
         const d = JSON.parse(raw);
         const num = function(v, lo, hi, def) {
             v = Math.floor(Number(v));
@@ -1789,13 +1897,17 @@ function loadGame() {
 function saveNow() {
     if (!gameStarted) return;
     try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify({
+        const profile = {
             name: heroName, level: playerLevel, xp: playerXP, gold: gold,
             hpPotions: hpPotions, mpPotions: mpPotions, crystals: crystals,
             monsterKills: monsterKills, bossKills: bossKills, pvpKills: pvpKills,
             stats: stats, statPoints: statPoints, bag: bag, equipped: equipped,
             skillLv: skillLv, skillPoints: skillPoints
-        }));
+        };
+        const profiles = JSON.parse(localStorage.getItem(CLASS_SAVE_KEY) || "{}");
+        profiles[getClassKey(selectedCharacterName)] = profile;
+        localStorage.setItem(CLASS_SAVE_KEY, JSON.stringify(profiles));
+        if (selectedCharacterName === "Dark Knight") localStorage.setItem(SAVE_KEY, JSON.stringify(profile));
     } catch (e) {}
 }
 
@@ -1808,7 +1920,10 @@ window.addEventListener("beforeunload", saveNow);
 // numele salvat apare deja în ecranul de start
 (function() {
     try {
-        const raw = localStorage.getItem(SAVE_KEY);
+        const profiles = JSON.parse(localStorage.getItem(CLASS_SAVE_KEY) || "{}");
+        const raw = profiles[getClassKey(selectedCharacterName)]
+            ? JSON.stringify(profiles[getClassKey(selectedCharacterName)])
+            : (selectedCharacterName === "Dark Knight" ? localStorage.getItem(SAVE_KEY) : null);
         const input = document.getElementById("hero-name");
         if (raw && input) input.value = cleanHeroName(JSON.parse(raw).name);
     } catch (e) {}
@@ -1816,13 +1931,14 @@ window.addEventListener("beforeunload", saveNow);
 
 function recalcStats(fullHeal) {
     const g = gearTotals();
-    maxHP = 1500 + (playerLevel - 1) * 120 + g.hp + stats.vit * 45;
-    maxMP = 700 + (playerLevel - 1) * 40 + g.mp + stats.int * 25;
-    damageMult = (1 + (playerLevel - 1) * 0.08) * (1 + g.dmg + stats.str * 0.015);
-    critChance = Math.min(0.75, 0.15 + g.crit + stats.agi * 0.0035);
-    moveMult = 1 + Math.min(0.35, g.speed + stats.agi * 0.0025);
-    spellMult = 1 + stats.int * 0.015;
-    defense = Math.min(0.45, g.def);
+    const passive = getClassConfig().stats;
+    maxHP = Math.round((1500 + (playerLevel - 1) * 120 + g.hp + stats.vit * 45) * passive.hp);
+    maxMP = Math.round((700 + (playerLevel - 1) * 40 + g.mp + stats.int * 25) * passive.mp);
+    damageMult = passive.damage * (1 + (playerLevel - 1) * 0.08) * (1 + g.dmg + stats.str * 0.015);
+    critChance = Math.min(0.75, 0.15 + passive.crit + g.crit + stats.agi * 0.0035);
+    moveMult = passive.speed * (1 + Math.min(0.35, g.speed + stats.agi * 0.0025));
+    spellMult = passive.spell * (1 + stats.int * 0.015);
+    defense = Math.min(0.65, passive.defense + g.def);
     if (fullHeal) { myHP = maxHP; myMP = maxMP; }
     else { myHP = Math.min(myHP, maxHP); myMP = Math.min(myMP, maxMP); }
 }
@@ -3076,7 +3192,7 @@ function finishLoading(slow) {
 // Fiecare abilitate are propria formă și propria culoare:
 // 1 semilună aurie · 2 vortex de lame albastre · 3 cupolă hexagonală aurie · 4 orb violet cu inele
 // 5 flăcări roșii · 6 crăpături de lavă, bolovani, praf · 7 trăsnete albastre groase
-const SKILL_COLORS = { 1: "#ffd36b", 2: "#9fd0ff", 3: "#ffe27a", 4: "#d08bff", 5: "#ff7a45", 6: "#e0a050", 7: "#7fe3ff" };
+let SKILL_COLORS = {};
 const fx = [];
 let glowTex = null, dustTex = null;
 const runeTex = {};
@@ -3222,7 +3338,7 @@ function spawnDust(x, y, z, count, spread, color) {
 }
 
 function castText(n) {
-    spawnFloatingText(SKILL_DEFS[n].name + "!", SKILL_COLORS[n],
+    spawnFloatingText(SKILL_DEFS[n].name + "!", SKILL_COLORS[n] || "#ffd36b",
         new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 0.8, myPos.z), false);
 }
 
@@ -3265,12 +3381,14 @@ function crescentMat(colA, colB) {
     });
 }
 
-function spawnSwordSlash(x, y, z, rotY, tilt) {
+function spawnSwordSlash(x, y, z, rotY, tilt, colorA, colorB) {
     if (!scene) return;
     const diag = (tilt || 0) > 0;           // a doua lovitură din combo: oblică, portocalie
     const dir = diag ? -1 : 1;
+    const slashColor = colorA || (diag ? 0xff5a14 : 0xffbb33);
+    const highlightColor = colorB || (diag ? 0xfff0c8 : 0xffffff);
     const geo = crescentGeo(2.7, 1.3, dir * 1.05, -dir * 1.05);
-    const mat = crescentMat(diag ? 0xff5a14 : 0xffbb33, diag ? 0xfff0c8 : 0xffffff);
+    const mat = crescentMat(slashColor, highlightColor);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
     const tiltGroup = new THREE.Group();
@@ -3286,7 +3404,8 @@ function spawnSwordSlash(x, y, z, rotY, tilt) {
     for (let k = 0; k < 14; k++) {
         const a = dir * 1.05 * (1 - 2 * k / 13);
         const p = new THREE.Vector3(2.8 * Math.cos(a), 0, -2.8 * Math.sin(a)).applyMatrix4(tiltGroup.matrixWorld);
-        spawnParticle(p.x, p.y, p.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, diag ? 0xff8a3a : 0xffd45a, 0.1, 0.4);
+        spawnParticle(p.x, p.y, p.z, (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3,
+            colorA || (diag ? 0xff8a3a : 0xffd45a), 0.1, 0.4);
     }
     addFx(0.3, function(t) {
         mat.uniforms.uProgress.value = t * 1.5;
@@ -3399,17 +3518,22 @@ function updateShieldFx(delta, now) {
 }
 
 /* ---------- 4. Sfera de Energie: orb violet cu inele, urmă de cometă ---------- */
-function spawnProjectile(x, y, z, dx, dz, mine) {
+function spawnProjectile(x, y, z, dx, dz, mine, color, skillId, mult, splash) {
     if (!scene) return;
+    const classColor = color;
+    color = color || 0xb44cff;
+    skillId = skillId || 4;
+    if (mult === undefined) mult = spellMult;
     const group = new THREE.Group();
     const coreMat = new THREE.MeshBasicMaterial({ color: 0xffe6ff });
-    const shellMat = new THREE.MeshBasicMaterial({ color: 0xb44cff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+    const shellMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
     const core = new THREE.Mesh(PARTICLE_GEO, coreMat);
     core.scale.setScalar(0.24);
     const shell = new THREE.Mesh(PARTICLE_GEO, shellMat);
     shell.scale.setScalar(0.46);
-    const glow = makeGlowSprite(0xa23cff, 2.6, 0.85);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff7bf0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+    const glow = makeGlowSprite(classColor || 0xa23cff, 2.6, 0.85);
+    const accent = classColor || 0xff7bf0;
+    const ringMat = new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
     const ringGeo = new THREE.TorusGeometry(0.62, 0.03, 8, 28);
     const ring1 = new THREE.Mesh(ringGeo, ringMat);
     const ring2 = new THREE.Mesh(ringGeo, ringMat);
@@ -3424,7 +3548,8 @@ function spawnProjectile(x, y, z, dx, dz, mine) {
     projectiles.push({
         group: group, halo: glow, rings: [ring1, ring2], shell: shell,
         mats: [coreMat, shellMat, glow.material, ringMat], geos: [ringGeo],
-        dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine
+        dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine,
+        color: color, accent: accent, classColor: classColor, skillId: skillId, mult: mult, splash: splash || 0
     });
 }
 
@@ -3436,17 +3561,17 @@ function removeProjectile(i) {
     projectiles.splice(i, 1);
 }
 
-function explodeAt(x, y, z) {
+function explodeAt(x, y, z, color) {
     sndImpact(Math.hypot(x - myPos.x, z - myPos.z));
     if (!scene) return;
-    const flash = makeGlowSprite(0xd070ff, 1, 1);
+    const flash = makeGlowSprite(color || 0xd070ff, 1, 1);
     flash.position.set(x, y, z);
     scene.add(flash);
     addFx(0.32, function(t) { flash.scale.setScalar(1.5 + 5.5 * t); flash.material.opacity = (1 - t) * (1 - t); },
         function() { scene.remove(flash); flash.material.dispose(); });
 
     const ringGeo = new THREE.RingGeometry(0.9, 1, 48);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0xff9cf5, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const ringMat = new THREE.MeshBasicMaterial({ color: color || 0xff9cf5, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
     const ring = new THREE.Mesh(ringGeo, ringMat);
     ring.position.set(x, y, z);
     ring.rotation.x = -Math.PI / 2;
@@ -3456,7 +3581,8 @@ function explodeAt(x, y, z) {
 
     for (let k = 0; k < 24; k++) {
         const a = Math.random() * Math.PI * 2, up = (Math.random() - 0.3) * 5, sp = 3 + Math.random() * 5;
-        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp, k % 3 ? 0xb44cff : 0xff7bf0, 0.2, 0.55);
+        spawnParticle(x, y, z, Math.cos(a) * sp, up, Math.sin(a) * sp,
+            color ? (k % 3 ? color : 0xffffff) : (k % 3 ? 0xb44cff : 0xff7bf0), 0.2, 0.55);
     }
     for (let k = 0; k < 6; k++) {
         const a = Math.random() * Math.PI * 2;
@@ -3702,15 +3828,7 @@ function spawnElectrify(x, y, z) {
 const SKILL_COUNT = 7;
 const SKILL_MAX_LV = 38;                        // 1-17 Normal, 18-27 M1-M10, 28-37 G1-G10, 38 = P
 const CRYSTAL_STEPS = [1, 1, 1, 1, 2, 2, 2, 3, 3, 4];
-const SKILL_DEFS = {
-    1: { name: "Lovitura Sabiei",     icon: "⚔️", desc: "Atac cu sabia. Trei lovituri la rând fac combo." },
-    2: { name: "Vârtej de Lame",      icon: "🌪️", desc: "Te învârți și lovești toți dușmanii din jur." },
-    3: { name: "Scut Divin",          icon: "🛡️", desc: "Reduce cu 70% daunele primite. Durează mai mult la nivel mare." },
-    4: { name: "Sfera de Energie",    icon: "🔮", desc: "Lansezi o sferă de energie la distanță." },
-    5: { name: "Strigăt de Luptă",    icon: "📣", desc: "Crește temporar daunele tuturor atacurilor tale." },
-    6: { name: "Lovitura Seismică",   icon: "💥", desc: "Lovești pământul și rănești dușmanii din fața ta." },
-    7: { name: "Fulger în Lanț",      icon: "⚡", desc: "Un fulger care sare între până la 4 dușmani." }
-};
+let SKILL_DEFS = {};
 let skillLv = [0, 1, 0, 0, 0, 0, 0, 0];
 let skillPoints = 3;
 let skillOpen = false;
@@ -3723,6 +3841,34 @@ SKILLS[4].id = 4;
 SKILLS[5] = { id: 5, cd: 30, mp: 120, readyAt: 0 };
 SKILLS[6] = { id: 6, cd: 8,  mp: 140, range: 6.5, min: 140, max: 200, readyAt: 0 };
 SKILLS[7] = { id: 7, cd: 6,  mp: 160, range: 28,  min: 100, max: 150, readyAt: 0 };
+function setClassSkillKit() {
+    const cls = getClassConfig();
+    SKILL_DEFS = {};
+    SKILL_COLORS = {};
+    for (let n = 1; n <= SKILL_COUNT; n++) {
+        const row = cls.skills[n - 1];
+        SKILL_DEFS[n] = { name: row[0], icon: row[1], desc: row[2] };
+        SKILL_COLORS[n] = cls.colors[n - 1];
+        if (selectedCharacterName !== "Dark Knight") {
+            const cd = Number(row[4]) || 1;
+            const mp = Number(row[5]) || 0;
+            const range = Number(row[6]) || 5;
+            const base = Number(row[7]) || 1;
+            SKILLS[n] = { id: n, cd: cd, mp: mp, range: range, min: 70, max: 110, hitDelay: 0.2, readyAt: 0, mult: base };
+        }
+    }
+    if (selectedCharacterName === "Dark Knight") {
+        SKILLS[1] = { id: 1, cd: 0.6, mp: 0, range: 3.8, arc: Math.PI * 0.9, min: 90, max: 130, hitDelay: 0.22, readyAt: 0 };
+        SKILLS[2] = { id: 2, cd: 3, mp: 100, range: 6, arc: Math.PI * 2, min: 70, max: 100, hitDelay: 0.3, readyAt: 0 };
+        SKILLS[3] = { id: 3, cd: DEFENSE.cd, mp: DEFENSE.mp, range: 0, min: 0, max: 0, readyAt: 0 };
+        SKILLS[4] = { id: 4, cd: 1.5, mp: 80, range: SPELL_RANGE, min: 110, max: 150, readyAt: 0 };
+        SKILLS[5] = { id: 5, cd: 30, mp: 120, readyAt: 0 };
+        SKILLS[6] = { id: 6, cd: 8, mp: 140, range: 6.5, min: 140, max: 200, readyAt: 0 };
+        SKILLS[7] = { id: 7, cd: 6, mp: 160, range: 28, min: 100, max: 150, readyAt: 0 };
+    }
+    Object.keys(SKILLS).forEach(function(k) { if (SKILLS[k]) SKILLS[k].readyAt = 0; });
+    DEFENSE.readyAt = 0;
+}
 
 function skillLearned(n) { return (skillLv[n] || 0) >= 1; }
 
@@ -3811,6 +3957,10 @@ function useSlot(n) {
         sndError();
         return;
     }
+    if (selectedCharacterName !== "Dark Knight") {
+        useClassSkill(n);
+        return;
+    }
     if (n === 1 || n === 2) useSkill(n);
     else if (n === 3) triggerDefense3D();
     else if (n === 4) useSpell();
@@ -3818,7 +3968,148 @@ function useSlot(n) {
     else if (n === 6) useSlam();
     else if (n === 7) useChain();
 }
+let classGuardUntil = 0, classGuardReduction = 0;
+let classDodgeUntil = 0, classBuffUntil = 0, classBuffType = "", classBuffAmount = 0;
+function classColorNumber(n) { return parseInt((getClassConfig().colors[n - 1] || "#ffffff").replace("#", ""), 16); }
+function classSkillInfo(n) { return getClassConfig().skills[n - 1]; }
+function classTargetDamage(target, skillId, mult) {
+    const result = rollDamage(SKILLS[skillId], mult);
+    if (target.kind === "monster") damageMonster(target.ref, result.dmg, result.crit, selectedCharacterName === "Wizard" ? "spell" : "melee");
+    else {
+        spawnFloatingText((result.crit ? "CRIT " : "") + result.dmg, result.crit ? "#ffdd33" : "#ffffff",
+            new THREE.Vector3(target.x, target.y + PLAYER_HEIGHT + 0.8, target.z), result.crit);
+        if (socket && socket.connected) socket.emit("attackPlayer", { targetId: target.id, damage: result.dmg });
+        sndHit(result.crit, 0);
+        setRemoteHp(target.id, target.ref.hp - result.dmg);
+    }
+}
+function applyClassAreaDamage(cx, cz, range, arc, mult, skillId) {
+    const directionX = Math.sin(myPos.rotY), directionZ = Math.cos(myPos.rotY);
+    const full = arc >= Math.PI * 2 - 0.01;
+    const cosHalf = Math.cos(arc / 2);
+    enemyList().forEach(function(target) {
+        const dx = target.x - cx, dz = target.z - cz, d = Math.hypot(dx, dz);
+        if (d > range + (target.ref.boss ? 2 : 0)) return;
+        if (!full && d > 0.5 && ((dx * directionX + dz * directionZ) / d) < cosHalf) return;
+        classTargetDamage(target, skillId, mult);
+    });
+}
+function classSkillAnimation(type, n) {
+    if (type === "projectile" || type === "fireball" || type === "meteor" || type === "chain" || type === "spellbuff") {
+        if (spellAction) playOneShot(spellAction, SPELL_ANIM_SPEED);
+        else startAttackAnim(1);
+        attackStart = nowSec();
+        attackUntil = attackStart + (spellAction ? spellAction.getClip().duration / SPELL_ANIM_SPEED : 0.55);
+        attackProcedural = !spellAction;
+        attackType = 4;
+    } else if (type !== "guard" && type !== "evade" && type !== "critbuff" && type !== "damagebuff") {
+        startAttackAnim(n === 2 ? 2 : 1);
+    }
+}
+function useClassSkill(n) {
+    const row = classSkillInfo(n), cfg = SKILLS[n];
+    if (!row || !cfg || !skillLearned(n) || nowSec() < rollUntil) return;
+    const type = row[3], now = nowSec(), mult = Number(row[7]) || 1;
+    if (now < cfg.readyAt) return;
+    if (myMP < cfg.mp) { addChat("Mană insuficientă!", "#e74c3c"); return; }
+    const targeted = type === "dash" || type === "execute" || type === "poison" || type === "chain";
+    const target = targeted ? chainStart(cfg.range) : null;
+    if (targeted && !target) { addChat("Nu există nicio țintă în raza abilității.", "#e67e22"); return; }
 
+    myMP -= cfg.mp;
+    cfg.readyAt = now + cfg.cd;
+    const color = classColorNumber(n);
+    castText(n);
+    if (socket && socket.connected) socket.emit("playerAttack", { skill: n });
+    classSkillAnimation(type, n);
+
+    if (type === "guard") {
+        classGuardUntil = now + 3 + skillLv[n] * 0.15;
+        classGuardReduction = Math.min(0.82, mult);
+        isDefending = true;
+        shieldFlash = 1;
+        sndShield();
+        spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 2, 2.8, 1.0, -1.8);
+        setTimeout(function() { if (nowSec() >= classGuardUntil) isDefending = false; }, (classGuardUntil - now) * 1000 + 50);
+        return;
+    }
+    if (type === "evade") {
+        classDodgeUntil = now + 2.2 + skillLv[n] * 0.04;
+        sndDodge();
+        spawnDust(myPos.x, myPos.y, myPos.z, 16, 2.6, color);
+        spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 1, 2.2, 0.7, 4);
+        return;
+    }
+    if (type === "damagebuff" || type === "spellbuff" || type === "critbuff") {
+        classBuffType = type;
+        classBuffAmount = mult;
+        classBuffUntil = now + 10 + skillLv[n] * 0.2;
+        spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 2, 3.2, 1.1, 2);
+        const label = type === "critbuff" ? "critic" : "daune";
+        spawnFloatingText("+" + Math.round(mult * 100) + "% " + label, getClassConfig().colors[n - 1],
+            new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1, myPos.z), true);
+        return;
+    }
+    const spellBonus = selectedCharacterName === "Wizard" ? spellMult : 1;
+    const totalMult = mult;
+    autoFaceNearest(cfg.range + 2);
+    if (type === "dash") {
+        const dx = target.x - myPos.x, dz = target.z - myPos.z;
+        const distance = Math.hypot(dx, dz) || 1;
+        myPos.rotY = Math.atan2(dx, dz);
+        myPos.x = target.x - dx / distance * 1.35;
+        myPos.z = target.z - dz / distance * 1.35;
+        if (localPlayerMesh) localPlayerMesh.position.set(myPos.x, myPos.y, myPos.z);
+        spawnDust(myPos.x, myPos.y, myPos.z, 18, 2, color);
+        classTargetDamage(target, n, totalMult);
+        return;
+    }
+    if (type === "execute" || type === "poison") {
+        myPos.rotY = Math.atan2(target.x - myPos.x, target.z - myPos.z);
+        classTargetDamage(target, n, totalMult);
+        if (type === "poison") {
+            for (let tick = 1; tick <= 4; tick++) setTimeout(function() {
+                if (target.kind === "monster" && target.ref.alive) classTargetDamage(target, n, totalMult * 0.35);
+                else if (target.kind === "player" && target.ref.hp > 0) classTargetDamage(target, n, totalMult * 0.35);
+            }, tick * 900);
+        }
+        spawnRuneCircle(target.x, target.y, target.z, getClassConfig().colors[n - 1], 1, 1.4, 0.55, 2);
+        return;
+    }
+    if (type === "projectile" || type === "fireball") {
+        const dx = Math.sin(myPos.rotY), dz = Math.cos(myPos.rotY);
+        spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true,
+            color, n, totalMult, type === "fireball" ? 4 : 0);
+        sndSpellFire();
+        return;
+    }
+    if (type === "meteor") {
+        const x = myPos.x + Math.sin(myPos.rotY) * 7, z = myPos.z + Math.cos(myPos.rotY) * 7;
+        spawnRuneCircle(x, myPos.y, z, getClassConfig().colors[n - 1], 2, 4.2, 1.8, 1);
+        setTimeout(function() {
+            spawnEarthSlam(x, z, 4.5);
+            applyClassAreaDamage(x, z, 4.5, Math.PI * 2, totalMult, n);
+        }, 850);
+        return;
+    }
+    if (type === "chain") {
+        myPos.rotY = Math.atan2(target.x - myPos.x, target.z - myPos.z);
+        spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 2, 2.4, 0.8, -2);
+        setTimeout(function() { fireChain(n, totalMult); }, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
+        return;
+    }
+    if (type === "aoe") {
+        spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 1, cfg.range, 0.9, 2.2);
+        spawnDust(myPos.x, myPos.y, myPos.z, 18, cfg.range * 0.7, color);
+        sndSlam();
+        applyClassAreaDamage(myPos.x, myPos.z, cfg.range, Math.PI * 2, totalMult, n);
+        return;
+    }
+    if (type === "melee") {
+        spawnSwordSlash(myPos.x, myPos.y, myPos.z, myPos.rotY, 0, color, 0xffffff);
+        applyClassAreaDamage(myPos.x, myPos.z, 4.0, Math.PI * 0.95, totalMult, n);
+    }
+}
 function buildActionBar() {
     const bar = document.getElementById("action-bar");
     let h = "";
@@ -3838,6 +4129,8 @@ function updateSkillBar() {
         if (!slot) continue;
         const lv = skillLv[n] || 0;
         slot.classList.toggle("locked", lv < 1);
+        slot.style.borderColor = SKILL_COLORS[n] || "";
+        slot.style.boxShadow = "0 0 7px " + (SKILL_COLORS[n] || "transparent");
         const el = document.getElementById("lv" + n);
         if (el) el.textContent = lv >= 1 ? skillRank(lv) : "";
         slot.title = SKILL_DEFS[n].name + (lv >= 1 ? " — " + skillRank(lv) : " (neînvățată)");
@@ -4004,9 +4297,10 @@ function useChain() {
     setTimeout(fireChain, SPELL_DATA.hit / SPELL_ANIM_SPEED * 1000);
 }
 
-function fireChain() {
+function fireChain(classSkillId, classSkillMult) {
     if (playerDead) return;
-    const cfg = SKILLS[7];
+    const cfg = SKILLS[classSkillId || 7];
+    const configuredMult = classSkillId ? (Number(classSkillMult) || 1) : 1;
     const all = enemyList().filter(function(e) { return Math.hypot(e.x - myPos.x, e.z - myPos.z) <= 34; });
     let cur = chainStart(cfg.range);
     if (!cur) return;
@@ -4030,7 +4324,7 @@ function fireChain() {
         spawnBolt(prev, pt);
         spawnElectrify(e.x, e.y, e.z);
         prev = pt;
-        const r = rollDamage(cfg, Math.pow(0.75, i));
+        const r = rollDamage(cfg, configuredMult * Math.pow(0.75, i));
         if (e.kind === "monster") {
             damageMonster(e.ref, r.dmg, r.crit, "spell");
         } else {
@@ -5064,6 +5358,7 @@ function drawMinimap() {
 }
 
 function startGame() {
+    setClassSkillKit();
     loadGame();
     const input = document.getElementById("hero-name");
     if (input && input.value.trim()) heroName = cleanHeroName(input.value);
@@ -5314,9 +5609,11 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
         try {
             const swordClip = buildSwordAttackClip(characterModel, knightRoot);
             attackActions.push(mixer.clipAction(swordClip));
-            SKILLS[1].hitDelay = SWORD_ATTACK_DATA.hit / 2.0;  // momentul loviturii, la viteza 2x
-            SKILLS[1].cd = 0.75;
-            addChat("Atacul cu sabia al Dark Knight a fost adaptat la rigul acestui personaj.", "#9ad");
+            if (selectedCharacterName === "Dark Knight") {
+                SKILLS[1].hitDelay = SWORD_ATTACK_DATA.hit / 2.0;  // momentul loviturii, la viteza 2x
+                SKILLS[1].cd = 0.75;
+            }
+            addChat("Animația de atac Knight a fost adaptată la rigul acestui personaj.", "#9ad");
         } catch (err) {
             console.warn("Animația de atac nu a putut fi creată:", err);
             addChat("Modelul nu are animație de atac; folosesc o mișcare simplă + efect.", "#9ad");
