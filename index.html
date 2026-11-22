@@ -5767,10 +5767,10 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
 }
 
 const CLASS_WEAPON_CONFIG = {
-    "Dark Knight": [{ file: "03_Jawbone_Sword.glb", hand: "RightHand", length: 0.8, grip: [0.36, -0.28, 0], rotation: [0, 0, 0] }],
+    "Dark Knight": [{ file: "03_Jawbone_Sword.glb", hand: "RightHand", length: 0.8, grip: [0.30, -0.21, 0], rotation: [0, 0, Math.PI] }],
     "Ninja": [
-        { file: "02_Tusk_Dagger.glb", hand: "RightHand", length: 0.48, grip: [0.36, -0.25, 0], rotation: [0, 0, 0] },
-        { file: "02_Tusk_Dagger.glb", hand: "LeftHand", length: 0.48, grip: [0.36, -0.25, 0], rotation: [0, 0, Math.PI] }
+        { file: "02_Tusk_Dagger.glb", hand: "RightHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, 0] },
+        { file: "02_Tusk_Dagger.glb", hand: "LeftHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, Math.PI] }
     ],
     "Samurai": [{ file: "16_Sawtooth_Blade.glb", hand: "RightHand", length: 0.8, grip: [0.34, -0.28, 0], rotation: [0, 0, Math.PI / 2] }],
     "Viking": [{ file: "01_Skull-Splitter_Axe.glb", hand: "RightHand", length: 0.82, grip: [-0.31, -0.33, 0], rotation: [0, 0, 0] }],
@@ -5790,14 +5790,54 @@ function findHandBone(model, side) {
     return hand;
 }
 
-function getPalmGripAnchor(hand) {
+function getPalmGripAnchor(hand, model) {
+    if (!hand) return new THREE.Vector3();
+
+    const palmCenterWorld = new THREE.Vector3();
+    let totalInfluence = 0;
+    if (model) {
+        model.updateWorldMatrix(true, true);
+        model.traverse(function(mesh) {
+            if (!mesh.isSkinnedMesh || !mesh.geometry || !mesh.skeleton) return;
+            const boneIndex = mesh.skeleton.bones.indexOf(hand);
+            const position = mesh.geometry.attributes.position;
+            const indices = mesh.geometry.attributes.skinIndex;
+            const weights = mesh.geometry.attributes.skinWeight;
+            if (boneIndex < 0 || !position || !indices || !weights) return;
+
+            for (let i = 0; i < position.count; i++) {
+                let handWeight = 0;
+                let maxWeight = 0;
+                for (let channel = 0; channel < 4; channel++) {
+                    const index = channel === 0 ? indices.getX(i) : channel === 1 ? indices.getY(i) : channel === 2 ? indices.getZ(i) : indices.getW(i);
+                    const weight = channel === 0 ? weights.getX(i) : channel === 1 ? weights.getY(i) : channel === 2 ? weights.getZ(i) : weights.getW(i);
+                    if (weight > maxWeight) maxWeight = weight;
+                    if (index === boneIndex) handWeight += weight;
+                }
+                if (handWeight < 0.25 || handWeight + 1e-5 < maxWeight) continue;
+
+                const vertex = new THREE.Vector3().fromBufferAttribute(position, i);
+                mesh.boneTransform(i, vertex);
+                mesh.localToWorld(vertex);
+                palmCenterWorld.addScaledVector(vertex, handWeight);
+                totalInfluence += handWeight;
+            }
+        });
+    }
+
+    hand.updateWorldMatrix(true, false);
+    if (totalInfluence > 0) {
+        palmCenterWorld.multiplyScalar(1 / totalInfluence);
+        return hand.worldToLocal(palmCenterWorld);
+    }
+
     const fingerBones = hand.children.filter(function(node) {
         return node.isBone && /(Index|Middle|Ring|Pinky)1$/i.test(node.name || "");
     });
-    const anchor = new THREE.Vector3();
-    if (!fingerBones.length) return anchor;
-    fingerBones.forEach(function(node) { anchor.add(node.position); });
-    return anchor.multiplyScalar(0.45 / fingerBones.length);
+    if (!fingerBones.length) return new THREE.Vector3();
+    const fallback = new THREE.Vector3();
+    fingerBones.forEach(function(node) { fallback.add(node.position); });
+    return fallback.multiplyScalar(0.45 / fingerBones.length);
 }
 
 function attachClassWeapon(model, className) {
@@ -5845,7 +5885,7 @@ function attachClassWeapon(model, className) {
             weapon.rotation.set(config.rotation[0], config.rotation[1], config.rotation[2]);
             const gripPoint = new THREE.Vector3(config.grip[0], config.grip[1], config.grip[2]);
             gripPoint.applyEuler(weapon.rotation).multiplyScalar(weapon.scale.x);
-            weapon.position.copy(getPalmGripAnchor(hand)).sub(gripPoint);
+            weapon.position.copy(getPalmGripAnchor(hand, model)).sub(gripPoint);
             weapon.traverse(function(node) {
                 if (node.isMesh) {
                     node.castShadow = true;
