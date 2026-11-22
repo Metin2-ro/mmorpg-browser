@@ -5269,6 +5269,8 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
     // The sword clip is retargeted by semantic bone names. Death, spell, roll
     // and jump clips remain Knight-only because those rigs are not verified.
     const useKnightRigAnimations = selectedCharacterFile === CHARACTER_FILE;
+    const suppressIdleAnimation = ["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0;
+    if (suppressIdleAnimation) idleAction = null;
 
     const attackWords = ["attack", "slash", "strike", "punch", "swing", "sword", "kick", "cast", "skill", "combat", "hit"];
     const clipNames = [];
@@ -5276,7 +5278,9 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
         const action = mixer.clipAction(clip);
         const name = clip.name.toLowerCase();
         clipNames.push(clip.name);
-        if (name.includes("idle") || name.includes("stand")) idleAction = action;
+        if (name.includes("idle") || name.includes("stand")) {
+            if (!suppressIdleAnimation) idleAction = action;
+        }
         else if (name.includes("walk")) walkAction = action;
         else if (name.includes("run")) runAction = action;
         else if (attackWords.some(function(w) { return name.includes(w); })) {
@@ -5287,14 +5291,16 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
         const idleSource = knightClips.find(function(clip) { return /idle|stand/i.test(clip.name); });
         const walkSource = knightClips.find(function(clip) { return /walk/i.test(clip.name); });
         const runSource = knightClips.find(function(clip) { return /run/i.test(clip.name); });
-        const knightIdle = retargetAnimationClip(idleSource, knightRoot, characterModel);
+        const knightIdle = suppressIdleAnimation ? null : retargetAnimationClip(idleSource, knightRoot, characterModel);
         const knightWalk = retargetAnimationClip(walkSource, knightRoot, characterModel);
         const knightRun = retargetAnimationClip(runSource, knightRoot, characterModel);
-        if (knightIdle && knightWalk && knightRun) {
-            idleAction = mixer.clipAction(knightIdle);
+        if ((suppressIdleAnimation || knightIdle) && knightWalk && knightRun) {
+            idleAction = suppressIdleAnimation ? null : mixer.clipAction(knightIdle);
             walkAction = mixer.clipAction(knightWalk);
             runAction = mixer.clipAction(knightRun);
-            addChat("Animațiile Knight de repaus, mers și alergare au fost adaptate pentru " + selectedCharacterName + ".", "#9ad");
+            addChat(suppressIdleAnimation
+                ? "Mersul și alergarea Knight au fost adaptate pentru " + selectedCharacterName + "; animația de repaus este dezactivată."
+                : "Animațiile Knight de repaus, mers și alergare au fost adaptate pentru " + selectedCharacterName + ".", "#9ad");
         } else {
             addChat("Nu s-au potrivit toate animațiile Knight; rămân active animațiile native ale modelului.", "#9ad");
         }
@@ -5354,6 +5360,12 @@ function fadeToAction(action, duration = 0.18) {
     action.play();
     if (activeAction) activeAction.crossFadeTo(action, duration, true);
     activeAction = action;
+}
+function fadeToRestPose(duration = 0.18) {
+    if (!activeAction) return;
+    if (performance.now() / 1000 < attackUntil || performance.now() / 1000 < hitUntil || performance.now() / 1000 < rollUntil || jumping || playerDead) return;
+    activeAction.fadeOut(duration);
+    activeAction = null;
 }
 
 function loadMap() {
@@ -5636,8 +5648,10 @@ function update() {
         if (socket && socket.connected) {
             socket.emit("playerMovement", { x: myPos.x * 20, y: myPos.z * 20 });
         }
-    } else {
+    } else if (idleAction) {
         fadeToAction(idleAction, 0.15);
+    } else {
+        fadeToRestPose(0.15);
     }
 
     if (localPlayerMesh) {
