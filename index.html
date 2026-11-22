@@ -5216,7 +5216,7 @@ function loadCharacter() {
             setLoad("char", 1);
         };
 
-        if (selectedCharacterName === "Ninja" || selectedCharacterName === "Samurai") {
+        if (["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0) {
             const knightLoader = new THREE.GLTFLoader();
             knightLoader.load(CHARACTER_FILE, function(knightGltf) {
                 finishCharacterLoad(knightGltf.animations || [], knightGltf.scene);
@@ -5283,7 +5283,7 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
             if (useKnightRigAnimations) attackActions.push(action);
         }
     });
-    if ((selectedCharacterName === "Ninja" || selectedCharacterName === "Samurai") && knightClips.length) {
+    if (["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0 && knightClips.length) {
         const idleSource = knightClips.find(function(clip) { return /idle|stand/i.test(clip.name); });
         const walkSource = knightClips.find(function(clip) { return /walk/i.test(clip.name); });
         const runSource = knightClips.find(function(clip) { return /run/i.test(clip.name); });
