@@ -1401,6 +1401,25 @@ function updateProjectiles(delta) {
         p.rings[0].rotation.x += 9 * delta;
         p.rings[1].rotation.z += 11 * delta;
         p.shell.scale.setScalar(0.44 + 0.05 * Math.sin(p.t * 30));
+        if (p.visualGroup) {
+            const heading = Math.atan2(p.dx, p.dz);
+            if (p.visualType === "shuriken") {
+                p.visualGroup.rotation.y = heading;
+                p.visualGroup.userData.spin.rotation.z += 18 * delta;
+            } else if (p.visualType === "axe") {
+                p.visualGroup.rotation.y = heading + p.t * 5;
+                p.visualGroup.rotation.x = p.t * 7;
+            } else if (p.visualType === "bladewave") {
+                p.visualGroup.rotation.y = heading;
+                p.visualGroup.rotation.z += 3.8 * delta;
+            } else {
+                p.visualGroup.rotation.y = heading;
+                if (p.visualGroup.userData.spin) {
+                    p.visualGroup.userData.spin.rotation.x += 4.5 * delta;
+                    p.visualGroup.userData.spin.rotation.y += 5.2 * delta;
+                }
+            }
+        }
         p.trail -= delta;
         if (p.trail <= 0) {
             p.trail = 0.025;
@@ -1448,6 +1467,12 @@ function updateProjectiles(delta) {
 
         if (hit || p.dist > SPELL_RANGE) {
             explodeAt(pos.x, pos.y, pos.z, p.classColor);
+            if (p.visualType) {
+                const impactStyle = p.visualType === "shuriken" || p.visualType === "bladewave" ? "blades"
+                    : p.visualType === "axe" ? "quake"
+                    : p.visualType === "fireball" ? "fire" : "shock";
+                spawnClassBurst(pos.x, pos.z, p.splash || 1.8, p.classColor || p.color, impactStyle);
+            }
             removeProjectile(i);
         }
     }
@@ -3518,7 +3543,7 @@ function updateShieldFx(delta, now) {
 }
 
 /* ---------- 4. Sfera de Energie: orb violet cu inele, urmă de cometă ---------- */
-function spawnProjectile(x, y, z, dx, dz, mine, color, skillId, mult, splash) {
+function spawnProjectile(x, y, z, dx, dz, mine, color, skillId, mult, splash, visualType) {
     if (!scene) return;
     const classColor = color;
     color = color || 0xb44cff;
@@ -3538,6 +3563,82 @@ function spawnProjectile(x, y, z, dx, dz, mine, color, skillId, mult, splash) {
     const ring1 = new THREE.Mesh(ringGeo, ringMat);
     const ring2 = new THREE.Mesh(ringGeo, ringMat);
     ring2.rotation.y = Math.PI / 2;
+    const mats = [coreMat, shellMat, glow.material, ringMat], geos = [ringGeo];
+    const visualGroup = new THREE.Group();
+    visualGroup.rotation.y = Math.atan2(dx, dz);
+    function addVisual(geo, mat, x0, y0, z0) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x0 || 0, y0 || 0, z0 || 0);
+        visualGroup.add(mesh); mats.push(mat); geos.push(geo);
+        return mesh;
+    }
+    function makeShape(points) {
+        const shape = new THREE.Shape();
+        shape.moveTo(points[0][0], points[0][1]);
+        for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
+        shape.closePath();
+        return new THREE.ExtrudeGeometry(shape, { depth: 0.11, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.025, bevelSegments: 1, steps: 1 });
+    }
+    if (visualType === "shuriken") {
+        core.visible = shell.visible = glow.visible = ring1.visible = ring2.visible = false;
+        const spin = new THREE.Group(); visualGroup.add(spin);
+        const bladeGeo = makeShape([[0,0.82],[0.15,0.18],[0.73,0],[0.15,-0.18],[0,-0.82],[-0.15,-0.18],[-0.73,0],[-0.15,0.18]]);
+        const bladeMat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.45, shininess: 90, side: THREE.DoubleSide });
+        const blade = new THREE.Mesh(bladeGeo, bladeMat); blade.position.z = -0.055; spin.add(blade); mats.push(bladeMat); geos.push(bladeGeo);
+        const hubGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.14, 8);
+        const hubMat = new THREE.MeshPhongMaterial({ color: 0xeafaff, emissive: color, emissiveIntensity: 0.7 });
+        const hub = addVisual(hubGeo, hubMat, 0, 0, 0); hub.rotation.x = Math.PI / 2;
+        visualGroup.userData.spin = spin;
+    } else if (visualType === "axe") {
+        core.visible = shell.visible = glow.visible = ring1.visible = ring2.visible = false;
+        const handleGeo = new THREE.CylinderGeometry(0.045, 0.065, 1.15, 8);
+        const handleMat = new THREE.MeshPhongMaterial({ color: 0x75421e, shininess: 40 });
+        addVisual(handleGeo, handleMat, 0, 0, 0);
+        const bladeGeo = makeShape([[-0.06,0.45],[0.38,0.55],[0.72,0.30],[0.58,0],[0.72,-0.30],[0.38,-0.55],[-0.06,-0.45]]);
+        const bladeMat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.35, shininess: 100, side: THREE.DoubleSide });
+        const blade = addVisual(bladeGeo, bladeMat, 0.15, 0.12, -0.055);
+        blade.rotation.y = Math.PI / 2;
+        visualGroup.userData.spin = visualGroup;
+    } else if (visualType === "bladewave") {
+        core.visible = shell.visible = glow.visible = ring1.visible = ring2.visible = false;
+        const waveGeo = new THREE.TorusGeometry(0.9, 0.12, 10, 44, Math.PI * 1.45);
+        const waveMat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.65, transparent: true, opacity: 0.95, shininess: 100, side: THREE.DoubleSide });
+        const wave = addVisual(waveGeo, waveMat, 0, 0, 0);
+        wave.rotation.z = -Math.PI * 0.28;
+        const edgeGeo = new THREE.TorusGeometry(0.98, 0.035, 6, 44, Math.PI * 1.45);
+        const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+        addVisual(edgeGeo, edgeMat, 0, 0, 0);
+        visualGroup.userData.spin = visualGroup;
+    } else if (visualType === "arcane" || visualType === "fireball") {
+        const orbGeo = new THREE.IcosahedronGeometry(visualType === "fireball" ? 0.48 : 0.34, 1);
+        const orbMat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: visualType === "fireball" ? 1.0 : 0.65, shininess: 100, transparent: true, opacity: 0.96 });
+        const orb = addVisual(orbGeo, orbMat, 0, 0, 0);
+        visualGroup.userData.spin = orb;
+        if (visualType === "arcane") {
+            const arrowGeo = new THREE.ConeGeometry(0.17, 0.86, 6);
+            const arrowMat = new THREE.MeshPhongMaterial({ color: 0xf4fdff, emissive: color, emissiveIntensity: 0.9, shininess: 100 });
+            const arrow = addVisual(arrowGeo, arrowMat, 0, 0, 0.62);
+            arrow.rotation.x = Math.PI / 2;
+            const shaftGeo = new THREE.CylinderGeometry(0.035, 0.055, 0.82, 7);
+            const shaftMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+            const shaft = addVisual(shaftGeo, shaftMat, 0, 0, 0.05);
+            shaft.rotation.x = Math.PI / 2;
+            [0,1,2].forEach(function(i) {
+                const orbitGeo = new THREE.TorusGeometry(0.58 + i * 0.11, 0.025, 6, 32);
+                const orbitMat = new THREE.MeshBasicMaterial({ color: i ? 0xffffff : color, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+                const orbit = addVisual(orbitGeo, orbitMat, 0, 0, 0);
+                orbit.rotation.set(i * 0.8, i * 0.55, i * 0.4);
+            });
+        } else {
+            for (let i = 0; i < 4; i++) {
+                const flameGeo = new THREE.ConeGeometry(0.19, 0.75 + (i % 2) * 0.25, 6);
+                const flameMat = new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff542d : 0xffda73, transparent: true, opacity: 0.86, blending: THREE.AdditiveBlending, depthWrite: false });
+                const flame = addVisual(flameGeo, flameMat, (i - 1.5) * 0.16, 0, -0.58 - (i % 2) * 0.12);
+                flame.rotation.x = -Math.PI / 2;
+            }
+        }
+    }
+    if (visualType) group.add(visualGroup);
     group.add(core);
     group.add(shell);
     group.add(glow);
@@ -3547,7 +3648,7 @@ function spawnProjectile(x, y, z, dx, dz, mine, color, skillId, mult, splash) {
     scene.add(group);
     projectiles.push({
         group: group, halo: glow, rings: [ring1, ring2], shell: shell,
-        mats: [coreMat, shellMat, glow.material, ringMat], geos: [ringGeo],
+        mats: mats, geos: geos, visualGroup: visualType ? visualGroup : null, visualType: visualType,
         dx: dx, dz: dz, dist: 0, t: 0, trail: 0, mine: mine,
         color: color, accent: accent, classColor: classColor, skillId: skillId, mult: mult, splash: splash || 0
     });
@@ -3752,8 +3853,9 @@ function jaggedPath(a, b, segs, jitter) {
     return pts;
 }
 
-function spawnBolt(a, b) {
+function spawnBolt(a, b, color) {
     if (!scene) return;
+    const boltColor = color || 0x2f8cff;
     const cam = camera ? camera.position : new THREE.Vector3(0, 10, 10);
     const group = new THREE.Group();
     const geos = [], mats = [], base = [];
@@ -3764,13 +3866,13 @@ function spawnBolt(a, b) {
         geos.push(geo); mats.push(mat); base.push(opacity);
     }
     const main = jaggedPath(a, b, 10, 0.55);
-    addRibbon(main, 0.36, 0x2f8cff, 0.55);      // strălucire exterioară
-    addRibbon(main, 0.16, 0x9fe4ff, 0.9);
+    addRibbon(main, 0.36, boltColor, 0.55);      // strălucire exterioară
+    addRibbon(main, 0.16, color ? 0xffffff : 0x9fe4ff, 0.9);
     addRibbon(main, 0.06, 0xffffff, 1.0);       // miez alb
     for (let k = 0; k < 3; k++) {                // ramificații
         const from = main[2 + Math.floor(Math.random() * 6)];
         const d = new THREE.Vector3(Math.random() - 0.5, (Math.random() - 0.5) * 0.6, Math.random() - 0.5).normalize().multiplyScalar(1.5 + Math.random() * 2);
-        addRibbon(jaggedPath(from, from.clone().add(d), 5, 0.3), 0.08, 0xbfeaff, 0.8);
+        addRibbon(jaggedPath(from, from.clone().add(d), 5, 0.3), 0.08, color || 0xbfeaff, 0.8);
     }
     const g1 = makeGlowSprite(0x7fd8ff, 2.6, 0.9);
     g1.position.copy(b);
@@ -3801,13 +3903,13 @@ function updateBolts(delta) {
 }
 
 // scântei electrice în jurul dușmanului lovit
-function spawnElectrify(x, y, z) {
+function spawnElectrify(x, y, z, color) {
     if (!scene) return;
     const N = 7;
     const positions = new Float32Array(N * 6);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.LineBasicMaterial({ color: 0xbfefff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat = new THREE.LineBasicMaterial({ color: color || 0xbfefff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
     const lines = new THREE.LineSegments(geo, mat);
     lines.frustumCulled = false;
     scene.add(lines);
@@ -3820,7 +3922,7 @@ function spawnElectrify(x, y, z) {
         mat.opacity = 1 - t;
     }, function() { scene.remove(lines); geo.dispose(); mat.dispose(); });
     for (let k = 0; k < 8; k++) {
-        spawnParticle(x, y + 1.2, z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, 0x9fe4ff, 0.1, 0.4);
+        spawnParticle(x, y + 1.2, z, (Math.random() - 0.5) * 6, 1 + Math.random() * 3, (Math.random() - 0.5) * 6, color || 0x9fe4ff, 0.1, 0.4);
     }
 }
 
@@ -3972,6 +4074,164 @@ let classGuardUntil = 0, classGuardReduction = 0;
 let classDodgeUntil = 0, classBuffUntil = 0, classBuffType = "", classBuffAmount = 0;
 function classColorNumber(n) { return parseInt((getClassConfig().colors[n - 1] || "#ffffff").replace("#", ""), 16); }
 function classSkillInfo(n) { return getClassConfig().skills[n - 1]; }
+function spawnClassAura(color, style, duration) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    const parent = localPlayerMesh || scene;
+    group.position.set(localPlayerMesh ? 0 : myPos.x, PLAYER_HEIGHT * 0.55, localPlayerMesh ? 0 : myPos.z);
+    parent.add(group);
+    const mats = [], geos = [];
+    function addMesh(geo, opacity, x, y, z, sx, sy, sz) {
+        const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x || 0, y || 0, z || 0);
+        mesh.scale.set(sx || 1, sy || 1, sz || 1);
+        group.add(mesh); mats.push(mat); geos.push(geo);
+        return mesh;
+    }
+    const r1 = addMesh(new THREE.TorusGeometry(1.05, 0.035, 8, 48), 0.9, 0, 0, 0, 1, 1, 1);
+    const r2 = addMesh(new THREE.TorusGeometry(0.78, 0.025, 8, 40), 0.65, 0, 0, 0, 1, 1, 1);
+    r2.rotation.x = Math.PI / 2;
+    const r3 = addMesh(new THREE.TorusGeometry(1.35, 0.018, 6, 48), 0.55, 0, 0, 0, 1, 1, 1);
+    r3.rotation.set(0.75, 0.3, 0.35);
+    const shards = [];
+    for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI * 2 / 6;
+        const shard = addMesh(new THREE.OctahedronGeometry(style === "guard" ? 0.22 : 0.16, 0), 0.85,
+            Math.cos(a) * 1.15, (i % 2) * 0.48 - 0.2, Math.sin(a) * 1.15, 1, 1.7, 0.75);
+        shard.userData.phase = a;
+        shards.push(shard);
+    }
+    addFx(duration, function(t, dt) {
+        const fade = Math.min(1, t * 7, (1 - t) * 5);
+        r1.rotation.y += dt * (style === "guard" ? 1.8 : 2.8);
+        r2.rotation.z -= dt * 2.1;
+        r3.rotation.x += dt * 1.5;
+        group.scale.setScalar(0.88 + 0.12 * Math.sin(t * 18));
+        mats.forEach(function(m) { m.opacity = (style === "guard" ? 0.82 : 0.65) * Math.max(0, fade); });
+        shards.forEach(function(shard) {
+            const a = shard.userData.phase + t * (style === "crit" ? 5 : 3.2);
+            shard.position.x = Math.cos(a) * 1.15;
+            shard.position.z = Math.sin(a) * 1.15;
+            shard.rotation.x += dt * 2.6;
+            shard.rotation.y += dt * 3.1;
+        });
+    }, function() {
+        parent.remove(group);
+        mats.forEach(function(m) { m.dispose(); });
+        geos.forEach(function(g) { g.dispose(); });
+    });
+}
+function spawnClassSlash3D(x, y, z, rotY, color) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    group.position.set(x, y + 1.05, z);
+    group.rotation.y = rotY;
+    scene.add(group);
+    const mats = [], geos = [];
+    [0, 0.24].forEach(function(offset, i) {
+        const geo = new THREE.TorusGeometry(1.65 + offset, 0.09 - i * 0.025, 8, 40, 2.45);
+        const mat = new THREE.MeshBasicMaterial({ color: i ? 0xffffff : color, transparent: true, opacity: i ? 0.62 : 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.z = 0.18;
+        group.add(mesh); mats.push(mat); geos.push(geo);
+    });
+    addFx(0.48, function(t) {
+        group.scale.set(0.58 + t * 0.8, 0.58 + t * 0.8, 0.58 + t * 0.8);
+        mats.forEach(function(m) { m.opacity *= 0.985; });
+        group.position.y += 0.004;
+    }, function() {
+        scene.remove(group);
+        mats.forEach(function(m) { m.dispose(); });
+        geos.forEach(function(g) { g.dispose(); });
+    });
+}
+function spawnClassDash3D(x1, z1, x2, z2, color) {
+    if (!scene) return;
+    const start = new THREE.Vector3(x1, myPos.y + 0.9, z1);
+    const end = new THREE.Vector3(x2, myPos.y + 0.9, z2);
+    const delta = end.clone().sub(start), length = Math.max(0.1, delta.length());
+    const geo = new THREE.CylinderGeometry(0.08, 0.42, length, 10, 1, true);
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const trail = new THREE.Mesh(geo, mat);
+    trail.position.copy(start).add(end).multiplyScalar(0.5);
+    trail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
+    scene.add(trail);
+    addFx(0.34, function(t) { trail.scale.set(1, 1, 1); mat.opacity = 0.85 * (1 - t); }, function() { scene.remove(trail); geo.dispose(); mat.dispose(); });
+}
+function spawnClassBurst(cx, cz, radius, color, style) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    const ground = getGroundHeight(cx, cz, myPos.y);
+    group.position.set(cx, (Number.isFinite(ground) ? ground : myPos.y) + 0.12, cz);
+    scene.add(group);
+    const mats = [], geos = [];
+    function mesh(geo, opacity, x, y, z, sx, sy, sz, tint) {
+        const mat = new THREE.MeshBasicMaterial({ color: tint || color, transparent: true, opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+        const obj = new THREE.Mesh(geo, mat);
+        obj.position.set(x, y, z); obj.scale.set(sx || 1, sy || 1, sz || 1);
+        group.add(obj); mats.push(mat); geos.push(geo);
+        return obj;
+    }
+    const core = mesh(new THREE.IcosahedronGeometry(0.48, 1), 0.9, 0, 0.75, 0, 1, 1, 1, style === "frost" ? 0xc8f6ff : color);
+    const groundRing = mesh(new THREE.TorusGeometry(radius * 0.72, 0.065, 8, 56), 0.9, 0, 0.08, 0, 1, 1, 1);
+    groundRing.rotation.x = Math.PI / 2;
+    const verticalRing = mesh(new THREE.TorusGeometry(radius * 0.44, 0.045, 8, 40), 0.72, 0, radius * 0.48, 0, 1, 1, 1);
+    verticalRing.rotation.y = Math.PI / 2;
+    const shards = [];
+    const count = style === "blades" ? 10 : 8;
+    for (let i = 0; i < count; i++) {
+        const a = i * Math.PI * 2 / count;
+        const dist = radius * (0.42 + (i % 2) * 0.12);
+        const shardGeo = style === "frost" ? new THREE.ConeGeometry(0.28, 1.15 + (i % 3) * 0.25, 5)
+            : new THREE.OctahedronGeometry(style === "quake" ? 0.34 : 0.24, 0);
+        const shard = mesh(shardGeo, 0.88, Math.cos(a) * dist, style === "frost" ? 0.05 : 0.18, Math.sin(a) * dist,
+            0.8, style === "frost" ? 1.15 : 0.25, 0.8, style === "frost" ? 0xc8f6ff : color);
+        shard.userData = { angle: a, rise: 0.7 + (i % 4) * 0.32, spin: i % 2 ? 1 : -1 };
+        shards.push(shard);
+    }
+    addFx(0.9, function(t, dt) {
+        const grow = 0.18 + Math.sin(Math.min(1, t * 1.25) * Math.PI * 0.5) * 1.2;
+        group.scale.setScalar(grow);
+        const fade = Math.min(1, t * 8, (1 - t) * 1.8);
+        mats.forEach(function(m) { m.opacity = 0.9 * Math.max(0, fade); });
+        core.rotation.x += dt * 2.1; core.rotation.y += dt * 3.4;
+        groundRing.rotation.z += dt * (style === "wind" ? 4.8 : 1.9);
+        verticalRing.rotation.x += dt * 3.3;
+        shards.forEach(function(shard) {
+            const data = shard.userData;
+            shard.rotation.x += dt * 1.6 * data.spin;
+            shard.rotation.y += dt * 2.4 * data.spin;
+            if (style === "frost") shard.position.y = 0.05 + data.rise * Math.min(1, t * 3);
+            else shard.position.y = 0.18 + Math.sin(t * 9 + data.angle) * 0.22;
+        });
+    }, function() {
+        scene.remove(group); mats.forEach(function(m) { m.dispose(); }); geos.forEach(function(g) { g.dispose(); });
+    });
+}
+function spawnClassMeteor(x, z, color) {
+    if (!scene) return;
+    const group = new THREE.Group();
+    const geo = new THREE.IcosahedronGeometry(0.62, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.98 });
+    const core = new THREE.Mesh(geo, mat); group.add(core);
+    const mats = [mat], geos = [geo];
+    for (let i = 0; i < 4; i++) {
+        const flameGeo = new THREE.ConeGeometry(0.22, 1.25 + i * 0.12, 6);
+        const flameMat = new THREE.MeshBasicMaterial({ color: i % 2 ? 0xff4d21 : 0xffd26a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false });
+        const flame = new THREE.Mesh(flameGeo, flameMat);
+        flame.position.set(Math.cos(i * Math.PI / 2) * 0.33, -0.78, Math.sin(i * Math.PI / 2) * 0.33);
+        flame.rotation.x = Math.PI;
+        group.add(flame); mats.push(flameMat); geos.push(flameGeo);
+    }
+    scene.add(group);
+    addFx(0.88, function(t, dt) {
+        group.position.set(x - Math.sin(myPos.rotY) * 0.2, myPos.y + 15 * (1 - t), z - Math.cos(myPos.rotY) * 0.2);
+        group.rotation.x += dt * 5; group.rotation.y += dt * 6;
+        group.scale.setScalar(1 + t * 0.55);
+        mats.forEach(function(m) { m.opacity = Math.min(1, (1 - t) * 5); });
+    }, function() { scene.remove(group); mats.forEach(function(m) { m.dispose(); }); geos.forEach(function(g) { g.dispose(); }); });
+}
 function classTargetDamage(target, skillId, mult) {
     const result = rollDamage(SKILLS[skillId], mult);
     if (target.kind === "monster") damageMonster(target.ref, result.dmg, result.crit, selectedCharacterName === "Wizard" ? "spell" : "melee");
@@ -4024,12 +4284,14 @@ function useClassSkill(n) {
     classSkillAnimation(type, n);
 
     if (type === "guard") {
-        classGuardUntil = now + 3 + skillLv[n] * 0.15;
+        const guardDuration = 3 + skillLv[n] * 0.15;
+        classGuardUntil = now + guardDuration;
         classGuardReduction = Math.min(0.82, mult);
         isDefending = true;
         shieldFlash = 1;
         sndShield();
         spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 2, 2.8, 1.0, -1.8);
+        spawnClassAura(color, "guard", guardDuration);
         setTimeout(function() { if (nowSec() >= classGuardUntil) isDefending = false; }, (classGuardUntil - now) * 1000 + 50);
         return;
     }
@@ -4038,13 +4300,16 @@ function useClassSkill(n) {
         sndDodge();
         spawnDust(myPos.x, myPos.y, myPos.z, 16, 2.6, color);
         spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 1, 2.2, 0.7, 4);
+        spawnClassAura(color, "evade", 0.75);
         return;
     }
     if (type === "damagebuff" || type === "spellbuff" || type === "critbuff") {
         classBuffType = type;
         classBuffAmount = mult;
-        classBuffUntil = now + 10 + skillLv[n] * 0.2;
+        const buffDuration = 10 + skillLv[n] * 0.2;
+        classBuffUntil = now + buffDuration;
         spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 2, 3.2, 1.1, 2);
+        spawnClassAura(color, type === "critbuff" ? "crit" : "power", buffDuration);
         const label = type === "critbuff" ? "critic" : "daune";
         spawnFloatingText("+" + Math.round(mult * 100) + "% " + label, getClassConfig().colors[n - 1],
             new THREE.Vector3(myPos.x, myPos.y + PLAYER_HEIGHT + 1, myPos.z), true);
@@ -4054,6 +4319,7 @@ function useClassSkill(n) {
     const totalMult = mult;
     autoFaceNearest(cfg.range + 2);
     if (type === "dash") {
+        const oldX = myPos.x, oldZ = myPos.z;
         const dx = target.x - myPos.x, dz = target.z - myPos.z;
         const distance = Math.hypot(dx, dz) || 1;
         myPos.rotY = Math.atan2(dx, dz);
@@ -4061,13 +4327,17 @@ function useClassSkill(n) {
         myPos.z = target.z - dz / distance * 1.35;
         if (localPlayerMesh) localPlayerMesh.position.set(myPos.x, myPos.y, myPos.z);
         spawnDust(myPos.x, myPos.y, myPos.z, 18, 2, color);
+        spawnClassDash3D(oldX, oldZ, myPos.x, myPos.z, color);
+        spawnClassSlash3D(myPos.x, myPos.y, myPos.z, myPos.rotY, color);
         classTargetDamage(target, n, totalMult);
         return;
     }
     if (type === "execute" || type === "poison") {
         myPos.rotY = Math.atan2(target.x - myPos.x, target.z - myPos.z);
+        spawnClassSlash3D(target.x, target.y, target.z, myPos.rotY, color);
         classTargetDamage(target, n, totalMult);
         if (type === "poison") {
+            spawnClassBurst(target.x, target.z, 1.7, color, "poison");
             for (let tick = 1; tick <= 4; tick++) setTimeout(function() {
                 if (target.kind === "monster" && target.ref.alive) classTargetDamage(target, n, totalMult * 0.35);
                 else if (target.kind === "player" && target.ref.hp > 0) classTargetDamage(target, n, totalMult * 0.35);
@@ -4078,15 +4348,21 @@ function useClassSkill(n) {
     }
     if (type === "projectile" || type === "fireball") {
         const dx = Math.sin(myPos.rotY), dz = Math.cos(myPos.rotY);
+        const visualType = selectedCharacterName === "Ninja" && n === 4 ? "shuriken"
+            : selectedCharacterName === "Viking" && n === 4 ? "axe"
+            : selectedCharacterName === "Samurai" && n === 4 ? "bladewave"
+            : selectedCharacterName === "Wizard" && n === 1 ? "arcane" : "fireball";
         spawnProjectile(myPos.x + dx * 0.9, myPos.y + 1.3, myPos.z + dz * 0.9, dx, dz, true,
-            color, n, totalMult, type === "fireball" ? 4 : 0);
+            color, n, totalMult, type === "fireball" ? 4 : 0, visualType);
         sndSpellFire();
         return;
     }
     if (type === "meteor") {
         const x = myPos.x + Math.sin(myPos.rotY) * 7, z = myPos.z + Math.cos(myPos.rotY) * 7;
         spawnRuneCircle(x, myPos.y, z, getClassConfig().colors[n - 1], 2, 4.2, 1.8, 1);
+        spawnClassMeteor(x, z, color);
         setTimeout(function() {
+            spawnClassBurst(x, z, 4.8, color, "fire");
             spawnEarthSlam(x, z, 4.5);
             applyClassAreaDamage(x, z, 4.5, Math.PI * 2, totalMult, n);
         }, 850);
@@ -4101,12 +4377,19 @@ function useClassSkill(n) {
     if (type === "aoe") {
         spawnRuneCircle(myPos.x, myPos.y, myPos.z, getClassConfig().colors[n - 1], 1, cfg.range, 0.9, 2.2);
         spawnDust(myPos.x, myPos.y, myPos.z, 18, cfg.range * 0.7, color);
+        const style = selectedCharacterName === "Wizard" ? "frost"
+            : selectedCharacterName === "Ninja" ? "blades"
+            : selectedCharacterName === "Samurai" ? "wind"
+            : selectedCharacterName === "Viking" && n === 6 ? "quake"
+            : selectedCharacterName === "Viking" ? "wind" : "shock";
+        spawnClassBurst(myPos.x, myPos.z, cfg.range, color, style);
         sndSlam();
         applyClassAreaDamage(myPos.x, myPos.z, cfg.range, Math.PI * 2, totalMult, n);
         return;
     }
     if (type === "melee") {
         spawnSwordSlash(myPos.x, myPos.y, myPos.z, myPos.rotY, 0, color, 0xffffff);
+        spawnClassSlash3D(myPos.x, myPos.y, myPos.z, myPos.rotY, color);
         applyClassAreaDamage(myPos.x, myPos.z, 4.0, Math.PI * 0.95, totalMult, n);
     }
 }
@@ -4301,6 +4584,7 @@ function fireChain(classSkillId, classSkillMult) {
     if (playerDead) return;
     const cfg = SKILLS[classSkillId || 7];
     const configuredMult = classSkillId ? (Number(classSkillMult) || 1) : 1;
+    const chainColor = classSkillId ? classColorNumber(classSkillId) : null;
     const all = enemyList().filter(function(e) { return Math.hypot(e.x - myPos.x, e.z - myPos.z) <= 34; });
     let cur = chainStart(cfg.range);
     if (!cur) return;
@@ -4321,8 +4605,9 @@ function fireChain(classSkillId, classSkillMult) {
     let prev = new THREE.Vector3(myPos.x + Math.sin(myPos.rotY) * 0.6, myPos.y + 1.4, myPos.z + Math.cos(myPos.rotY) * 0.6);
     chain.forEach(function(e, i) {
         const pt = new THREE.Vector3(e.x, e.y + 1.2, e.z);
-        spawnBolt(prev, pt);
-        spawnElectrify(e.x, e.y, e.z);
+        spawnBolt(prev, pt, chainColor);
+        spawnElectrify(e.x, e.y, e.z, chainColor);
+        if (classSkillId) spawnClassBurst(e.x, e.z, 0.85, chainColor, "shock");
         prev = pt;
         const r = rollDamage(cfg, configuredMult * Math.pow(0.75, i));
         if (e.kind === "monster") {
