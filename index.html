@@ -810,15 +810,50 @@ function buildClipFromData(D, name) {
     return new THREE.AnimationClip(name, times[times.length - 1], tracks);
 }
 
-function buildSwordAttackClip() {
+function canonicalRigBoneName(name) {
+    let value = String(name || "").split(/[:|]/).pop();
+    value = value.replace(/_[0-9]+$/, "").replace(/\.[0-9]+$/, "");
+    value = value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const aliases = {
+        pelvis: "hips", hip: "hips",
+        leftthigh: "leftupleg", thighleft: "leftupleg", leftupperleg: "leftupleg",
+        rightthigh: "rightupleg", thighright: "rightupleg", rightupperleg: "rightupleg",
+        leftcalf: "leftleg", calfleft: "leftleg", rightcalf: "rightleg", calfright: "rightleg",
+        leftupperarm: "leftarm", upperarmleft: "leftarm", rightupperarm: "rightarm", upperarmright: "rightarm",
+        leftlowerarm: "leftforearm", lowerarmleft: "leftforearm", rightlowerarm: "rightforearm", lowerarmright: "rightforearm",
+        leftclavicle: "leftshoulder", clavicleleft: "leftshoulder", rightclavicle: "rightshoulder", clavicleright: "rightshoulder",
+        lefttoe: "lefttoebase", righttoe: "righttoebase", chest: "spine02"
+    };
+    return aliases[value] || value;
+}
+function findRetargetBone(root, sourceName) {
+    const wanted = canonicalRigBoneName(sourceName);
+    let found = null;
+    root.traverse(function(node) {
+        if (!found && node.isBone && canonicalRigBoneName(node.name) === wanted) found = node;
+    });
+    return found;
+}
+function buildSwordAttackClip(root = characterModel) {
+    if (!root) throw new Error("Nu există un rig de personaj pentru retargetare.");
     const D = SWORD_ATTACK_DATA;
     const times = [];
     for (let i = 0; i < D.n; i++) times.push(i / D.fps);
     const tracks = [];
+    const mappedBones = [];
     for (const bone in D.q) {
-        tracks.push(new THREE.QuaternionKeyframeTrack(bone + ".quaternion", times, D.q[bone]));
+        const targetBone = findRetargetBone(root, bone);
+        if (targetBone) {
+            tracks.push(new THREE.QuaternionKeyframeTrack(targetBone.name + ".quaternion", times, D.q[bone]));
+            mappedBones.push(canonicalRigBoneName(bone));
+        }
     }
-    tracks.push(new THREE.VectorKeyframeTrack(D.hips + ".position", times, D.p));
+    const targetHips = findRetargetBone(root, D.hips);
+    const required = ["hips", "spine", "rightarm", "rightforearm"];
+    if (!targetHips || mappedBones.length < 12 || required.some(function(name) { return mappedBones.indexOf(name) < 0; })) {
+        throw new Error("Rigul nu are suficiente oase compatibile cu animația de atac.");
+    }
+    tracks.push(new THREE.VectorKeyframeTrack(targetHips.name + ".position", times, D.p));
     return new THREE.AnimationClip("SwordAttack_Retargeted", times[times.length - 1], tracks);
 }
 
@@ -5158,8 +5193,8 @@ function spawnRemotePlayerMesh(id) {
 function setupAnimations(clips) {
     if (!characterModel || !clips.length) return;
     mixer = new THREE.AnimationMixer(characterModel);
-    // Retargeted clips below were authored for Knight.glb's skeleton. Other
-    // GLBs use their own locomotion clips and the game's procedural attacks.
+    // The sword clip is retargeted by semantic bone names. Death, spell, roll
+    // and jump clips remain Knight-only because those rigs are not verified.
     const useKnightRigAnimations = selectedCharacterFile === CHARACTER_FILE;
 
     const attackWords = ["attack", "slash", "strike", "punch", "swing", "sword", "kick", "cast", "skill", "combat", "hit"];
@@ -5177,13 +5212,13 @@ function setupAnimations(clips) {
     });
     console.log("Animații în model:", clipNames);
     addChat("Animații găsite: " + clipNames.join(", "), "#9ad");
-    if (!attackActions.length && useKnightRigAnimations) {
+    if (!attackActions.length) {
         try {
             const swordClip = buildSwordAttackClip();
             attackActions.push(mixer.clipAction(swordClip));
             SKILLS[1].hitDelay = SWORD_ATTACK_DATA.hit / 2.0;  // momentul loviturii, la viteza 2x
             SKILLS[1].cd = 0.75;
-            addChat("Animație de atac cu sabia încărcată.", "#9ad");
+            addChat("Atacul cu sabia al Dark Knight a fost adaptat la rigul acestui personaj.", "#9ad");
         } catch (err) {
             console.warn("Animația de atac nu a putut fi creată:", err);
             addChat("Modelul nu are animație de atac; folosesc o mișcare simplă + efect.", "#9ad");
@@ -5207,8 +5242,6 @@ function setupAnimations(clips) {
         } catch (err) {
             console.warn("Animațiile de vrajă/rostogolire nu au putut fi create:", err);
         }
-    } else {
-        addChat("Atacuri procedurale activate pentru modelul selectat.", "#9ad");
     }
 
     // Keep Knight's historical first-clip fallback. For other rigs, never
