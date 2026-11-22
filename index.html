@@ -834,12 +834,70 @@ function findRetargetBone(root, sourceName) {
     });
     return found;
 }
-function buildSwordAttackClip(root = characterModel) {
+function retargetAnimationClip(sourceClip, sourceRoot, targetRoot) {
+    if (!sourceClip || !sourceRoot || !targetRoot || !sourceClip.tracks) return null;
+    const tracks = [];
+    const mappedBones = new Set();
+    let hasHipsPosition = false;
+    sourceClip.tracks.forEach(function(track) {
+        const separator = track.name.lastIndexOf(".");
+        if (separator < 1) return;
+        const sourceName = track.name.slice(0, separator);
+        const property = track.name.slice(separator + 1);
+        if (["position", "quaternion", "scale"].indexOf(property) < 0) return;
+        const sourceBone = findRetargetBone(sourceRoot, sourceName);
+        const targetBone = findRetargetBone(targetRoot, sourceName);
+        if (!sourceBone || !targetBone) return;
+        const copy = track.clone();
+        copy.name = targetBone.name + "." + property;
+        const values = copy.values;
+        if (property === "position") {
+            for (let i = 0; i < values.length; i += 3) {
+                values[i] += targetBone.position.x - sourceBone.position.x;
+                values[i + 1] += targetBone.position.y - sourceBone.position.y;
+                values[i + 2] += targetBone.position.z - sourceBone.position.z;
+            }
+        } else if (property === "quaternion") {
+            const sourceRestInverse = sourceBone.quaternion.clone().invert();
+            for (let i = 0; i < values.length; i += 4) {
+                const animated = new THREE.Quaternion(values[i], values[i + 1], values[i + 2], values[i + 3]);
+                const adjusted = targetBone.quaternion.clone().multiply(sourceRestInverse).multiply(animated).normalize();
+                adjusted.toArray(values, i);
+            }
+        } else if (property === "scale") {
+            for (let i = 0; i < values.length; i += 3) {
+                values[i] *= targetBone.scale.x / (sourceBone.scale.x || 1);
+                values[i + 1] *= targetBone.scale.y / (sourceBone.scale.y || 1);
+                values[i + 2] *= targetBone.scale.z / (sourceBone.scale.z || 1);
+            }
+        }
+        tracks.push(copy);
+        mappedBones.add(canonicalRigBoneName(sourceName));
+        if (canonicalRigBoneName(sourceName) === "hips" && property === "position") hasHipsPosition = true;
+    });
+    const required = ["hips", "spine", "rightarm", "rightforearm"];
+    if (!hasHipsPosition || tracks.length < 12 || required.some(function(name) { return !mappedBones.has(name); })) return null;
+    return new THREE.AnimationClip(sourceClip.name + "_Retargeted", sourceClip.duration, tracks);
+}
+function buildSwordAttackClip(root = characterModel, sourceRoot = null) {
     if (!root) throw new Error("Nu există un rig de personaj pentru retargetare.");
     const D = SWORD_ATTACK_DATA;
     const times = [];
     for (let i = 0; i < D.n; i++) times.push(i / D.fps);
     const tracks = [];
+    if (sourceRoot) {
+        for (const bone in D.q) {
+            const sourceBone = findRetargetBone(sourceRoot, bone);
+            if (sourceBone) tracks.push(new THREE.QuaternionKeyframeTrack(sourceBone.name + ".quaternion", times, D.q[bone]));
+        }
+        const sourceHips = findRetargetBone(sourceRoot, D.hips);
+        if (sourceHips) tracks.push(new THREE.VectorKeyframeTrack(sourceHips.name + ".position", times, D.p));
+        const sourceClip = new THREE.AnimationClip("SwordAttack_Source", times[times.length - 1], tracks);
+        const retargeted = retargetAnimationClip(sourceClip, sourceRoot, root);
+        if (!retargeted) throw new Error("Rigul nu a putut primi animația de atac.");
+        retargeted.name = "SwordAttack_Retargeted";
+        return retargeted;
+    }
     const mappedBones = [];
     for (const bone in D.q) {
         const targetBone = findRetargetBone(root, bone);
@@ -5135,31 +5193,45 @@ function loadCharacter() {
         sharedCharacterScene = gltf.scene;
         sharedAnimations = gltf.animations || [];
 
-        const built = buildScaledCharacterGroup(sharedCharacterScene);
-        localPlayerMesh = built.rootGroup;
-        characterModel = built.innerModel;
+        const finishCharacterLoad = function(knightClips, knightRoot) {
+            const built = buildScaledCharacterGroup(sharedCharacterScene);
+            localPlayerMesh = built.rootGroup;
+            characterModel = built.innerModel;
 
-        localPlayerMesh.rotation.order = "YXZ";
-        shieldFx = createShieldFx();
-        localPlayerMesh.add(shieldFx.group);
+            localPlayerMesh.rotation.order = "YXZ";
+            shieldFx = createShieldFx();
+            localPlayerMesh.add(shieldFx.group);
 
-        scene.add(localPlayerMesh);
-        localPlayerMesh.updateMatrixWorld(true);
+            scene.add(localPlayerMesh);
+            localPlayerMesh.updateMatrixWorld(true);
 
-        characterLoaded = true;
-        setupAnimations(sharedAnimations);
-        placePlayerOnGround();
+            characterLoaded = true;
+            setupAnimations(sharedAnimations, knightClips || [], knightRoot || null);
+            placePlayerOnGround();
 
-        for (const id in remotePlayers) {
-            if (!remotePlayers[id].mesh) spawnRemotePlayerMesh(id);
+            for (const id in remotePlayers) {
+                if (!remotePlayers[id].mesh) spawnRemotePlayerMesh(id);
+            }
+            addChat(selectedCharacterName + " încărcat cu succes!", "#2ecc71");
+            setLoad("char", 1);
+        };
+
+        if (selectedCharacterName === "Ninja" || selectedCharacterName === "Samurai") {
+            const knightLoader = new THREE.GLTFLoader();
+            knightLoader.load(CHARACTER_FILE, function(knightGltf) {
+                finishCharacterLoad(knightGltf.animations || [], knightGltf.scene);
+            }, undefined, function(err) {
+                console.warn("Animațiile Knight nu s-au încărcat; folosesc animațiile modelului selectat:", err);
+                finishCharacterLoad([]);
+            });
+        } else {
+            finishCharacterLoad([]);
         }
-        addChat("Dark Knight încărcat cu succes!", "#2ecc71");
-        setLoad("char", 1);
     }, function(xhr) {
         if (xhr) setLoad("char", 0.95 * loadFraction(xhr.loaded, xhr.lengthComputable ? xhr.total : 0, 9e6));
     }, function(err) {
         console.warn("Personajul nu a putut fi încărcat:", err);
-        addChat("Eroul nu a putut fi încărcat (verifică Knight.glb).", "#e74c3c");
+        addChat("Eroul selectat nu a putut fi încărcat; verifică modelul GLB.", "#e74c3c");
         setLoad("char", 1);
     });
 }
@@ -5190,8 +5262,9 @@ function spawnRemotePlayerMesh(id) {
     bar.draw(rp.hp / (rp.maxHp || 1500));
 }
 
-function setupAnimations(clips) {
-    if (!characterModel || !clips.length) return;
+function setupAnimations(clips, knightClips = [], knightRoot = null) {
+    if (!characterModel) return;
+    clips = clips || [];
     mixer = new THREE.AnimationMixer(characterModel);
     // The sword clip is retargeted by semantic bone names. Death, spell, roll
     // and jump clips remain Knight-only because those rigs are not verified.
@@ -5210,11 +5283,27 @@ function setupAnimations(clips) {
             if (useKnightRigAnimations) attackActions.push(action);
         }
     });
+    if ((selectedCharacterName === "Ninja" || selectedCharacterName === "Samurai") && knightClips.length) {
+        const idleSource = knightClips.find(function(clip) { return /idle|stand/i.test(clip.name); });
+        const walkSource = knightClips.find(function(clip) { return /walk/i.test(clip.name); });
+        const runSource = knightClips.find(function(clip) { return /run/i.test(clip.name); });
+        const knightIdle = retargetAnimationClip(idleSource, knightRoot, characterModel);
+        const knightWalk = retargetAnimationClip(walkSource, knightRoot, characterModel);
+        const knightRun = retargetAnimationClip(runSource, knightRoot, characterModel);
+        if (knightIdle && knightWalk && knightRun) {
+            idleAction = mixer.clipAction(knightIdle);
+            walkAction = mixer.clipAction(knightWalk);
+            runAction = mixer.clipAction(knightRun);
+            addChat("Animațiile Knight de repaus, mers și alergare au fost adaptate pentru " + selectedCharacterName + ".", "#9ad");
+        } else {
+            addChat("Nu s-au potrivit toate animațiile Knight; rămân active animațiile native ale modelului.", "#9ad");
+        }
+    }
     console.log("Animații în model:", clipNames);
     addChat("Animații găsite: " + clipNames.join(", "), "#9ad");
     if (!attackActions.length) {
         try {
-            const swordClip = buildSwordAttackClip();
+            const swordClip = buildSwordAttackClip(characterModel, knightRoot);
             attackActions.push(mixer.clipAction(swordClip));
             SKILLS[1].hitDelay = SWORD_ATTACK_DATA.hit / 2.0;  // momentul loviturii, la viteza 2x
             SKILLS[1].cd = 0.75;
