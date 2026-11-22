@@ -5287,7 +5287,7 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
             if (useKnightRigAnimations) attackActions.push(action);
         }
     });
-    if (["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0 && knightClips.length) {
+    if (selectedCharacterName === "Ninja" && knightClips.length) {
         const idleSource = knightClips.find(function(clip) { return /idle|stand/i.test(clip.name); });
         const walkSource = knightClips.find(function(clip) { return /walk/i.test(clip.name); });
         const runSource = knightClips.find(function(clip) { return /run/i.test(clip.name); });
@@ -5304,6 +5304,9 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
         } else {
             addChat("Nu s-au potrivit toate animațiile Knight; rămân active animațiile native ale modelului.", "#9ad");
         }
+    }
+    if (["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0) {
+        addChat("Mersul și fuga originale ale modelului sunt păstrate; animația de repaus rămâne dezactivată.", "#9ad");
     }
     console.log("Animații în model:", clipNames);
     addChat("Animații găsite: " + clipNames.join(", "), "#9ad");
