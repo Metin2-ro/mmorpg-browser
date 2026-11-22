@@ -5766,6 +5766,89 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
     return { rootGroup, innerModel: clone };
 }
 
+const CLASS_WEAPON_CONFIG = {
+    "Dark Knight": { file: "03_Jawbone_Sword.glb", length: 0.8, offset: [0, 0.32, 0], rotation: [0, 0, 0] },
+    "Ninja":       { file: "02_Tusk_Dagger.glb", length: 0.58, offset: [0, 0.18, 0], rotation: [0, 0, 0] },
+    "Samurai":     { file: "16_Sawtooth_Blade.glb", length: 0.8, offset: [0, 0.48, 0], rotation: [0, 0, Math.PI / 2] },
+    "Viking":      { file: "01_Skull-Splitter_Axe.glb", length: 0.82, offset: [0, 0.2, 0], rotation: [0, 0, 0] },
+    "Wizard":      { file: "15_Shaman_s_Skull_Totem.glb", length: 0.78, offset: [0, 0.18, 0], rotation: [0, 0, Math.PI / 2] }
+};
+const CLASS_WEAPON_ASSET_PROMISES = {};
+
+function findRightHandBone(model) {
+    let hand = null;
+    model.traverse(function(node) {
+        if (!node.isBone) return;
+        const name = String(node.name || "").replace(/[^a-z0-9]/gi, "").toLowerCase();
+        if (/^righthand\d*$/.test(name)) hand = node;
+    });
+    return hand;
+}
+
+function attachClassWeapon(model, className) {
+    const config = CLASS_WEAPON_CONFIG[className];
+    if (!model || !config || model.userData.classWeaponPending || model.userData.classWeaponAttached) return;
+
+    const hand = findRightHandBone(model);
+    if (!hand) {
+        console.warn("Nu s-a găsit osul mâinii drepte pentru arma clasei", className);
+        return;
+    }
+
+    model.userData.classWeaponPending = true;
+    const url = "./characters/arme/" + config.file;
+    if (!CLASS_WEAPON_ASSET_PROMISES[config.file]) {
+        CLASS_WEAPON_ASSET_PROMISES[config.file] = new Promise(function(resolve, reject) {
+            new THREE.GLTFLoader().load(url, function(gltf) {
+                resolve(gltf.scene);
+            }, undefined, reject);
+        }).catch(function(err) {
+            delete CLASS_WEAPON_ASSET_PROMISES[config.file];
+            throw err;
+        });
+    }
+
+    CLASS_WEAPON_ASSET_PROMISES[config.file].then(function(asset) {
+        if (!model.parent || !hand.parent) {
+            model.userData.classWeaponPending = false;
+            return;
+        }
+
+        asset.updateMatrixWorld(true);
+        const assetBox = new THREE.Box3().setFromObject(asset);
+        const assetSize = assetBox.getSize(new THREE.Vector3());
+        const assetLength = Math.max(assetSize.x, assetSize.y, assetSize.z);
+        hand.updateWorldMatrix(true, false);
+        const handScale = hand.getWorldScale(new THREE.Vector3());
+        if (!(assetLength > 0) || !(handScale.x > 0) || !(handScale.y > 0) || !(handScale.z > 0)) {
+            throw new Error("Mărimea modelului sau a osului mâinii nu este validă.");
+        }
+
+        const weapon = asset.clone(true);
+        weapon.scale.setScalar(config.length / (assetLength * handScale.x));
+        weapon.position.set(
+            config.offset[0] / handScale.x,
+            config.offset[1] / handScale.y,
+            config.offset[2] / handScale.z
+        );
+        weapon.rotation.set(config.rotation[0], config.rotation[1], config.rotation[2]);
+        weapon.traverse(function(node) {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+                node.frustumCulled = false;
+            }
+        });
+        hand.add(weapon);
+        model.updateMatrixWorld(true);
+        model.userData.classWeaponAttached = true;
+        model.userData.classWeaponPending = false;
+    }).catch(function(err) {
+        model.userData.classWeaponPending = false;
+        console.warn("Arma GLB nu s-a putut atașa pentru clasa " + className + ":", err);
+    });
+}
+
 function loadCharacter() {
     const loader = new THREE.GLTFLoader();
     loader.load(selectedCharacterFile, function(gltf) {
@@ -5784,6 +5867,7 @@ function loadCharacter() {
 
             scene.add(localPlayerMesh);
             localPlayerMesh.updateMatrixWorld(true);
+            attachClassWeapon(characterModel, selectedCharacterName);
 
             characterLoaded = true;
             setupAnimations(sharedAnimations, knightClips || [], knightRoot || null);
@@ -5823,6 +5907,8 @@ function spawnRemotePlayerMesh(id) {
     const rp = remotePlayers[id];
     rMesh.position.set(rp.x || 0, getGroundHeight(rp.x || 0, rp.z || 0, 0), rp.z || 0);
     scene.add(rMesh);
+    rMesh.updateMatrixWorld(true);
+    attachClassWeapon(built.innerModel, selectedCharacterName);
 
     let rMixer = null;
     if (sharedAnimations.length > 0) {
