@@ -890,6 +890,10 @@ function canonicalRigBoneName(name) {
     value = value.replace(/_[0-9]+$/, "").replace(/\.[0-9]+$/, "");
     value = value.replace(/[^a-z0-9]/gi, "").toLowerCase();
     value = value.replace(/^mixamorig/, "");
+    const finger = value.match(/^(thumb|index|middle|ring|pinky)([0-9]+)(?:leaf)?([lr])$/);
+    if (finger) return (finger[3] === "r" ? "right" : "left") + "hand" + finger[1] + String(Number(finger[2]));
+    const suffixSide = value.match(/^(clavicle|upperarm|lowerarm|hand|thigh|calf|foot|ball|toe)([lr])$/);
+    if (suffixSide) value = (suffixSide[2] === "r" ? "right" : "left") + suffixSide[1];
     const aliases = {
         pelvis: "hips", hip: "hips",
         leftthigh: "leftupleg", thighleft: "leftupleg", leftupperleg: "leftupleg",
@@ -898,7 +902,7 @@ function canonicalRigBoneName(name) {
         leftupperarm: "leftarm", upperarmleft: "leftarm", rightupperarm: "rightarm", upperarmright: "rightarm",
         leftlowerarm: "leftforearm", lowerarmleft: "leftforearm", rightlowerarm: "rightforearm", lowerarmright: "rightforearm",
         leftclavicle: "leftshoulder", clavicleleft: "leftshoulder", rightclavicle: "rightshoulder", clavicleright: "rightshoulder",
-        lefttoe: "lefttoebase", righttoe: "righttoebase", chest: "spine02"
+        lefttoe: "lefttoebase", righttoe: "righttoebase", neck01: "neck", chest: "spine02"
     };
     return aliases[value] || value;
 }
@@ -986,8 +990,9 @@ function retargetAnimationClip(sourceClip, sourceRoot, targetRoot, options = {})
         mappedBones.add(canonicalRigBoneName(sourceName));
         if (canonicalRigBoneName(sourceName) === "hips" && property === "position") hasHipsPosition = true;
     });
-    const required = ["hips", "spine", "rightarm", "rightforearm"];
-    if (!hasHipsPosition || tracks.length < 12 || required.some(function(name) { return !mappedBones.has(name); })) return null;
+    const required = ["hips", "rightarm", "rightforearm"];
+    const hasSpine = Array.from(mappedBones).some(function(name) { return name === "spine" || /^spine[0-9]+$/.test(name); });
+    if (!hasHipsPosition || tracks.length < 12 || !hasSpine || required.some(function(name) { return !mappedBones.has(name); })) return null;
     return new THREE.AnimationClip(sourceClip.name + "_Retargeted", sourceClip.duration, tracks);
 }
 function buildSwordAttackClip(root = characterModel, sourceRoot = null) {
@@ -5970,7 +5975,7 @@ function loadCharacter() {
         sharedCharacterScene = gltf.scene;
         sharedAnimations = gltf.animations || [];
 
-        const finishCharacterLoad = function(knightClips, knightRoot, greatSwordClips, greatSwordRoot) {
+        const finishCharacterLoad = function(knightClips, knightRoot, swordClips, swordRoot) {
             const built = buildScaledCharacterGroup(sharedCharacterScene);
             localPlayerMesh = built.rootGroup;
             characterModel = built.innerModel;
@@ -5984,7 +5989,7 @@ function loadCharacter() {
             syncEquippedWeaponVisual();
 
             characterLoaded = true;
-            setupAnimations(sharedAnimations, knightClips || [], knightRoot || null, greatSwordClips || [], greatSwordRoot || null);
+            setupAnimations(sharedAnimations, knightClips || [], knightRoot || null, swordClips || [], swordRoot || null);
             placePlayerOnGround();
 
             for (const id in remotePlayers) {
@@ -5995,7 +6000,7 @@ function loadCharacter() {
         };
 
         const needsKnightRig = ["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0;
-        const needsGreatSwordIdle = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
+        const needsSwordAnimations = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
         const knightPromise = new Promise(function(resolve) {
             if (!needsKnightRig) return resolve({ clips: [], root: null });
             new THREE.GLTFLoader().load(CHARACTER_FILE, function(knightGltf) {
@@ -6005,20 +6010,22 @@ function loadCharacter() {
                 resolve({ clips: [], root: null });
             });
         });
-        const greatSwordPromise = new Promise(function(resolve) {
-            if (!needsGreatSwordIdle) return resolve({ clips: [], root: null });
-            if (!THREE.FBXLoader) {
-                console.warn("FBXLoader nu este disponibil; GreatSwordIdle nu poate fi adaptată.");
-                return resolve({ clips: [], root: null });
-            }
-            new THREE.FBXLoader().load("./GreatSwordIdle.fbx", function(fbxRoot) {
-                resolve({ clips: fbxRoot.animations || [], root: fbxRoot });
+        const swordAnimationPromise = new Promise(function(resolve) {
+            if (!needsSwordAnimations) return resolve({ clips: [], root: null });
+            new THREE.GLTFLoader().load("./UAL1_Standard_RM.glb", function(swordGltf) {
+                resolve({ clips: swordGltf.animations || [], root: swordGltf.scene });
             }, undefined, function(err) {
-                console.warn("GreatSwordIdle.fbx nu s-a încărcat; rămâne animația de repaus a modelului:", err);
-                resolve({ clips: [], root: null });
+                console.warn("UAL1_Standard_RM.glb nu s-a încărcat; încerc GreatSwordIdle ca rezervă:", err);
+                if (!THREE.FBXLoader) return resolve({ clips: [], root: null });
+                new THREE.FBXLoader().load("./GreatSwordIdle.fbx", function(fbxRoot) {
+                    resolve({ clips: fbxRoot.animations || [], root: fbxRoot });
+                }, undefined, function(fbxErr) {
+                    console.warn("Nici animația GLB, nici GreatSwordIdle.fbx nu s-au încărcat:", fbxErr);
+                    resolve({ clips: [], root: null });
+                });
             });
         });
-        Promise.all([knightPromise, greatSwordPromise]).then(function(results) {
+        Promise.all([knightPromise, swordAnimationPromise]).then(function(results) {
             finishCharacterLoad(results[0].clips, results[0].root, results[1].clips, results[1].root);
         });
     }, function(xhr) {
@@ -6057,7 +6064,7 @@ function spawnRemotePlayerMesh(id) {
     bar.draw(rp.hp / (rp.maxHp || 1500));
 }
 
-function setupAnimations(clips, knightClips = [], knightRoot = null, greatSwordClips = [], greatSwordRoot = null) {
+function setupAnimations(clips, knightClips = [], knightRoot = null, swordClips = [], swordRoot = null) {
     if (!characterModel) return;
     clips = clips || [];
     mixer = new THREE.AnimationMixer(characterModel);
@@ -6065,7 +6072,7 @@ function setupAnimations(clips, knightClips = [], knightRoot = null, greatSwordC
     // and jump clips remain Knight-only because those rigs are not verified.
     const useKnightRigAnimations = selectedCharacterFile === CHARACTER_FILE;
     const suppressIdleAnimation = ["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0;
-    const useGreatSwordIdle = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
+    const useSwordAnimations = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
     if (suppressIdleAnimation) idleAction = null;
 
     const attackWords = ["attack", "slash", "strike", "punch", "swing", "sword", "kick", "cast", "skill", "combat", "hit"];
@@ -6102,25 +6109,37 @@ function setupAnimations(clips, knightClips = [], knightRoot = null, greatSwordC
         }
     }
     if (["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0) {
-        addChat("Mersul și fuga originale ale modelului sunt păstrate; animația de repaus rămâne dezactivată.", "#9ad");
+        addChat("Mersul și fuga originale ale modelului sunt păstrate.", "#9ad");
     }
-    if (useGreatSwordIdle && greatSwordClips.length && greatSwordRoot) {
-        const greatSwordSource = greatSwordClips[0];
-        const greatSwordIdle = retargetAnimationClip(greatSwordSource, greatSwordRoot, characterModel, { scalePositions: true, pinHips: true });
-        if (greatSwordIdle) {
-            idleAction = mixer.clipAction(greatSwordIdle);
-            const fingerTracks = greatSwordIdle.tracks.filter(function(track) {
+    if (useSwordAnimations && swordClips.length && swordRoot) {
+        const swordIdleSource = swordClips.find(function(clip) { return /sword[_\s-]*idle/i.test(clip.name); }) ||
+            swordClips.find(function(clip) { return /idle|stand/i.test(clip.name); }) || swordClips[0];
+        const swordAttackSource = swordClips.find(function(clip) { return /sword[_\s-]*attack/i.test(clip.name); });
+        const swordIdle = retargetAnimationClip(swordIdleSource, swordRoot, characterModel, { scalePositions: true, pinHips: true });
+        const swordAttack = swordAttackSource
+            ? retargetAnimationClip(swordAttackSource, swordRoot, characterModel, { scalePositions: true, pinHips: true })
+            : null;
+        if (swordIdle) {
+            idleAction = mixer.clipAction(swordIdle);
+            const fingerTracks = swordIdle.tracks.filter(function(track) {
                 return /RightHand(?:Thumb|Index|Middle|Ring|Pinky)\d*\.quaternion$/i.test(track.name);
             }).length;
-            addChat("GreatSwordIdle a fost adaptată pentru " + selectedCharacterName + " (" + greatSwordIdle.tracks.length + " canale).", "#9ad");
+            addChat("Sword_Idle a fost retargetată pentru " + selectedCharacterName + " (" + swordIdle.tracks.length + " canale).", "#9ad");
             if (selectedCharacterName === "Samurai") {
                 addChat("Canale de degete drepte adaptate: " + fingerTracks + ". Verifică în joc ca palma să se închidă pe mâner.", "#9ad");
             } else {
                 addChat("Dark Knight nu are oase de degete; animația mișcă brațul și mâna, dar nu poate închide degetele.", "#e6b85c");
             }
         } else {
-            console.warn("GreatSwordIdle nu a putut fi adaptată la scheletul " + selectedCharacterName + ".");
-            addChat("GreatSwordIdle nu s-a potrivit complet cu scheletul " + selectedCharacterName + ".", "#e6b85c");
+            console.warn("Sword_Idle nu a putut fi retargetată pe scheletul " + selectedCharacterName + ".");
+            addChat("Sword_Idle nu s-a potrivit cu scheletul " + selectedCharacterName + ".", "#e6b85c");
+        }
+        if (swordAttack) {
+            attackActions.push(mixer.clipAction(swordAttack));
+            addChat("Sword_Attack a fost retargetată și este folosită la atacurile cu sabia pentru " + selectedCharacterName + ".", "#9ad");
+        } else if (swordAttackSource) {
+            console.warn("Sword_Attack nu a putut fi retargetată pe scheletul " + selectedCharacterName + ".");
+            addChat("Sword_Attack nu s-a potrivit cu scheletul " + selectedCharacterName + "; se păstrează animația de atac disponibilă.", "#e6b85c");
         }
     }
     console.log("Animații în model:", clipNames);
