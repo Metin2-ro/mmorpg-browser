@@ -2553,7 +2553,12 @@ function canonicalRigBoneName(name) {
     // UAL names spine_01/spine_02 identify separate spine segments; do not
     // strip their numeric suffix like the exporter IDs on Knight bones.
     const spineSegment = value.match(/^spine_(0*[123])$/i);
-    if (spineSegment) return "spine" + spineSegment[1];
+    if (spineSegment) {
+        // UAL order is pelvis -> spine_01 -> spine_02 -> spine_03;
+        // Knight's corresponding hierarchy is Hips -> Spine02 -> Spine01 -> Spine.
+        const segment = Number(spineSegment[1]);
+        return segment === 1 ? "spine02" : segment === 2 ? "spine01" : "spine";
+    }
     value = value.replace(/_[0-9]+$/, "").replace(/\.[0-9]+$/, "");
     value = value.replace(/[^a-z0-9]/gi, "").toLowerCase();
     value = value.replace(/^mixamorig/, "");
