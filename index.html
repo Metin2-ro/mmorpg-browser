@@ -4937,7 +4937,9 @@ function onShopClick(e) {
 /* ---------- inventar ---------- */
 function changeGear(fn) {
     const oldHP = maxHP, oldMP = maxMP;
+    const oldWeapon = equipped.weapon;
     fn();
+    if (oldWeapon !== equipped.weapon) syncEquippedWeaponVisual();
     recalcStats(false);
     myHP = Math.min(maxHP, myHP + Math.max(0, maxHP - oldHP));
     myMP = Math.min(maxMP, myMP + Math.max(0, maxMP - oldMP));
@@ -5878,9 +5880,23 @@ function getPalmGripAnchor(hand, model) {
     return fallback.multiplyScalar(0.45 / fingerBones.length);
 }
 
+function syncEquippedWeaponVisual() {
+    if (!characterModel) return;
+    if (!equipped || !equipped.weapon) {
+        const attached = characterModel.userData.classWeaponObjects || [];
+        attached.forEach(function(weapon) {
+            if (weapon.parent) weapon.parent.remove(weapon);
+        });
+        characterModel.userData.classWeaponObjects = [];
+        characterModel.userData.classWeaponAttached = false;
+        return;
+    }
+    attachClassWeapon(characterModel, selectedCharacterName);
+}
+
 function attachClassWeapon(model, className) {
     const configs = CLASS_WEAPON_CONFIG[className];
-    if (!model || !configs || model.userData.classWeaponPending || model.userData.classWeaponAttached) return;
+    if (!model || !configs || !equipped || !equipped.weapon || model.userData.classWeaponPending || model.userData.classWeaponAttached) return;
 
     const attachments = configs.map(function(config) {
         return { config: config, hand: findHandBone(model, config.hand) };
@@ -5890,6 +5906,7 @@ function attachClassWeapon(model, className) {
         return;
     }
 
+    model.userData.classWeaponObjects = model.userData.classWeaponObjects || [];
     model.userData.classWeaponPending = true;
     const loads = attachments.map(function(item) {
         const config = item.config;
@@ -5905,7 +5922,7 @@ function attachClassWeapon(model, className) {
         }
         return CLASS_WEAPON_ASSET_PROMISES[config.file].then(function(asset) {
             const hand = item.hand;
-            if (!model.parent || !hand.parent) return;
+            if (!equipped.weapon || !model.parent || !hand.parent) return;
 
             asset.updateMatrixWorld(true);
             const assetBox = new THREE.Box3().setFromObject(asset);
@@ -5932,12 +5949,13 @@ function attachClassWeapon(model, className) {
                 }
             });
             hand.add(weapon);
+            model.userData.classWeaponObjects.push(weapon);
         });
     });
 
     Promise.all(loads).then(function() {
         model.updateMatrixWorld(true);
-        model.userData.classWeaponAttached = true;
+        model.userData.classWeaponAttached = model.userData.classWeaponObjects.some(function(weapon) { return !!weapon.parent; });
         model.userData.classWeaponPending = false;
     }).catch(function(err) {
         model.userData.classWeaponPending = false;
@@ -5963,7 +5981,7 @@ function loadCharacter() {
 
             scene.add(localPlayerMesh);
             localPlayerMesh.updateMatrixWorld(true);
-            attachClassWeapon(characterModel, selectedCharacterName);
+            syncEquippedWeaponVisual();
 
             characterLoaded = true;
             setupAnimations(sharedAnimations, knightClips || [], knightRoot || null, greatSwordClips || [], greatSwordRoot || null);
@@ -6020,7 +6038,6 @@ function spawnRemotePlayerMesh(id) {
     rMesh.position.set(rp.x || 0, getGroundHeight(rp.x || 0, rp.z || 0, 0), rp.z || 0);
     scene.add(rMesh);
     rMesh.updateMatrixWorld(true);
-    attachClassWeapon(built.innerModel, selectedCharacterName);
 
     let rMixer = null;
     if (sharedAnimations.length > 0) {
