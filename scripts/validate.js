@@ -16,6 +16,32 @@ const jsFiles = [
 ];
 
 let failed = false;
+
+// Regression test: UAL spine segment suffixes must remain distinct while
+// Knight exporter IDs are removed from target bone names.
+try {
+    const gameSource = fs.readFileSync(path.join(root, "src/game.js"), "utf8");
+    const match = gameSource.match(/function canonicalRigBoneName\(name\) \{[\s\S]*?\n\}/);
+    if (!match) throw new Error("Funcția canonicalRigBoneName nu a fost găsită.");
+    const canonicalRigBoneName = vm.runInNewContext("(" + match[0] + ")");
+    const cases = [
+        ["spine_01", "spine01"],
+        ["spine_02", "spine02"],
+        ["spine_03", "spine03"],
+        ["Spine01_13", "spine01"],
+        ["Spine02_14", "spine02"],
+        ["Spine_12", "spine"]
+    ];
+    for (const [input, expected] of cases) {
+        const actual = canonicalRigBoneName(input);
+        if (actual !== expected) throw new Error(input + " -> " + actual + " (așteptat " + expected + ")");
+    }
+    console.log("OK mapare oase spine UAL/Knight:", cases.length, "cazuri");
+} catch (error) {
+    failed = true;
+    console.error("EROARE mapare oase:", error.message);
+}
+
 for (const file of jsFiles) {
     const fullPath = path.join(root, file);
     try {
