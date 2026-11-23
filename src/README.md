@@ -32,3 +32,9 @@
 
 - `combat.js` conține logica de atac, combo-uri, abilități de luptă, daune, monștri, efecte, viața jucătorului și respawn.
 - Este încărcat după `network.js` și înainte de `game.js`, ca script clasic, pentru a păstra compatibilitatea cu starea globală existentă.
+
+
+## Modul extras: UI
+
+- `ui.js` conține ferestrele de abilități, magazinul, inventarul, panoul personajului, cursorul și țintirea, clasamentul și minim harta.
+- Se încarcă după `combat.js` și `weaponSystem.js`, înainte de `game.js`, astfel încât funcțiile UI să fie disponibile când clientul inițializează jocul.
