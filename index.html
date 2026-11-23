@@ -502,6 +502,8 @@ input, textarea { cursor: text !important; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/fflate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 </head>
 
 <body>
@@ -887,6 +889,7 @@ function canonicalRigBoneName(name) {
     let value = String(name || "").split(/[:|]/).pop();
     value = value.replace(/_[0-9]+$/, "").replace(/\.[0-9]+$/, "");
     value = value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    value = value.replace(/^mixamorig/, "");
     const aliases = {
         pelvis: "hips", hip: "hips",
         leftthigh: "leftupleg", thighleft: "leftupleg", leftupperleg: "leftupleg",
@@ -907,11 +910,40 @@ function findRetargetBone(root, sourceName) {
     });
     return found;
 }
-function retargetAnimationClip(sourceClip, sourceRoot, targetRoot) {
+function getRetargetRigHeight(root) {
+    if (!root) return 0;
+    const hips = findRetargetBone(root, "Hips");
+    const head = findRetargetBone(root, "Head") || findRetargetBone(root, "Neck");
+    if (!hips || !head) return 0;
+    root.updateMatrixWorld(true);
+    const inverseRoot = root.matrixWorld.clone().invert();
+    const hipsPosition = hips.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverseRoot);
+    const headPosition = head.getWorldPosition(new THREE.Vector3()).applyMatrix4(inverseRoot);
+    return hipsPosition.distanceTo(headPosition);
+}
+function getRetargetPositionScale(sourceRoot, targetRoot) {
+    const sourceHeight = getRetargetRigHeight(sourceRoot);
+    const targetHeight = getRetargetRigHeight(targetRoot);
+    const sourceHips = findRetargetBone(sourceRoot, "Hips");
+    const targetHips = findRetargetBone(targetRoot, "Hips");
+    if (!sourceHips || !targetHips || !sourceHeight || !targetHeight) return 1;
+    const sourceRootScale = sourceRoot.getWorldScale(new THREE.Vector3());
+    const targetRootScale = targetRoot.getWorldScale(new THREE.Vector3());
+    const sourceParentScale = (sourceHips.parent || sourceRoot).getWorldScale(new THREE.Vector3());
+    const targetParentScale = (targetHips.parent || targetRoot).getWorldScale(new THREE.Vector3());
+    const sourceLocalParentScale = sourceParentScale.y / (sourceRootScale.y || 1);
+    const targetLocalParentScale = targetParentScale.y / (targetRootScale.y || 1);
+    const ratio = (targetHeight / sourceHeight) * (sourceLocalParentScale / (targetLocalParentScale || 1));
+    return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+}
+function retargetAnimationClip(sourceClip, sourceRoot, targetRoot, options = {}) {
     if (!sourceClip || !sourceRoot || !targetRoot || !sourceClip.tracks) return null;
+    sourceRoot.updateMatrixWorld(true);
+    targetRoot.updateMatrixWorld(true);
     const tracks = [];
     const mappedBones = new Set();
     let hasHipsPosition = false;
+    const positionScale = options.scalePositions ? getRetargetPositionScale(sourceRoot, targetRoot) : 1;
     sourceClip.tracks.forEach(function(track) {
         const separator = track.name.lastIndexOf(".");
         if (separator < 1) return;
@@ -925,10 +957,16 @@ function retargetAnimationClip(sourceClip, sourceRoot, targetRoot) {
         copy.name = targetBone.name + "." + property;
         const values = copy.values;
         if (property === "position") {
+            const pinnedHips = options.pinHips && canonicalRigBoneName(sourceName) === "hips";
+            const firstHipsY = values.length >= 2 ? values[1] : sourceBone.position.y;
             for (let i = 0; i < values.length; i += 3) {
-                values[i] += targetBone.position.x - sourceBone.position.x;
-                values[i + 1] += targetBone.position.y - sourceBone.position.y;
-                values[i + 2] += targetBone.position.z - sourceBone.position.z;
+                values[i] = pinnedHips
+                    ? targetBone.position.x
+                    : targetBone.position.x + (values[i] - sourceBone.position.x) * positionScale;
+                values[i + 1] = targetBone.position.y + (values[i + 1] - (pinnedHips ? firstHipsY : sourceBone.position.y)) * positionScale;
+                values[i + 2] = pinnedHips
+                    ? targetBone.position.z
+                    : targetBone.position.z + (values[i + 2] - sourceBone.position.z) * positionScale;
             }
         } else if (property === "quaternion") {
             const sourceRestInverse = sourceBone.quaternion.clone().invert();
@@ -5914,7 +5952,7 @@ function loadCharacter() {
         sharedCharacterScene = gltf.scene;
         sharedAnimations = gltf.animations || [];
 
-        const finishCharacterLoad = function(knightClips, knightRoot) {
+        const finishCharacterLoad = function(knightClips, knightRoot, greatSwordClips, greatSwordRoot) {
             const built = buildScaledCharacterGroup(sharedCharacterScene);
             localPlayerMesh = built.rootGroup;
             characterModel = built.innerModel;
@@ -5928,7 +5966,7 @@ function loadCharacter() {
             attachClassWeapon(characterModel, selectedCharacterName);
 
             characterLoaded = true;
-            setupAnimations(sharedAnimations, knightClips || [], knightRoot || null);
+            setupAnimations(sharedAnimations, knightClips || [], knightRoot || null, greatSwordClips || [], greatSwordRoot || null);
             placePlayerOnGround();
 
             for (const id in remotePlayers) {
@@ -5938,17 +5976,33 @@ function loadCharacter() {
             setLoad("char", 1);
         };
 
-        if (["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0) {
-            const knightLoader = new THREE.GLTFLoader();
-            knightLoader.load(CHARACTER_FILE, function(knightGltf) {
-                finishCharacterLoad(knightGltf.animations || [], knightGltf.scene);
+        const needsKnightRig = ["Ninja", "Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0;
+        const needsGreatSwordIdle = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
+        const knightPromise = new Promise(function(resolve) {
+            if (!needsKnightRig) return resolve({ clips: [], root: null });
+            new THREE.GLTFLoader().load(CHARACTER_FILE, function(knightGltf) {
+                resolve({ clips: knightGltf.animations || [], root: knightGltf.scene });
             }, undefined, function(err) {
                 console.warn("Animațiile Knight nu s-au încărcat; folosesc animațiile modelului selectat:", err);
-                finishCharacterLoad([]);
+                resolve({ clips: [], root: null });
             });
-        } else {
-            finishCharacterLoad([]);
-        }
+        });
+        const greatSwordPromise = new Promise(function(resolve) {
+            if (!needsGreatSwordIdle) return resolve({ clips: [], root: null });
+            if (!THREE.FBXLoader) {
+                console.warn("FBXLoader nu este disponibil; GreatSwordIdle nu poate fi adaptată.");
+                return resolve({ clips: [], root: null });
+            }
+            new THREE.FBXLoader().load("./GreatSwordIdle.fbx", function(fbxRoot) {
+                resolve({ clips: fbxRoot.animations || [], root: fbxRoot });
+            }, undefined, function(err) {
+                console.warn("GreatSwordIdle.fbx nu s-a încărcat; rămâne animația de repaus a modelului:", err);
+                resolve({ clips: [], root: null });
+            });
+        });
+        Promise.all([knightPromise, greatSwordPromise]).then(function(results) {
+            finishCharacterLoad(results[0].clips, results[0].root, results[1].clips, results[1].root);
+        });
     }, function(xhr) {
         if (xhr) setLoad("char", 0.95 * loadFraction(xhr.loaded, xhr.lengthComputable ? xhr.total : 0, 9e6));
     }, function(err) {
@@ -5986,7 +6040,7 @@ function spawnRemotePlayerMesh(id) {
     bar.draw(rp.hp / (rp.maxHp || 1500));
 }
 
-function setupAnimations(clips, knightClips = [], knightRoot = null) {
+function setupAnimations(clips, knightClips = [], knightRoot = null, greatSwordClips = [], greatSwordRoot = null) {
     if (!characterModel) return;
     clips = clips || [];
     mixer = new THREE.AnimationMixer(characterModel);
@@ -5994,6 +6048,7 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
     // and jump clips remain Knight-only because those rigs are not verified.
     const useKnightRigAnimations = selectedCharacterFile === CHARACTER_FILE;
     const suppressIdleAnimation = ["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0;
+    const useGreatSwordIdle = ["Samurai", "Dark Knight"].indexOf(selectedCharacterName) >= 0;
     if (suppressIdleAnimation) idleAction = null;
 
     const attackWords = ["attack", "slash", "strike", "punch", "swing", "sword", "kick", "cast", "skill", "combat", "hit"];
@@ -6031,6 +6086,25 @@ function setupAnimations(clips, knightClips = [], knightRoot = null) {
     }
     if (["Samurai", "Viking", "Wizard"].indexOf(selectedCharacterName) >= 0) {
         addChat("Mersul și fuga originale ale modelului sunt păstrate; animația de repaus rămâne dezactivată.", "#9ad");
+    }
+    if (useGreatSwordIdle && greatSwordClips.length && greatSwordRoot) {
+        const greatSwordSource = greatSwordClips[0];
+        const greatSwordIdle = retargetAnimationClip(greatSwordSource, greatSwordRoot, characterModel, { scalePositions: true, pinHips: true });
+        if (greatSwordIdle) {
+            idleAction = mixer.clipAction(greatSwordIdle);
+            const fingerTracks = greatSwordIdle.tracks.filter(function(track) {
+                return /RightHand(?:Thumb|Index|Middle|Ring|Pinky)\d*\.quaternion$/i.test(track.name);
+            }).length;
+            addChat("GreatSwordIdle a fost adaptată pentru " + selectedCharacterName + " (" + greatSwordIdle.tracks.length + " canale).", "#9ad");
+            if (selectedCharacterName === "Samurai") {
+                addChat("Canale de degete drepte adaptate: " + fingerTracks + ". Verifică în joc ca palma să se închidă pe mâner.", "#9ad");
+            } else {
+                addChat("Dark Knight nu are oase de degete; animația mișcă brațul și mâna, dar nu poate închide degetele.", "#e6b85c");
+            }
+        } else {
+            console.warn("GreatSwordIdle nu a putut fi adaptată la scheletul " + selectedCharacterName + ".");
+            addChat("GreatSwordIdle nu s-a potrivit complet cu scheletul " + selectedCharacterName + ".", "#e6b85c");
+        }
     }
     console.log("Animații în model:", clipNames);
     addChat("Animații găsite: " + clipNames.join(", "), "#9ad");
