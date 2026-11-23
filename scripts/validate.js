@@ -50,5 +50,39 @@ try {
     console.error("EROARE index.html:", error.message);
 }
 
+
+try {
+    const catalogPath = path.join(root, "characters/arme/weapons.json");
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
+    if (!catalog.classes || !Array.isArray(catalog.assets)) throw new Error("Structura catalogului este incompletă.");
+    for (const asset of catalog.assets) {
+        const file = path.join(root, catalog.basePath.replace(/^\.\//, ""), asset.file);
+        if (!fs.existsSync(file)) {
+            failed = true;
+            console.error("LIPSEȘTE MODELUL DE ARMĂ:", asset.file);
+        }
+    }
+    for (const [className, weapons] of Object.entries(catalog.classes)) {
+        for (const weapon of weapons) {
+            if (!catalog.assets.some((asset) => asset.file === weapon.file)) {
+                failed = true;
+                console.error("ARMA NU ESTE ÎN CATALOG:", className, weapon.file);
+            }
+        }
+    }
+    console.log("OK catalog arme:", catalog.assets.length, "modele");
+} catch (error) {
+    failed = true;
+    console.error("EROARE catalog arme:", error.message);
+}
+
+try {
+    JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+    console.log("OK package.json");
+} catch (error) {
+    failed = true;
+    console.error("EROARE package.json:", error.message);
+}
+
 if (failed) process.exit(1);
 console.log("Verificările statice au trecut.");
