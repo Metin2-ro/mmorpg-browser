@@ -25,9 +25,9 @@ try {
     if (!match) throw new Error("Funcția canonicalRigBoneName nu a fost găsită.");
     const canonicalRigBoneName = vm.runInNewContext("(" + match[0] + ")");
     const cases = [
-        ["spine_01", "spine01"],
-        ["spine_02", "spine02"],
-        ["spine_03", "spine03"],
+        ["spine_01", "spine02"],
+        ["spine_02", "spine01"],
+        ["spine_03", "spine"],
         ["Spine01_13", "spine01"],
         ["Spine02_14", "spine02"],
         ["Spine_12", "spine"]
