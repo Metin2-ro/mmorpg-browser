@@ -12,3 +12,10 @@
 2. Se păstrează compatibilitatea cu Three.js r128 și Socket.io 4.x.
 3. Serverul rămâne CommonJS (Node.js); modulele browserului vor fi ES modules doar după separarea completă a stării globale.
 4. Fiecare etapă trebuie verificată în browser: încărcarea hărții, selecția personajului, HUD, mișcare, atacuri, inventar, chat și multiplayer.
+
+
+## Modul extras: multiplayer
+
+- `network.js` gestionează conectarea Socket.io și evenimentele multiplayer: join, jucători, mișcare, PvP, stare lume, monștri, loot, mesaje și leaderboard.
+- Este încărcat ca script clasic înainte de `game.js`. Astfel, funcțiile sale pot folosi starea globală inițializată de `game.js` la momentul apelului, fără conversie prematură la ES modules.
+- `game.js` păstrează în continuare starea și funcțiile de joc folosite de celelalte sisteme.
