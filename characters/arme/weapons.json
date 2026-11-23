@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "basePath": "./characters/arme/",
+  "assets": [
+    {
+      "file": "01_Skull-Splitter_Axe.glb",
+      "name": "Skull-Splitter Axe",
+      "type": "axe"
+    },
+    {
+      "file": "02_Tusk_Dagger.glb",
+      "name": "Tusk Dagger",
+      "type": "dagger"
+    },
+    {
+      "file": "03_Jawbone_Sword.glb",
+      "name": "Jawbone Sword",
+      "type": "sword"
+    },
+    {
+      "file": "15_Shaman_s_Skull_Totem.glb",
+      "name": "Shaman's Skull Totem",
+      "type": "totem"
+    },
+    {
+      "file": "16_Sawtooth_Blade.glb",
+      "name": "Sawtooth Blade",
+      "type": "sword"
+    }
+  ],
+  "classes": {
+    "Dark Knight": [
+      {
+        "file": "03_Jawbone_Sword.glb",
+        "hand": "RightHand",
+        "length": 0.8,
+        "grip": [
+          0.3,
+          -0.21,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "Ninja": [
+      {
+        "file": "02_Tusk_Dagger.glb",
+        "hand": "RightHand",
+        "length": 0.48,
+        "grip": [
+          0.25,
+          -0.12,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "file": "02_Tusk_Dagger.glb",
+        "hand": "LeftHand",
+        "length": 0.48,
+        "grip": [
+          0.25,
+          -0.12,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          3.141592653589793
+        ]
+      }
+    ],
+    "Samurai": [
+      {
+        "file": "16_Sawtooth_Blade.glb",
+        "hand": "RightHand",
+        "length": 0.8,
+        "grip": [
+          0.34,
+          -0.28,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          4.71238898038469
+        ]
+      }
+    ],
+    "Viking": [
+      {
+        "file": "01_Skull-Splitter_Axe.glb",
+        "hand": "RightHand",
+        "length": 0.82,
+        "grip": [
+          -0.31,
+          -0.33,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      }
+    ],
+    "Wizard": [
+      {
+        "file": "15_Shaman_s_Skull_Totem.glb",
+        "hand": "RightHand",
+        "length": 0.78,
+        "grip": [
+          0.29,
+          -0.33,
+          0.41
+        ],
+        "rotation": [
+          0,
+          0,
+          1.5707963267948966
+        ]
+      }
+    ]
+  }
+}

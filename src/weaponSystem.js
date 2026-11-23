@@ -3,17 +3,26 @@
 // Modul de atașare a armelor GLB la oasele mâinilor personajului.
 // Folosește Three.js și starea globală definită în game.js.
 
-const CLASS_WEAPON_CONFIG = {
-    "Dark Knight": [{ file: "03_Jawbone_Sword.glb", hand: "RightHand", length: 0.8, grip: [0.30, -0.21, 0], rotation: [0, 0, 0] }],
-    "Ninja": [
-        { file: "02_Tusk_Dagger.glb", hand: "RightHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, 0] },
-        { file: "02_Tusk_Dagger.glb", hand: "LeftHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, Math.PI] }
-    ],
-    "Samurai": [{ file: "16_Sawtooth_Blade.glb", hand: "RightHand", length: 0.8, grip: [0.34, -0.28, 0], rotation: [0, 0, 3 * Math.PI / 2] }],
-    "Viking": [{ file: "01_Skull-Splitter_Axe.glb", hand: "RightHand", length: 0.82, grip: [-0.31, -0.33, 0], rotation: [0, 0, 0] }],
-    "Wizard": [{ file: "15_Shaman_s_Skull_Totem.glb", hand: "RightHand", length: 0.78, grip: [0.29, -0.33, 0.41], rotation: [0, 0, Math.PI / 2] }]
-};
+const CLASS_WEAPON_CONFIG = {};
+let CLASS_WEAPON_BASE_PATH = "./characters/arme/";
 const CLASS_WEAPON_ASSET_PROMISES = {};
+const CLASS_WEAPON_CONFIG_READY = fetch("./characters/arme/weapons.json")
+    .then(function(response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+    })
+    .then(function(data) {
+        if (!data || !data.classes || typeof data.classes !== "object") throw new Error("Format invalid");
+        if (typeof data.basePath === "string") CLASS_WEAPON_BASE_PATH = data.basePath;
+        Object.assign(CLASS_WEAPON_CONFIG, data.classes);
+        return true;
+    })
+    .catch(function(error) {
+        console.warn("Catalogul weapons.json nu s-a putut încărca; armele de clasă rămân dezactivate:", error);
+        return false;
+    });
+
+
 
 function findHandBone(model, side) {
     let hand = null;
@@ -80,6 +89,7 @@ function getPalmGripAnchor(hand, model) {
 function syncEquippedWeaponVisual() {
     if (!characterModel) return;
     if (!equipped || !equipped.weapon) {
+        characterModel.userData.classWeaponPending = false;
         const attached = characterModel.userData.classWeaponObjects || [];
         attached.forEach(function(weapon) {
             if (weapon.parent) weapon.parent.remove(weapon);
@@ -92,71 +102,70 @@ function syncEquippedWeaponVisual() {
 }
 
 function attachClassWeapon(model, className) {
-    const configs = CLASS_WEAPON_CONFIG[className];
-    if (!model || !configs || !equipped || !equipped.weapon || model.userData.classWeaponPending || model.userData.classWeaponAttached) return;
-
-    const attachments = configs.map(function(config) {
-        return { config: config, hand: findHandBone(model, config.hand) };
-    }).filter(function(item) { return !!item.hand; });
-    if (!attachments.length) {
-        console.warn("Nu s-a găsit osul mâinii pentru arma clasei", className);
-        return;
-    }
-
+    if (!model || !equipped || !equipped.weapon || model.userData.classWeaponPending || model.userData.classWeaponAttached) return;
     model.userData.classWeaponObjects = model.userData.classWeaponObjects || [];
     model.userData.classWeaponPending = true;
-    const loads = attachments.map(function(item) {
-        const config = item.config;
-        if (!CLASS_WEAPON_ASSET_PROMISES[config.file]) {
-            CLASS_WEAPON_ASSET_PROMISES[config.file] = new Promise(function(resolve, reject) {
-                new THREE.GLTFLoader().load("./characters/arme/" + config.file, function(gltf) {
-                    resolve(gltf.scene);
-                }, undefined, reject);
-            }).catch(function(err) {
-                delete CLASS_WEAPON_ASSET_PROMISES[config.file];
-                throw err;
-            });
+
+    CLASS_WEAPON_CONFIG_READY.then(function(loaded) {
+        if (!model.userData.classWeaponPending || !equipped.weapon || !model.parent) {
+            model.userData.classWeaponPending = false;
+            return;
         }
-        return CLASS_WEAPON_ASSET_PROMISES[config.file].then(function(asset) {
-            const hand = item.hand;
-            if (!equipped.weapon || !model.parent || !hand.parent) return;
-
-            asset.updateMatrixWorld(true);
-            const assetBox = new THREE.Box3().setFromObject(asset);
-            const assetSize = assetBox.getSize(new THREE.Vector3());
-            const assetLength = Math.max(assetSize.x, assetSize.y, assetSize.z);
-            hand.updateWorldMatrix(true, false);
-            const handScale = hand.getWorldScale(new THREE.Vector3());
-            if (!(assetLength > 0) || !(handScale.x > 0)) {
-                throw new Error("Mărimea modelului sau a osului mâinii nu este validă.");
+        const configs = loaded && CLASS_WEAPON_CONFIG[className];
+        if (!configs || !configs.length) {
+            model.userData.classWeaponPending = false;
+            console.warn("Nu există configurație de armă pentru clasa", className);
+            return;
+        }
+        const attachments = configs.map(function(config) {
+            return { config: config, hand: findHandBone(model, config.hand) };
+        }).filter(function(item) { return !!item.hand; });
+        if (!attachments.length) {
+            model.userData.classWeaponPending = false;
+            console.warn("Nu s-a găsit osul mâinii pentru arma clasei", className);
+            return;
+        }
+        const loads = attachments.map(function(item) {
+            const config = item.config;
+            if (!CLASS_WEAPON_ASSET_PROMISES[config.file]) {
+                CLASS_WEAPON_ASSET_PROMISES[config.file] = new Promise(function(resolve, reject) {
+                    new THREE.GLTFLoader().load(CLASS_WEAPON_BASE_PATH + config.file, function(gltf) { resolve(gltf.scene); }, undefined, reject);
+                }).catch(function(err) {
+                    delete CLASS_WEAPON_ASSET_PROMISES[config.file];
+                    throw err;
+                });
             }
-
-            const weapon = asset.clone(true);
-            weapon.name = "weapon_" + config.file;
-            weapon.scale.setScalar(config.length / (assetLength * handScale.x));
-            weapon.rotation.set(config.rotation[0], config.rotation[1], config.rotation[2]);
-            const gripPoint = new THREE.Vector3(config.grip[0], config.grip[1], config.grip[2]);
-            gripPoint.applyEuler(weapon.rotation).multiplyScalar(weapon.scale.x);
-            weapon.position.copy(getPalmGripAnchor(hand, model)).sub(gripPoint);
-            weapon.traverse(function(node) {
-                if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
-                    node.frustumCulled = false;
-                }
+            return CLASS_WEAPON_ASSET_PROMISES[config.file].then(function(asset) {
+                const hand = item.hand;
+                if (!equipped.weapon || !model.parent || !hand.parent) return;
+                asset.updateMatrixWorld(true);
+                const assetBox = new THREE.Box3().setFromObject(asset);
+                const assetSize = assetBox.getSize(new THREE.Vector3());
+                const assetLength = Math.max(assetSize.x, assetSize.y, assetSize.z);
+                hand.updateWorldMatrix(true, false);
+                const handScale = hand.getWorldScale(new THREE.Vector3());
+                if (!(assetLength > 0) || !(handScale.x > 0)) throw new Error("Mărimea modelului sau a osului mâinii nu este validă.");
+                const weapon = asset.clone(true);
+                weapon.name = "weapon_" + config.file;
+                weapon.scale.setScalar(config.length / (assetLength * handScale.x));
+                weapon.rotation.set(config.rotation[0], config.rotation[1], config.rotation[2]);
+                const gripPoint = new THREE.Vector3(config.grip[0], config.grip[1], config.grip[2]);
+                gripPoint.applyEuler(weapon.rotation).multiplyScalar(weapon.scale.x);
+                weapon.position.copy(getPalmGripAnchor(hand, model)).sub(gripPoint);
+                weapon.traverse(function(node) {
+                    if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; node.frustumCulled = false; }
+                });
+                hand.add(weapon);
+                model.userData.classWeaponObjects.push(weapon);
             });
-            hand.add(weapon);
-            model.userData.classWeaponObjects.push(weapon);
+        });
+        Promise.all(loads).then(function() {
+            model.updateMatrixWorld(true);
+            model.userData.classWeaponAttached = model.userData.classWeaponObjects.some(function(weapon) { return !!weapon.parent; });
+            model.userData.classWeaponPending = false;
+        }).catch(function(err) {
+            model.userData.classWeaponPending = false;
+            console.warn("Arma GLB nu s-a putut atașa pentru clasa " + className + ":", err);
         });
     });
-
-    Promise.all(loads).then(function() {
-        model.updateMatrixWorld(true);
-        model.userData.classWeaponAttached = model.userData.classWeaponObjects.some(function(weapon) { return !!weapon.parent; });
-        model.userData.classWeaponPending = false;
-    }).catch(function(err) {
-        model.userData.classWeaponPending = false;
-        console.warn("Arma GLB nu s-a putut atașa pentru clasa " + className + ":", err);
-    });
 }
-

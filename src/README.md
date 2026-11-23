@@ -44,3 +44,9 @@
 
 - `main.js` coordonează pornirea jocului: `startGame`, inițializarea scenei Three.js, bucla `update`/`animateGame` și redimensionarea ferestrei.
 - Se încarcă ultimul, după modulele de rețea, combat, arme, UI și `game.js`, deoarece pornește subsistemele deja definite.
+
+
+## Catalogul de arme
+
+- `characters/arme/weapons.json` descrie modelele și configurarea armelor pe clase (mână, scară, punct de prindere și rotație).
+- `weaponSystem.js` încarcă acest catalog asincron. Dacă fișierul lipsește sau nu poate fi citit, jocul continuă fără atașarea armelor.
