@@ -26,3 +26,9 @@
 - `weaponSystem.js` conține configurațiile armelor pe clase, găsirea oaselor mâinilor, calculul punctului de prindere și atașarea modelelor GLB.
 - Este încărcat înainte de `game.js` ca script clasic, pentru a păstra integrarea cu Three.js și starea globală existentă.
 - Modelele trebuie să existe în `characters/arme/` cu numele exact configurat în `CLASS_WEAPON_CONFIG`; lipsa unui model va fi raportată în consolă și nu va bloca încărcarea jocului.
+
+
+## Modul extras: combat
+
+- `combat.js` conține logica de atac, combo-uri, abilități de luptă, daune, monștri, efecte, viața jucătorului și respawn.
+- Este încărcat după `network.js` și înainte de `game.js`, ca script clasic, pentru a păstra compatibilitatea cu starea globală existentă.
