@@ -38,3 +38,9 @@
 
 - `ui.js` conține ferestrele de abilități, magazinul, inventarul, panoul personajului, cursorul și țintirea, clasamentul și minim harta.
 - Se încarcă după `combat.js` și `weaponSystem.js`, înainte de `game.js`, astfel încât funcțiile UI să fie disponibile când clientul inițializează jocul.
+
+
+## Modul extras: main
+
+- `main.js` coordonează pornirea jocului: `startGame`, inițializarea scenei Three.js, bucla `update`/`animateGame` și redimensionarea ferestrei.
+- Se încarcă ultimul, după modulele de rețea, combat, arme, UI și `game.js`, deoarece pornește subsistemele deja definite.
