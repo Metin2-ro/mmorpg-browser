@@ -5807,12 +5807,12 @@ function buildScaledCharacterGroup(gltfScene, tintHex = null) {
 }
 
 const CLASS_WEAPON_CONFIG = {
-    "Dark Knight": [{ file: "03_Jawbone_Sword.glb", hand: "RightHand", length: 0.8, grip: [0.30, -0.21, 0], rotation: [0, 0, Math.PI] }],
+    "Dark Knight": [{ file: "03_Jawbone_Sword.glb", hand: "RightHand", length: 0.8, grip: [0.30, -0.21, 0], rotation: [0, 0, 0] }],
     "Ninja": [
         { file: "02_Tusk_Dagger.glb", hand: "RightHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, 0] },
         { file: "02_Tusk_Dagger.glb", hand: "LeftHand", length: 0.48, grip: [0.25, -0.12, 0], rotation: [0, 0, Math.PI] }
     ],
-    "Samurai": [{ file: "16_Sawtooth_Blade.glb", hand: "RightHand", length: 0.8, grip: [0.34, -0.28, 0], rotation: [0, 0, Math.PI / 2] }],
+    "Samurai": [{ file: "16_Sawtooth_Blade.glb", hand: "RightHand", length: 0.8, grip: [0.34, -0.28, 0], rotation: [0, 0, 3 * Math.PI / 2] }],
     "Viking": [{ file: "01_Skull-Splitter_Axe.glb", hand: "RightHand", length: 0.82, grip: [-0.31, -0.33, 0], rotation: [0, 0, 0] }],
     "Wizard": [{ file: "15_Shaman_s_Skull_Totem.glb", hand: "RightHand", length: 0.78, grip: [0.29, -0.33, 0.41], rotation: [0, 0, Math.PI / 2] }]
 };
@@ -6553,6 +6553,7 @@ window.addEventListener("resize", function() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
+<script src="./weapon-fix.js"></script>
 
 </body>
 </html>
