@@ -5567,24 +5567,29 @@ function setupAnimations(clips, knightClips = [], knightRoot = null, swordClips 
         addChat("Mersul și fuga originale ale modelului sunt păstrate.", "#9ad");
     }
     if (useSwordAnimations && swordClips.length && swordRoot) {
-        const swordIdleSource = swordClips.find(function(clip) { return /sword[_\s-]*idle/i.test(clip.name); }) ||
-            swordClips.find(function(clip) { return /idle|stand/i.test(clip.name); }) || swordClips[0];
-        const swordAttackSource = swordClips.find(function(clip) { return /sword[_\s-]*attack/i.test(clip.name); });
-        const swordIdle = retargetAnimationClip(swordIdleSource, swordRoot, characterModel, { scalePositions: true, pinHips: true });
+        // Dark Knight keeps its native relaxed Idle pose. The retargeted
+        // Sword_Idle clip folds the arms too tightly on this rig; use it only
+        // for Samurai, whose two-handed stance is handled separately.
+        const swordIdleSource = selectedCharacterName === "Samurai"
+            ? (swordClips.find(function(clip) { return /sword[_\\s-]*idle/i.test(clip.name); }) ||
+                swordClips.find(function(clip) { return /idle|stand/i.test(clip.name); }) || swordClips[0])
+            : null;
+        const swordAttackSource = swordClips.find(function(clip) { return /sword[_\\s-]*attack/i.test(clip.name); });
+        const swordIdle = swordIdleSource
+            ? retargetAnimationClip(swordIdleSource, swordRoot, characterModel, { scalePositions: true, pinHips: true })
+            : null;
         const swordAttack = swordAttackSource
             ? retargetAnimationClip(swordAttackSource, swordRoot, characterModel, { scalePositions: true, pinHips: true })
             : null;
         if (swordIdle) {
             idleAction = mixer.clipAction(swordIdle);
             const fingerTracks = swordIdle.tracks.filter(function(track) {
-                return /RightHand(?:Thumb|Index|Middle|Ring|Pinky)\d*\.quaternion$/i.test(track.name);
+                return /RightHand(?:Thumb|Index|Middle|Ring|Pinky)\\d*\\.quaternion$/i.test(track.name);
             }).length;
             addChat("Sword_Idle a fost retargetată pentru " + selectedCharacterName + " (" + swordIdle.tracks.length + " canale).", "#9ad");
-            if (selectedCharacterName === "Samurai") {
-                addChat("Canale de degete drepte adaptate: " + fingerTracks + ". Verifică în joc ca palma să se închidă pe mâner.", "#9ad");
-            } else {
-                addChat("Dark Knight nu are oase de degete; animația mișcă brațul și mâna, dar nu poate închide degetele.", "#e6b85c");
-            }
+            addChat("Canale de degete drepte adaptate: " + fingerTracks + ". Verifică în joc ca palma să se închidă pe mâner.", "#9ad");
+        } else if (selectedCharacterName === "Dark Knight") {
+            addChat("Dark Knight păstrează animația Idle originală; Sword_Idle dezactivată pentru a evita brațele strânse.", "#9ad");
         } else {
             console.warn("Sword_Idle nu a putut fi retargetată pe scheletul " + selectedCharacterName + ".");
             addChat("Sword_Idle nu s-a potrivit cu scheletul " + selectedCharacterName + ".", "#e6b85c");
