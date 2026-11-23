@@ -109,14 +109,25 @@
     function findHand(model, side) {
         var want = /^right/i.test(side) ? "right" : "left";
         var letter = want === "right" ? "r" : "l";
-        var re = new RegExp("^(?:" + want + "hand|hand" + want + "|" + letter + "hand|hand" + letter + ")\\d*$");
         var found = null;
+        var candidates = [];
         model.traverse(function (n) {
-            if (found || !n.isBone) return;
-            var nm = String(n.name || "").toLowerCase().replace(/^.*[:|]/, "").replace(/[^a-z0-9]/g, "").replace(/^mixamorig/, "");
-            if (re.test(nm)) found = n;
+            if (!n.isBone) return;
+            var raw = String(n.name || "").toLowerCase();
+            var nm = raw.replace(/^.*[:|]/, "").replace(/[^a-z0-9]/g, "").replace(/^mixamorig/, "");
+            if (/(index|middle|ring|pinky|thumb|finger)/i.test(nm)) return;
+            candidates.push(n.name);
+            var exact = new RegExp("^(?:" + want + "hand|hand" + want + "|" + letter + "hand|hand" + letter + ")\\d*$");
+            var broad = (nm.indexOf(want) >= 0 && nm.indexOf("hand") >= 0) ||
+                        (nm.indexOf(letter + "hand") >= 0) ||
+                        (nm.indexOf("hand" + letter) >= 0) ||
+                        (nm.indexOf(want + "wrist") >= 0) ||
+                        (nm.indexOf("wrist" + want) >= 0);
+            if (!found && (exact.test(nm) || broad)) found = n;
         });
         if (!found && typeof findHandBone === "function") found = findHandBone(model, side);
+        if (!found) console.warn("WeaponFix: nu am găsit osul " + side + ". Oase disponibile:", candidates);
+        else console.info("WeaponFix: os " + side + " identificat:", found.name);
         return found;
     }
 
