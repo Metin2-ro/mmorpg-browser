@@ -2550,6 +2550,10 @@ const INLINE_SWORD_ANIMATION_GLB_BASE64 = [
 
 function canonicalRigBoneName(name) {
     let value = String(name || "").split(/[:|]/).pop();
+    // UAL names spine_01/spine_02 identify separate spine segments; do not
+    // strip their numeric suffix like the exporter IDs on Knight bones.
+    const spineSegment = value.match(/^spine_(0*[123])$/i);
+    if (spineSegment) return "spine" + spineSegment[1];
     value = value.replace(/_[0-9]+$/, "").replace(/\.[0-9]+$/, "");
     value = value.replace(/[^a-z0-9]/gi, "").toLowerCase();
     value = value.replace(/^mixamorig/, "");
