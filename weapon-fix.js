@@ -131,28 +131,106 @@
         return found;
     }
 
-    function bindQuat(model, hand) {
-        var found = null;
-        model.traverse(function (n) {
-            if (found || !n.isSkinnedMesh || !n.skeleton) return;
-            var i = n.skeleton.bones.indexOf(hand);
-            if (i >= 0) found = { mesh: n, i: i };
-        });
-        if (!found) return new THREE.Quaternion();
+    function skinIndex(model, bone) {
+        var map = model.userData.skinMap;
+        if (!map) {
+            map = model.userData.skinMap = new Map();
+            model.traverse(function (n) {
+                if (!n.isSkinnedMesh || !n.skeleton) return;
+                n.skeleton.bones.forEach(function (b, i) { if (!map.has(b)) map.set(b, { mesh: n, i: i }); });
+            });
+        }
+        return map.get(bone) || null;
+    }
+
+    function bindMat(model, bone) {
+        if (!bone) return null;
+        var f = skinIndex(model, bone);
+        if (!f) return null;
         var root = model.parent || model;
         root.updateMatrixWorld(true);
-        found.mesh.updateMatrixWorld(true);
-        var mesh = found.mesh;
-        var M = new THREE.Matrix4().copy(mesh.bindMatrix).invert().premultiply(mesh.matrixWorld);
-        M.multiply(new THREE.Matrix4().copy(mesh.skeleton.boneInverses[found.i]).invert());
+        f.mesh.updateMatrixWorld(true);
+        var M = new THREE.Matrix4().copy(f.mesh.bindMatrix).invert().premultiply(f.mesh.matrixWorld);
+        M.multiply(new THREE.Matrix4().copy(f.mesh.skeleton.boneInverses[f.i]).invert());
         M.premultiply(new THREE.Matrix4().copy(root.matrixWorld).invert());
-        var q = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
-        M.decompose(p, q, s);
+        return M;
+    }
+
+    function matQuat(M) {
+        var q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3();
+        M.decompose(p, q, sc);
         return q;
     }
 
+    function bindQuat(model, hand) {
+        var M = bindMat(model, hand);
+        return M ? matQuat(M) : new THREE.Quaternion();
+    }
+
+    var FINGER_ANGLES = { thumb: [15, 35, 30], other: [65, 80, 50] };
+
+    function fingerList(hand) {
+        var by = {};
+        hand.traverse(function (n) {
+            if (n === hand || !n.isBone) return;
+            var nm = String(n.name || "").toLowerCase().replace(/^.*[:|]/, "").replace(/[^a-z0-9]/g, "");
+            var m = /(thumb|index|middle|ring|pinky|little)(\d)$/.exec(nm);
+            if (!m) return;
+            var f = m[1] === "little" ? "pinky" : m[1];
+            (by[f] = by[f] || {})[Number(m[2])] = n;
+        });
+        return by;
+    }
+
+    function computeFingers(rec) {
+        var model = rec.model, a = rec.adj;
+        if (!rec.fingerSet) rec.fingerSet = fingerList(rec.hand);
+        var set = rec.fingerSet;
+        if (!Object.keys(set).length || !rec.handBind) return;
+        var A = new THREE.Vector3(1, 0, 0).applyQuaternion(rec.bindQ.clone().multiply(rec.pivot.quaternion)).normalize();
+        var grip = rec.pivot.position.clone().applyMatrix4(rec.handBind);
+        var list = [];
+        Object.keys(set).forEach(function (name) {
+            var chain = set[name];
+            for (var k = 1; k <= 3; k++) {
+                var b = chain[k];
+                if (!b) continue;
+                var Mb = bindMat(model, b), Mp = bindMat(model, b.parent);
+                if (!Mb || !Mp) continue;
+                var pb = new THREE.Vector3().setFromMatrixPosition(Mb);
+                var pp = new THREE.Vector3().setFromMatrixPosition(Mp);
+                var tip;
+                if (chain[k + 1] && bindMat(model, chain[k + 1])) {
+                    tip = new THREE.Vector3().setFromMatrixPosition(bindMat(model, chain[k + 1]));
+                } else tip = pb.clone().add(pb.clone().sub(pp).multiplyScalar(0.7));
+                var v = tip.clone().sub(pb);
+                var dPlus = pb.clone().add(v.clone().applyAxisAngle(A, 0.6)).distanceTo(grip);
+                var dMinus = pb.clone().add(v.clone().applyAxisAngle(A, -0.6)).distanceTo(grip);
+                var sign = dPlus <= dMinus ? 1 : -1;
+                var qRest = matQuat(new THREE.Matrix4().copy(Mp).invert().multiply(Mb));
+                var axisLocal = A.clone().applyQuaternion(matQuat(Mp).invert()).normalize();
+                var deg = FINGER_ANGLES[name === "thumb" ? "thumb" : "other"][k - 1];
+                var qFinal = new THREE.Quaternion().setFromAxisAngle(axisLocal, sign * deg * D2R * a.curl).multiply(qRest);
+                list.push({ bone: b, qRest: qRest, qFinal: a.curl > 0.001 ? qFinal : qRest.clone() });
+            }
+        });
+        rec.fingers = list;
+        if (a.curl <= 0.001) list.forEach(function (x) { x.bone.quaternion.copy(x.qRest); });
+    }
+
+    function applyCurl() {
+        if (typeof characterModel === "undefined" || !characterModel) return;
+        var rs = characterModel.userData.weaponRecs;
+        if (!rs) return;
+        for (var i = 0; i < rs.length; i++) {
+            var r = rs[i];
+            if (!r.fingers || r.adj.curl <= 0.001) continue;
+            for (var j = 0; j < r.fingers.length; j++) r.fingers[j].bone.quaternion.copy(r.fingers[j].qFinal);
+        }
+    }
+
     function getAdj(key, cls) {
-        var a = { yaw: 0, pitch: DEFAULT_PITCH[cls] || 0, roll: 0, grip: 0.14, scale: 1, ox: 0, oy: 0, oz: 0, flip: false };
+        var a = { yaw: 0, pitch: DEFAULT_PITCH[cls] || 0, roll: 0, grip: 0.14, scale: 1, ox: 0, oy: 0, oz: 0, flip: false, curl: 1 };
         [DEFAULT_ADJ[key], saved[key]].forEach(function (o) {
             if (!o) return;
             for (var k in a) if (k in o) a[k] = o[k];
@@ -193,6 +271,7 @@
         rec.pivot.quaternion.copy(qp);
         var off = new THREE.Vector3(a.ox, a.oy, a.oz).multiplyScalar(cfg.length / hs).applyQuaternion(qp);
         rec.pivot.position.copy(rec.palm).add(off);
+        computeFingers(rec);
     }
 
     function loadAsset(file) {
@@ -217,7 +296,8 @@
         var rec = {
             key: key, cfg: cfg, hand: hand, model: model, an: an,
             pivot: new THREE.Group(), weapon: asset.clone(true), adj: getAdj(key, cls),
-            palm: getPalmGripAnchor(hand, model).clone(), bindQ: bindQuat(model, hand)
+            palm: getPalmGripAnchor(hand, model).clone(), bindQ: bindQuat(model, hand),
+            handBind: bindMat(model, hand), fingers: [], fingerSet: null
         };
         rec.weapon.traverse(function (n) {
             if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; n.frustumCulled = false; }
@@ -228,7 +308,12 @@
         return rec;
     }
 
-    function removeRec(rec) { if (rec && rec.pivot && rec.pivot.parent) rec.pivot.parent.remove(rec.pivot); }
+    function removeRec(rec) {
+        if (!rec) return;
+        (rec.fingers || []).forEach(function (x) { x.bone.quaternion.copy(x.qRest); });
+        rec.fingers = [];
+        if (rec.pivot && rec.pivot.parent) rec.pivot.parent.remove(rec.pivot);
+    }
 
     function removeAll(model) {
         (model.userData.weaponRecs || []).forEach(removeRec);
@@ -288,6 +373,7 @@
         ["roll", "Răsucire pe lungime", -180, 180, 1],
         ["grip", "Unde apucă mâna (0 = capătul mânerului)", 0, 1, 0.01],
         ["scale", "Mărime", 0.4, 2.5, 0.01],
+        ["curl", "Strângerea degetelor", 0, 1.5, 0.01],
         ["ox", "Mută înainte / înapoi", -0.5, 0.5, 0.01],
         ["oy", "Mută sus / jos", -0.5, 0.5, 0.01],
         ["oz", "Mută stânga / dreapta", -0.5, 0.5, 0.01]
@@ -351,6 +437,7 @@
             }).join("") + "</select>";
         }
         var r = rs[selIdx];
+        if (!r.fingers || !r.fingers.length) h += '<div class="wc-note">Acest model nu are oase de degete detectabile, deci degetele nu pot fi închise.</div>';
         FIELDS.forEach(function (f) {
             h += '<div class="wc-field"><div class="wc-lab"><span>' + f[1] + '</span><span id="wc-v-' + f[0] + '">' + fmt(r.adj[f[0]], f) + "</span></div>" +
                  '<input type="range" data-f="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '" value="' + r.adj[f[0]] + '"></div>';
@@ -421,6 +508,17 @@
         var show = panel.style.display !== "block";
         panel.style.display = show ? "block" : "none";
         if (show) renderPanel();
+    }
+
+    var _updateCombat = window.updateCombat;
+    if (typeof _updateCombat === "function") {
+        window.updateCombat = function () {
+            var result = _updateCombat.apply(this, arguments);
+            applyCurl();
+            return result;
+        };
+    } else {
+        console.warn("WeaponFix: updateCombat nu a fost găsită; strângerea degetelor nu poate fi reaplicată după animație.");
     }
 
     window.addEventListener("keydown", function (e) {
