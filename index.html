@@ -6,6 +6,126 @@
 <title>MU Dark Fantasy 3D MMORPG - PC Client Edition</title>
 
 <link rel="stylesheet" href="./style.css">
+<style id="visual-polish-overrides">
+:root { --ui-gold: #f2cf80; --ui-border: rgba(208,161,91,.62); --ui-panel: rgba(12,9,10,.92); }
+#game-container::after {
+    content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 52%, rgba(5,4,8,.25) 100%);
+}
+#game-container::before {
+    content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(190,32,24,.32) 100%);
+    transition: opacity 160ms ease-out;
+}
+#game-container.damage-flash::before { opacity: 1; }
+#char-select-screen {
+    background: radial-gradient(ellipse at 50% 28%, rgba(101,62,30,.38), transparent 54%),
+                linear-gradient(155deg, #17111b 0%, #09080a 58%, #1b0e09 100%);
+}
+#char-select-screen h1 { color: #f8dda0; text-shadow: 0 0 24px rgba(239,150,55,.42), 0 2px 4px #000; }
+.char-card {
+    position: relative; overflow: hidden; border: 1px solid rgba(201,157,91,.62); border-radius: 10px;
+    background: linear-gradient(145deg, rgba(54,35,25,.96), rgba(12,9,11,.98));
+    box-shadow: 0 8px 22px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,232,181,.08);
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.char-card::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: linear-gradient(135deg, rgba(255,215,120,.1), transparent 58%); transition: opacity 180ms ease;
+}
+.char-card:hover::before, .char-card.selected::before { opacity: 1; }
+.char-card:hover, .char-card.selected {
+    border-color: var(--ui-gold);
+    box-shadow: 0 0 0 1px rgba(255,214,130,.2), 0 12px 28px rgba(0,0,0,.45), 0 0 22px rgba(226,139,47,.2);
+    transform: translateY(-4px);
+}
+.char-card h3 { color: #f3c16b; text-shadow: 0 1px 3px #000; }
+.char-card p { color: #c8b99f; line-height: 1.45; }
+#player-hud, #quest-panel, #inv-panel, #chat-container, #action-bar {
+    background: linear-gradient(145deg, rgba(25,18,15,.94), var(--ui-panel));
+    border-color: var(--ui-border); box-shadow: 0 10px 28px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,231,189,.07);
+    -webkit-backdrop-filter: blur(7px) saturate(1.08); backdrop-filter: blur(7px) saturate(1.08);
+}
+.modal-panel {
+    border-color: var(--ui-border); border-radius: 10px;
+    box-shadow: 0 14px 42px rgba(0,0,0,.76), inset 0 1px 0 rgba(255,231,189,.07);
+    -webkit-backdrop-filter: blur(9px) saturate(1.08); backdrop-filter: blur(9px) saturate(1.08);
+}
+#boss-bar {
+    padding: 8px 12px; border: 1px solid rgba(196,89,63,.6); border-radius: 10px;
+    background: linear-gradient(145deg, rgba(40,14,13,.91), rgba(12,8,9,.92));
+    box-shadow: 0 8px 24px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,208,171,.08);
+}
+#minimap { border-color: var(--ui-border); box-shadow: 0 0 0 4px rgba(8,7,10,.46), 0 8px 24px rgba(0,0,0,.62); }
+.bar-container { border-radius: 999px; box-shadow: inset 0 1px 4px rgba(0,0,0,.58); }
+.hp-fill, .mp-fill, .xp-fill { filter: saturate(1.08); }
+#toolbar button, #shop-tabs button, .panel-close, .shop-btn, #inv-cons button, #inv-actions button, .stat-row button {
+    transition: color 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+#toolbar button:hover, #shop-tabs button:hover, .panel-close:hover, .shop-btn:hover {
+    border-color: var(--ui-gold); box-shadow: 0 0 12px rgba(242,190,91,.18);
+}
+.skill-slot {
+    border-radius: 8px; background: linear-gradient(145deg, #302116, #130e0d);
+    box-shadow: inset 0 1px 0 rgba(255,232,181,.08), 0 3px 8px rgba(0,0,0,.34);
+}
+.skill-slot:hover { border-color: var(--ui-gold); box-shadow: 0 0 15px rgba(242,190,91,.24); }
+.slot, .equip-slot { border-radius: 7px; transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease; }
+.slot:hover, .equip-slot:hover { border-color: rgba(242,207,128,.85); box-shadow: 0 0 12px rgba(242,190,91,.18); }
+.slot.sel { outline: 2px solid var(--ui-gold); box-shadow: 0 0 12px rgba(242,190,91,.24); }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--ui-gold); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+    #player-hud { top: 12px; left: 12px; width: 250px; padding: 8px 10px; }
+    #quest-panel { top: 12px; right: 12px; width: 210px; padding: 9px; }
+    #inv-panel { top: 124px; left: 12px; max-width: calc(100vw - 24px); gap: 8px; flex-wrap: wrap; }
+    #toolbar { top: 170px; left: 12px; right: 12px; max-width: calc(100vw - 24px); flex-wrap: wrap; }
+    #minimap-wrap { top: auto; right: 12px; bottom: 82px; width: 132px; height: 132px; }
+    #minimap { width: 132px; height: 132px; }
+    #chat-container { left: 12px; bottom: 82px; width: min(340px, calc(100vw - 24px)); }
+    #action-bar { left: 8px; right: 8px; bottom: 8px; gap: 6px; padding: 7px 8px; max-width: calc(100vw - 16px); justify-content: center; }
+    #action-bar .skill-slot { width: 46px; height: 46px; flex: 1 1 38px; min-width: 34px; }
+    #inv-window, #char-panel { left: 50%; width: min(94vw, 520px); max-height: calc(100vh - 24px); }
+    #shop-panel, #lb-panel, #skill-panel { left: 50%; width: min(94vw, 640px); max-height: calc(100vh - 24px); }
+    .inv-layout { flex-wrap: wrap; gap: 10px; }
+}
+@media (max-width: 520px) {
+    #char-select-screen { justify-content: flex-start; padding: 16px 10px; gap: 12px; }
+    #char-select-screen h1 { font-size: clamp(20px, 5.7vw, 28px); letter-spacing: 1px; margin: 4px 0 8px; text-align: center; }
+    .char-cards-container { width: 100%; gap: 10px; }
+    .char-card { width: min(46vw, 220px); padding: 14px 10px; }
+    #player-hud { top: 8px; left: 8px; width: min(270px, calc(100vw - 172px)); min-width: 146px; gap: 7px; padding: 7px; }
+    .avatar-box { width: 38px; height: 38px; flex: 0 0 38px; font-size: 20px; }
+    .player-name { font-size: 12px; }
+    #quest-panel { top: 8px; right: 8px; width: min(154px, calc(100vw - 186px)); min-width: 116px; padding: 6px; font-size: 10px; }
+    #quest-panel h4 { font-size: 10px; margin-bottom: 5px; }
+    .map-level-badge { padding: 4px; font-size: 9px; }
+    .pvp-badge { margin-top: 5px; padding: 4px; font-size: 9px; }
+    .quest-item { margin-top: 5px; font-size: 9px; }
+    .quest-title { gap: 4px; }
+    #inv-panel { top: 86px; left: 8px; right: 8px; padding: 6px 8px; gap: 6px 10px; justify-content: center; font-size: 10px; }
+    #toolbar { top: 137px; left: 8px; right: 8px; gap: 4px; max-width: none; }
+    #toolbar button { padding: 5px 7px; border-width: 1px; font-size: 10px; }
+    #minimap-wrap { right: 8px; bottom: 70px; width: 96px; height: 96px; }
+    #minimap { width: 96px; height: 96px; }
+    #chat-container { left: 8px; bottom: 70px; width: min(275px, calc(100vw - 112px)); padding: 6px; border-width: 1px; }
+    #chat-messages { height: 66px; font-size: 10px; }
+    #chat-input { padding: 6px; font-size: 10px; }
+    #action-bar { left: 6px; right: 6px; bottom: 6px; gap: 3px; padding: 5px; border-width: 1px; }
+    #action-bar .skill-slot { height: 40px; min-width: 0; flex: 1 1 0; border-width: 1px; font-size: 18px; }
+    .skill-key { right: 2px; font-size: 8px; }
+    .modal-panel { padding: 12px 10px; }
+    .inv-layout { gap: 8px; }
+    .bag-grid { grid-template-columns: repeat(6, 40px); }
+    .slot { width: 40px; height: 40px; font-size: 20px; }
+    .equip-col { gap: 4px; }
+    .equip-slot { width: 82px; height: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .char-card, .char-card::before, #game-container::before, button, .skill-slot, .slot, .equip-slot { transition-duration: .01ms !important; }
+    #game-container::before { background: radial-gradient(ellipse at center, transparent 48%, rgba(190,32,24,.18) 100%); }
+}
+</style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -212,6 +332,157 @@
     <script src="./src/game.js"></script>
 <script src="./src/main.js"></script>
 <script src="./weapon-fix.js"></script>
+<script>
+(function installVisualPolish() {
+    let hitFlashTimer = 0;
+    function showHitFlash() {
+        const root = document.getElementById("game-container");
+        if (!root) return;
+        root.classList.remove("damage-flash");
+        void root.offsetWidth;
+        root.classList.add("damage-flash");
+        if (hitFlashTimer) clearTimeout(hitFlashTimer);
+        hitFlashTimer = setTimeout(function() {
+            root.classList.remove("damage-flash");
+            hitFlashTimer = 0;
+        }, 180);
+    }
+
+    if (typeof window.initGame === "function") {
+        const originalInitGame = window.initGame;
+        window.initGame = function() {
+            const result = originalInitGame.apply(this, arguments);
+            if (renderer && scene) {
+                renderer.outputEncoding = THREE.sRGBEncoding;
+                scene.background.set(0x100d13);
+                if (scene.fog) {
+                    scene.fog.color.set(0x100d13);
+                    scene.fog.density = 0.0062;
+                }
+                const ambient = scene.children.find(function(object) { return object.isAmbientLight; });
+                if (ambient) ambient.intensity = 1.15;
+                const keyLight = scene.children.find(function(object) { return object.isDirectionalLight; });
+                if (keyLight) {
+                    keyLight.color.setHex(0xffddb2);
+                    keyLight.intensity = 1.95;
+                    keyLight.shadow.bias = -0.0002;
+                    keyLight.shadow.normalBias = 0.025;
+                }
+                if (playerPointLight) {
+                    playerPointLight.color.setHex(0xffaa58);
+                    playerPointLight.intensity = 1.55;
+                    playerPointLight.distance = 34;
+                }
+                scene.add(new THREE.HemisphereLight(0xb5c9ff, 0x382318, 0.52));
+            }
+            return result;
+        };
+    }
+
+    if (typeof window.buildScaledCharacterGroup === "function") {
+        const originalBuildCharacter = window.buildScaledCharacterGroup;
+        window.buildScaledCharacterGroup = function() {
+            const built = originalBuildCharacter.apply(this, arguments);
+            const model = built && built.innerModel;
+            if (model) model.traverse(function(node) {
+                if (!node.isMesh || !node.material) return;
+                const polish = function(material) {
+                    if (Number.isFinite(material.roughness)) material.roughness = Math.max(0.48, material.roughness);
+                    if (Number.isFinite(material.metalness)) material.metalness = Math.min(0.32, material.metalness);
+                    material.needsUpdate = true;
+                };
+                if (Array.isArray(node.material)) node.material.forEach(polish);
+                else polish(node.material);
+            });
+            return built;
+        };
+    }
+
+    if (typeof window.fadeToAction === "function") {
+        const originalFadeToAction = window.fadeToAction;
+        window.fadeToAction = function(action, duration) {
+            const smoothDuration = Number.isFinite(duration) ? Math.max(duration, 0.18) : 0.18;
+            return originalFadeToAction.call(this, action, smoothDuration);
+        };
+    }
+
+    if (typeof window.spawnFloatingText === "function" && typeof window.updateFloatingTexts === "function") {
+        window.spawnFloatingText = function(text, color, position, critical) {
+            if (!scene) return;
+            const canvas = document.createElement("canvas");
+            canvas.width = 256; canvas.height = 96;
+            const context = canvas.getContext("2d");
+            context.font = "bold " + (critical ? 62 : 48) + "px Arial";
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.lineJoin = "round";
+            context.lineWidth = critical ? 10 : 8;
+            context.strokeStyle = "#000";
+            context.shadowColor = color;
+            context.shadowBlur = critical ? 19 : 9;
+            context.strokeText(text, 128, 48);
+            const gradient = context.createLinearGradient(0, 12, 0, 84);
+            gradient.addColorStop(0, critical ? "#fff7d6" : "#ffffff");
+            gradient.addColorStop(0.38, color);
+            gradient.addColorStop(1, color);
+            context.fillStyle = gradient;
+            context.fillText(text, 128, 48);
+            context.shadowBlur = 0;
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false });
+            const sprite = new THREE.Sprite(material);
+            const baseScaleX = critical ? 3.7 : 2.6;
+            const baseScaleY = critical ? 1.4 : 1.0;
+            sprite.scale.set(baseScaleX * 0.84, baseScaleY * 0.84, 1);
+            sprite.position.copy(position);
+            sprite.position.x += (Math.random() - 0.5) * 0.6;
+            sprite.renderOrder = 999;
+            scene.add(sprite);
+            floatingTexts.push({ sprite: sprite, mat: material, tex: texture, life: 0, max: 0.95,
+                baseScaleX: baseScaleX, baseScaleY: baseScaleY, drift: (Math.random() - 0.5) * 0.34,
+                riseSpeed: critical ? 2.45 : 2.1 });
+        };
+        window.updateFloatingTexts = function(delta) {
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const item = floatingTexts[i];
+                item.life += delta;
+                const t = item.life / item.max;
+                item.sprite.position.y += item.riseSpeed * (1 - 0.22 * t) * delta;
+                item.sprite.position.x += item.drift * delta;
+                const pop = 0.84 + 0.16 * Math.min(1, t * 8);
+                item.sprite.scale.set(item.baseScaleX * pop, item.baseScaleY * pop, 1);
+                item.mat.opacity = Math.max(0, 1 - t * t);
+                if (item.life >= item.max) {
+                    scene.remove(item.sprite);
+                    item.mat.dispose();
+                    item.tex.dispose();
+                    floatingTexts.splice(i, 1);
+                }
+            }
+        };
+    }
+
+    if (typeof window.takeDamage === "function") {
+        const originalTakeDamage = window.takeDamage;
+        window.takeDamage = function() {
+            const hpBefore = myHP;
+            const result = originalTakeDamage.apply(this, arguments);
+            if (myHP < hpBefore) showHitFlash();
+            return result;
+        };
+    }
+    if (typeof window.damageMonster === "function") {
+        const originalDamageMonster = window.damageMonster;
+        window.damageMonster = function(monster) {
+            const result = originalDamageMonster.apply(this, arguments);
+            if (monster && monster.alive && socket && socket.connected && monster.flash > 0) {
+                monster.flash = Math.max(monster.flash, 0.21);
+            }
+            return result;
+        };
+    }
+})();
+</script>
 
 </body>
 </html>
